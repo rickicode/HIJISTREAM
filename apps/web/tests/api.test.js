@@ -55,55 +55,76 @@ describe('VidAPI - Movies Endpoints', () => {
     validateListItem(data.items[0]);
   });
 
-  it('GET /movies/trending/page-1.json returns valid response if available', async () => {
+  it('GET /movies/trending/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/movies/trending/page-1.json');
-    if (data === null) return; // Endpoint not available from this environment
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 
-  it('GET /movies/top-rated/page-1.json returns valid response if available', async () => {
+  it('GET /movies/top-rated/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/movies/top-rated/page-1.json');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 
-  it('GET /movies/upcoming/page-1.json returns valid response if available', async () => {
+  it('GET /movies/upcoming/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/movies/upcoming/page-1.json');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 });
 
 describe('VidAPI - TV Endpoints', () => {
-  it('GET /tv/latest/page-1.json returns valid response if available', async () => {
+  it('GET /tv/latest/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/tv/latest/page-1.json');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 
-  it('GET /tv/trending/page-1.json returns valid response if available', async () => {
+  it('GET /tv/trending/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/tv/trending/page-1.json');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 
-  it('GET /tv/top-rated/page-1.json returns valid response if available', async () => {
+  it('GET /tv/top-rated/page-1.json validates structure when available', async (ctx) => {
     const data = await fetchAPI('/tv/top-rated/page-1.json');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     validatePaginatedResponse(data);
     validateListItem(data.items[0]);
   });
 });
 
 describe('VidAPI - Search', () => {
-  it('GET /search?query=fast returns valid response if available', async () => {
+  it('GET /search?query=fast validates structure when available', async (ctx) => {
     const data = await fetchAPI('/search?query=fast');
-    if (data === null) return;
+    if (data === null) {
+      ctx.skip();
+      return;
+    }
     // Search can return {items: [...]} or just an array
     const items = data.items || (Array.isArray(data) ? data : []);
     expect(items.length).toBeGreaterThan(0);
@@ -115,27 +136,39 @@ describe('VidAPI - Search', () => {
 });
 
 describe('VidAPI - Detail Endpoints', () => {
-  it('GET /movie/{id}.json returns valid movie detail if available', async () => {
+  it('GET /movie/{id}.json validates movie detail when available', async (ctx) => {
     // First get a known TMDB ID from the latest movies
     const latest = await fetchAPI('/movies/latest/page-1.json');
-    if (!latest || !latest.items || latest.items.length === 0) return;
+    if (!latest || !latest.items || latest.items.length === 0) {
+      ctx.skip();
+      return;
+    }
     const tmdbId = latest.items[0].tmdb_id;
 
     const detail = await fetchAPI(`/movie/${tmdbId}.json`);
-    if (detail === null) return;
+    if (detail === null) {
+      ctx.skip();
+      return;
+    }
     expect(detail).toHaveProperty('tmdb_id');
     expect(detail).toHaveProperty('title');
     expect(detail).toHaveProperty('poster_url');
     expect(detail).toHaveProperty('embed_url');
   });
 
-  it('GET /tv/{id}.json returns valid TV detail if available', async () => {
+  it('GET /tv/{id}.json validates TV detail when available', async (ctx) => {
     const tvLatest = await fetchAPI('/tv/latest/page-1.json');
-    if (!tvLatest || !tvLatest.items || tvLatest.items.length === 0) return;
+    if (!tvLatest || !tvLatest.items || tvLatest.items.length === 0) {
+      ctx.skip();
+      return;
+    }
     const tmdbId = tvLatest.items[0].tmdb_id;
 
     const detail = await fetchAPI(`/tv/${tmdbId}.json`);
-    if (detail === null) return;
+    if (detail === null) {
+      ctx.skip();
+      return;
+    }
     expect(detail).toHaveProperty('tmdb_id');
     expect(detail).toHaveProperty('title');
     expect(detail).toHaveProperty('poster_url');
@@ -143,13 +176,16 @@ describe('VidAPI - Detail Endpoints', () => {
 });
 
 describe('VidAPI - Pagination', () => {
-  it('page field increments correctly', async () => {
+  it('page field increments correctly', async (ctx) => {
     const page1 = await fetchAPI('/movies/latest/page-1.json');
     expect(page1).not.toBeNull();
     expect(page1.page).toBe(1);
 
     const page2 = await fetchAPI('/movies/latest/page-2.json');
-    if (page2 === null) return;
+    if (page2 === null) {
+      ctx.skip();
+      return;
+    }
     expect(page2.page).toBe(2);
     // Items should be different from page 1
     if (page2.items.length > 0 && page1.items.length > 0) {

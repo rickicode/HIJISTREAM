@@ -6,7 +6,9 @@ A streaming platform for movies and TV shows built with React, Vite, and Tailwin
 
 ### Deploy to Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/user/HIJISTREAM&root-directory=apps/web)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/HIJISTREAM&root-directory=apps/web)
+
+> **Note:** Replace `your-username` in the URL above with your actual GitHub username.
 
 ### Deploy to Cloudflare Pages
 
@@ -25,11 +27,6 @@ A streaming platform for movies and TV shows built with React, Vite, and Tailwin
 3. Deploy with Wrangler:
    ```bash
    wrangler pages deploy dist --project-name=hijistream
-   ```
-
-   Or use Workers Sites:
-   ```bash
-   wrangler deploy
    ```
 
 ## Tech Stack
@@ -77,7 +74,7 @@ HIJISTREAM/
 ## Local Development
 
 ```bash
-git clone https://github.com/user/HIJISTREAM.git
+git clone https://github.com/your-username/HIJISTREAM.git
 cd HIJISTREAM/apps/web
 bun install
 bun run dev
