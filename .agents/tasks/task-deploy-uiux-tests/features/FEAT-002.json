@@ -1,0 +1,43 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "UI/UX audit and polish across all pages and components to ensure production quality, consistency with the design system, and professional appearance as a streaming platform",
+  "status": "in_progress",
+  "steps": [
+    "Audit and fix `apps/web/src/components/ContentCard.jsx`: Ensure rounded-xl maps to 12px (it does via Tailwind default which is 12px). Verify ghost border is 1px solid #E5E7EB (border-gray-200). Ensure hover transitions are smooth (duration-200). Verify image lazy loading with proper placeholder animation. Confirm no drop shadows are applied.",
+    "Audit and fix `apps/web/src/components/TabNavigation.jsx`: Ensure active tab indicator is consistent (border-b-2 border-blue-600 text-gray-900 font-medium). Ensure inactive is text-gray-500 hover:text-gray-700. Verify the overlapping border technique works cleanly.",
+    "Audit and fix `apps/web/src/app/Home.jsx`: Verify hero/welcome section has proper styling with bg-gray-50 (canvas muted #F9FAFB) and border-gray-200. Ensure grid breakpoints are consistent (cols-2 sm:3 md:4 lg:6). Ensure section spacing is consistent. Add proper card hover states for the horizontal scroll section.",
+    "Audit and fix `apps/web/src/components/Layout.jsx`: Verify header is clean with sticky positioning. Ensure mobile menu has proper animation/transitions. Verify nav active indicator positioning. Ensure footer is minimal and consistent.",
+    "Audit and fix `apps/web/src/app/Search.jsx`: Ensure empty state, no results state, and results grid are properly styled and centered. Verify SearchBar styling matches design system.",
+    "Audit and fix `apps/web/src/components/SearchBar.jsx`: Ensure input has proper border-gray-200, rounded-xl, focus ring (ring-blue-600). Verify search history dropdown has proper shadow and border.",
+    "Audit and fix `apps/web/src/components/DetailHero.jsx`: Ensure the detail page layout is clean with proper poster aspect ratio (2:3), shadow-lg ONLY on the poster image (acceptable for detail hero), proper text hierarchy (title 3xl bold, metadata sm text-gray-500). Verify Play button is styled consistently (bg-blue-600 rounded-xl).",
+    "Audit and fix `apps/web/src/components/EpisodeList.jsx`: Ensure episode items have proper hover states, consistent spacing, play button visibility on hover. Verify season selector buttons are styled correctly.",
+    "Audit and fix `apps/web/src/components/VideoPlayer.jsx`: Ensure player page has clean dark theme (bg-black/gray-900). Back button and title bar are minimal. Aspect-video maintains proper ratio.",
+    "Audit and fix `apps/web/src/app/Movies.jsx` and `apps/web/src/app/TV.jsx`: Ensure page title, tab navigation, and content grid spacing are consistent between the two pages. Verify infinite scroll loading indicator is properly centered.",
+    "Audit and fix `apps/web/src/components/LoadingState.jsx`: Verify skeleton screens use rounded-xl (12px) corners matching the actual cards. Ensure animation (animate-pulse) is applied. Verify grid skeleton matches actual grid layout breakpoints.",
+    "Audit and fix `apps/web/src/components/ErrorState.jsx`: Verify error display is centered, icon is muted, retry button matches primary button style (bg-blue-600 rounded-lg).",
+    "Ensure Tailwind theme tokens are used consistently: verify all instances of gray-200 for borders, gray-900 for primary text, gray-500 for muted text, blue-600 for primary actions. Fix any hardcoded colors that don't match the design system.",
+    "Add a smooth page transition feel by ensuring the Suspense fallback in main.jsx uses a proper centered loading state instead of just text. Consider adding a simple spinner or skeleton."
+  ],
+  "acceptance_criteria": [
+    "All card components use rounded-xl (12px) corners and 1px border-gray-200",
+    "No drop shadows on cards (shadow-lg only on detail page poster is acceptable)",
+    "All primary actions (buttons, links) use blue-600 consistently",
+    "All text colors follow hierarchy: gray-900 primary, gray-500/gray-600 secondary",
+    "All page backgrounds are white (#FFFFFF), canvas sections use gray-50 (#F9FAFB)",
+    "Tab navigation has consistent active indicator (border-b-2 border-blue-600) on both Movies and TV pages",
+    "Loading skeletons match actual content layout dimensions",
+    "Hover states are smooth with transition-colors or transition-all and appropriate duration",
+    "Responsive grid works at all breakpoints (mobile 2 cols, sm 3, md 4, lg 5-6)",
+    "bun run build succeeds after all UI changes",
+    "bun run lint has 0 errors",
+    "bun run typecheck passes"
+  ],
+  "verification": [
+    "Run `bun run lint` in apps/web/ - must have 0 errors",
+    "Run `bun run typecheck` in apps/web/ - must pass",
+    "Run `bun run build` in apps/web/ - must succeed"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

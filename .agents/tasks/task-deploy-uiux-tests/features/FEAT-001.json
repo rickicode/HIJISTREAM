@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "chore",
   "description": "Add Vercel and Cloudflare Pages deployment configuration, plus a comprehensive root README.md with deploy buttons and project documentation",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create `apps/web/vercel.json` with buildCommand: 'bun run build', outputDirectory: 'dist', framework: 'vite', and rewrites for SPA routing (all paths to /index.html)",
     "Create `apps/web/wrangler.toml` with name 'hijistream', compatibility_date '2024-01-01', and [site] bucket='./dist' for Cloudflare Pages static site deployment",
@@ -21,5 +21,5 @@
     "Verify README.md exists at project root with deploy buttons"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All three files created successfully. Build passes without issues. Bun is used throughout (not npm/yarn) as per project conventions."
 }

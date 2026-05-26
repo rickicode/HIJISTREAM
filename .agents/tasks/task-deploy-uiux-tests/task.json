@@ -1,0 +1,7 @@
+{
+  "task_id": "task-deploy-uiux-tests",
+  "task_description": "Add Vercel and Cloudflare Workers deployment support with deploy buttons, audit and polish all UI/UX for production quality and consistency, and add unit tests with Vitest to validate real API responses from vidapi.ru",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

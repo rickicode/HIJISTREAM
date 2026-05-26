@@ -55,7 +55,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
               </div>
               <button
                 onClick={() => onPlayEpisode(activeSeason, epNumber)}
-                className="opacity-0 group-hover:opacity-100 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                className="sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all"
               >
                 <Play size={14} fill="white" />
               </button>

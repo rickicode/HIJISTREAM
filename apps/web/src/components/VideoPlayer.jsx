@@ -4,6 +4,8 @@ import { saveWatchProgress } from '../utils/player';
 
 export default function VideoPlayer({ embedUrl, title, contentId, onBack, metadata = {} }) {
   const lastSaveRef = useRef(0);
+  const metadataRef = useRef(metadata);
+  metadataRef.current = metadata;
 
   const handleMessage = useCallback(
     (event) => {
@@ -20,7 +22,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
           const now = Date.now();
           if (now - lastSaveRef.current >= 5000) {
             lastSaveRef.current = now;
-            saveWatchProgress(contentId, player_progress, player_duration, metadata);
+            saveWatchProgress(contentId, player_progress, player_duration, metadataRef.current);
           }
         }
       }
@@ -30,7 +32,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
         const now = Date.now();
         if (now - lastSaveRef.current >= 5000) {
           lastSaveRef.current = now;
-          saveWatchProgress(contentId, data.time, data.duration, metadata);
+          saveWatchProgress(contentId, data.time, data.duration, metadataRef.current);
         }
       }
     },

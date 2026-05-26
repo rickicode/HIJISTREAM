@@ -60,7 +60,7 @@ export default function Home() {
           <SectionHeader title="Continue Watching" />
           <HorizontalScroll>
             {watchProgress.map((item) => (
-              <div key={item.id} className="w-[160px] shrink-0">
+              <div key={item.id} className="w-[150px] sm:w-[160px] shrink-0">
                 <ContentCard
                   item={{ tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
                   type={item.type || 'movie'}
