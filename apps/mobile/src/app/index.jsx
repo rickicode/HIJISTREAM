@@ -1,23 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { Redirect } from 'expo-router';
 
-export default function Home() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>HIJISTREAM</Text>
-    </View>
-  );
+export default function Index() {
+  return <Redirect href="/(tabs)/home" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    color: '#ffffff',
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-});
