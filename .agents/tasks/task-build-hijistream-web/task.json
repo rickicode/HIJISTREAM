@@ -1,0 +1,7 @@
+{
+  "task_id": "task-build-hijistream-web",
+  "task_description": "Build the complete HIJISTREAM (VidStream) video streaming web application from scratch using React+Vite, Tailwind CSS, Zustand, React Query, and iframe-based video player. Must match PRD.md and TDD.md specifications with production-quality UI/UX.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

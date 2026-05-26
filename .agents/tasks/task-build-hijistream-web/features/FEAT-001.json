@@ -1,0 +1,41 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Project scaffolding and core infrastructure - Set up the React+Vite project with all dependencies, configure Tailwind CSS with the design system tokens, set up React Router DOM routing structure, create utility modules (api.js, cache.js, player.js, storage.js), and create Zustand stores (contentStore.js, playerStore.js). This establishes the complete foundation.",
+  "status": "in_progress",
+  "steps": [
+    "Create /apps/web/ directory and initialize with Vite React template (npm create vite@latest . -- --template react)",
+    "Install all dependencies: react-router-dom, zustand, @tanstack/react-query, tailwindcss, postcss, autoprefixer, lucide-react",
+    "Configure Tailwind CSS with custom design system tokens: colors (#FFFFFF bg, #F9FAFB canvas, #111827 text, #6B7280 muted, #E5E7EB border, #2563EB primary), Inter font, rounded-xl (12px) as default radius",
+    "Set up index.html with Inter Google Font import, proper meta tags, and Content Security Policy",
+    "Create /apps/web/src/utils/cache.js - CacheManager class with TTL support (24h lists, 7d details, 30d images, 1h search), get/set/clear/cleanup methods using localStorage",
+    "Create /apps/web/src/utils/storage.js - Storage wrapper abstracting localStorage with getAllKeys support",
+    "Create /apps/web/src/utils/api.js - API client with fetchWithCache pattern, all endpoints (movies latest/trending/top-rated/upcoming, tv latest/trending/top-rated, movie detail, tv detail, search), proper error handling",
+    "Create /apps/web/src/utils/player.js - Player utilities: getMovieEmbedUrl(id, resumeAt), getTVEmbedUrl(id, season, episode, resumeAt), saveWatchProgress, loadWatchProgress, getAllWatchProgress",
+    "Create /apps/web/src/stores/contentStore.js - Zustand store with movies, tvShows, currentMovie, currentTVShow, searchResults, isLoading, error state and actions",
+    "Create /apps/web/src/stores/playerStore.js - Zustand store with watchProgress map, currentlyPlaying, playerStatus, and actions for progress tracking",
+    "Set up React Router DOM in main.jsx with route definitions for: / (home), /movies, /movies/:category, /movies/:id/detail, /tv, /tv/:category, /tv/:id/detail, /player/:type/:id, /search",
+    "Create root layout component with responsive navigation header (logo, Movies link, TV Shows link, Search icon), using Inter font and the design system colors",
+    "Create placeholder page components for all routes to verify routing works",
+    "Configure Vite for code splitting with React.lazy and Suspense for route-based splitting",
+    "Verify: npm run build succeeds, npm run dev starts successfully"
+  ],
+  "acceptance_criteria": [
+    "npm install completes without errors",
+    "npm run build produces a successful production build",
+    "npm run dev starts the development server",
+    "All routes are accessible and render placeholder content",
+    "Tailwind CSS is configured with custom design tokens",
+    "Inter font loads from Google Fonts",
+    "API client has all required endpoints from TDD",
+    "Cache manager implements TTL-based caching with localStorage",
+    "Both Zustand stores are created with correct state shape",
+    "Player utilities generate correct embed URLs"
+  ],
+  "verification": [
+    "Run 'cd /projects/sandbox/HIJISTREAM/apps/web && npm run build' and confirm exit code 0",
+    "Run 'cd /projects/sandbox/HIJISTREAM/apps/web && timeout 10 npm run dev || true' and confirm server starts on port 5173"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
