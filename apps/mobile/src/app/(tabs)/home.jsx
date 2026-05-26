@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Film } from 'lucide-react-native';
@@ -34,22 +34,6 @@ export default function HomeScreen() {
 
   const movies = trendingMovies?.items?.slice(0, 8) || [];
   const tvShows = trendingTV?.items?.slice(0, 8) || [];
-
-  const renderContentItem = ({ item }) => (
-    <View style={styles.cardWrapper}>
-      <ContentCard item={item} type={item._detectedType || 'movie'} />
-    </View>
-  );
-
-  const renderProgressItem = ({ item }) => (
-    <View style={styles.cardWrapper}>
-      <ContentCard
-        item={item}
-        type={item.type || 'movie'}
-        watchProgress={item.percentage}
-      />
-    </View>
-  );
 
   const sections = [];
 
@@ -87,14 +71,21 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Continue Watching</Text>
           </View>
-          <FlatList
-            data={watchProgress}
+          <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProgressItem}
             contentContainerStyle={styles.horizontalList}
-          />
+          >
+            {watchProgress.map((item) => (
+              <View key={item.id} style={styles.cardWrapper}>
+                <ContentCard
+                  item={item}
+                  type={item.type || 'movie'}
+                  watchProgress={item.percentage}
+                />
+              </View>
+            ))}
+          </ScrollView>
         </View>
       );
     }
@@ -114,14 +105,17 @@ export default function HomeScreen() {
           {moviesLoading ? (
             <LoadingState type="card" />
           ) : (
-            <FlatList
-              data={movies}
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => String(item.tmdb_id)}
-              renderItem={renderContentItem}
               contentContainerStyle={styles.horizontalList}
-            />
+            >
+              {movies.map((item) => (
+                <View key={String(item.tmdb_id)} style={styles.cardWrapper}>
+                  <ContentCard item={item} type={item._detectedType || 'movie'} />
+                </View>
+              ))}
+            </ScrollView>
           )}
         </View>
       );
@@ -142,21 +136,17 @@ export default function HomeScreen() {
           {tvLoading ? (
             <LoadingState type="card" />
           ) : (
-            <FlatList
-              data={tvShows}
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => String(item.tmdb_id)}
-              renderItem={(info) => {
-                const item = { ...info.item, _detectedType: 'tv' };
-                return (
-                  <View style={styles.cardWrapper}>
-                    <ContentCard item={item} type="tv" />
-                  </View>
-                );
-              }}
               contentContainerStyle={styles.horizontalList}
-            />
+            >
+              {tvShows.map((item) => (
+                <View key={String(item.tmdb_id)} style={styles.cardWrapper}>
+                  <ContentCard item={item} type="tv" />
+                </View>
+              ))}
+            </ScrollView>
           )}
         </View>
       );

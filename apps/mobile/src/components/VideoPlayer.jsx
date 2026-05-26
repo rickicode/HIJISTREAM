@@ -18,6 +18,14 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
           }
           originalPostMessage.call(window, data, origin);
         };
+
+        window.addEventListener('message', function(event) {
+          if (window.ReactNativeWebView && event.data) {
+            window.ReactNativeWebView.postMessage(
+              typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
+            );
+          }
+        });
       })();
       true;
     `,
