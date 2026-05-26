@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Film } from 'lucide-react-native';
@@ -51,23 +51,20 @@ export default function HomeScreen() {
     </View>
   );
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {watchProgress.length > 0 ? (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Continue Watching</Text>
-          </View>
-          <FlatList
-            data={watchProgress}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProgressItem}
-            contentContainerStyle={styles.horizontalList}
-          />
-        </View>
-      ) : (
+  const sections = [];
+
+  if (watchProgress.length > 0) {
+    sections.push({ key: 'continue-watching', type: 'progress' });
+  } else {
+    sections.push({ key: 'empty-state', type: 'empty' });
+  }
+
+  sections.push({ key: 'trending-movies', type: 'movies' });
+  sections.push({ key: 'trending-tv', type: 'tv' });
+
+  const renderSection = ({ item: section }) => {
+    if (section.type === 'empty') {
+      return (
         <View style={styles.emptyState}>
           <Film color="#6B7280" size={48} />
           <Text style={styles.emptyTitle}>Welcome to HIJISTREAM</Text>
@@ -81,63 +78,101 @@ export default function HomeScreen() {
             <Text style={styles.browseButtonText}>Browse Movies</Text>
           </TVFocusable>
         </View>
-      )}
+      );
+    }
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending Movies</Text>
-          <TVFocusable
-            onPress={() => router.push('/(tabs)/movies')}
-            style={styles.seeAllButton}
-          >
-            <Text style={styles.seeAllText}>See All</Text>
-          </TVFocusable>
-        </View>
-        {moviesLoading ? (
-          <LoadingState type="card" />
-        ) : (
+    if (section.type === 'progress') {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Continue Watching</Text>
+          </View>
           <FlatList
-            data={movies}
+            data={watchProgress}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => String(item.tmdb_id)}
-            renderItem={renderContentItem}
+            keyExtractor={(item) => item.id}
+            renderItem={renderProgressItem}
             contentContainerStyle={styles.horizontalList}
           />
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Trending TV Shows</Text>
-          <TVFocusable
-            onPress={() => router.push('/(tabs)/tv')}
-            style={styles.seeAllButton}
-          >
-            <Text style={styles.seeAllText}>See All</Text>
-          </TVFocusable>
         </View>
-        {tvLoading ? (
-          <LoadingState type="card" />
-        ) : (
-          <FlatList
-            data={tvShows}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => String(item.tmdb_id)}
-            renderItem={(info) => {
-              const item = { ...info.item, _detectedType: 'tv' };
-              return (
-                <View style={styles.cardWrapper}>
-                  <ContentCard item={item} type="tv" />
-                </View>
-              );
-            }}
-            contentContainerStyle={styles.horizontalList}
-          />
-        )}
-      </View>
-    </ScrollView>
+      );
+    }
+
+    if (section.type === 'movies') {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Trending Movies</Text>
+            <TVFocusable
+              onPress={() => router.push('/(tabs)/movies')}
+              style={styles.seeAllButton}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TVFocusable>
+          </View>
+          {moviesLoading ? (
+            <LoadingState type="card" />
+          ) : (
+            <FlatList
+              data={movies}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => String(item.tmdb_id)}
+              renderItem={renderContentItem}
+              contentContainerStyle={styles.horizontalList}
+            />
+          )}
+        </View>
+      );
+    }
+
+    if (section.type === 'tv') {
+      return (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Trending TV Shows</Text>
+            <TVFocusable
+              onPress={() => router.push('/(tabs)/tv')}
+              style={styles.seeAllButton}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TVFocusable>
+          </View>
+          {tvLoading ? (
+            <LoadingState type="card" />
+          ) : (
+            <FlatList
+              data={tvShows}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => String(item.tmdb_id)}
+              renderItem={(info) => {
+                const item = { ...info.item, _detectedType: 'tv' };
+                return (
+                  <View style={styles.cardWrapper}>
+                    <ContentCard item={item} type="tv" />
+                  </View>
+                );
+              }}
+              contentContainerStyle={styles.horizontalList}
+            />
+          )}
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <FlatList
+      data={sections}
+      keyExtractor={(item) => item.key}
+      renderItem={renderSection}
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    />
   );
 }
 

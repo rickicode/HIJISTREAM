@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft } from 'lucide-react-native';
@@ -7,6 +7,22 @@ import TVFocusable from './TVFocusable';
 
 export default function VideoPlayer({ embedUrl, title, contentId, onBack, metadata = {} }) {
   const lastSaveRef = useRef(0);
+
+  const injectedJavaScript = useMemo(
+    () => `
+      (function() {
+        var originalPostMessage = window.postMessage;
+        window.postMessage = function(data, origin) {
+          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+            window.ReactNativeWebView.postMessage(typeof data === 'string' ? data : JSON.stringify(data));
+          }
+          originalPostMessage.call(window, data, origin);
+        };
+      })();
+      true;
+    `,
+    []
+  );
 
   const handleMessage = useCallback(
     (event) => {
@@ -55,6 +71,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
         javaScriptEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        injectedJavaScript={injectedJavaScript}
         onMessage={handleMessage}
       />
     </View>

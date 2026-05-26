@@ -1,10 +1,9 @@
-import { FlatList, StyleSheet, Dimensions } from 'react-native';
+import { FlatList, StyleSheet, useWindowDimensions } from 'react-native';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 
-function getNumColumns() {
-  const { width } = Dimensions.get('window');
+function getNumColumns(width) {
   if (width < 1280) return 4;
   if (width < 1920) return 5;
   return 6;
@@ -19,7 +18,8 @@ export default function ContentGrid({
   onEndReached,
   ListHeaderComponent,
 }) {
-  const numColumns = getNumColumns();
+  const { width } = useWindowDimensions();
+  const numColumns = getNumColumns(width);
 
   if (isLoading && (!items || items.length === 0)) {
     return <LoadingState type="grid" />;

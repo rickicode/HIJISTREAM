@@ -15,12 +15,6 @@ export default function TVFocusable({
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
-      tvParallaxProperties={{
-        enabled: true,
-        magnification: 1.05,
-        shiftDistanceX: 10,
-        shiftDistanceY: 10,
-      }}
       activeOpacity={0.8}
       style={[
         styles.container,
