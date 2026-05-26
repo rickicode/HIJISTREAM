@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Play } from 'lucide-react';
 
-export default function EpisodeList({ episodes, seasons = 1, tmdbId, onPlayEpisode }) {
-  const totalSeasons = typeof seasons === 'number' ? seasons : (Array.isArray(seasons) ? seasons.length : 1);
+export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode }) {
+  const totalSeasons = typeof seasons === 'number' ? seasons : (Array.isArray(/** @type {any} */ (seasons)) ? /** @type {any[]} */ (seasons).length : 1);
   const [activeSeason, setActiveSeason] = useState(1);
   const episodesPerSeason = 10;
 

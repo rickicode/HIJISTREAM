@@ -40,7 +40,7 @@ export default function MovieDetail() {
 
   if (!movie) return null;
 
-  const progress = loadWatchProgress(movie.imdb_id || id);
+  const _progress = loadWatchProgress(movie.imdb_id || id);
 
   const handlePlay = () => {
     const playId = movie.imdb_id || id;

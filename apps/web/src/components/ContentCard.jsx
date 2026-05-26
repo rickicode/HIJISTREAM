@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 
-export default function ContentCard({ item, type = 'movie', watchProgress }) {
+export default function ContentCard({ item, type = 'movie', watchProgress = null }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const effectiveType = item._detectedType || type;
   const href = effectiveType === 'movie' ? `/movies/${item.tmdb_id}` : `/tv/${item.tmdb_id}`;

@@ -7,7 +7,7 @@ import { getAllWatchProgress } from '../utils/player';
 import ContentCard from '../components/ContentCard';
 import LoadingState from '../components/LoadingState';
 
-function SectionHeader({ title, href }) {
+function SectionHeader({ title, href = null }) {
   return (
     <div className="flex items-center justify-between mb-4">
       <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
