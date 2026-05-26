@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import api from '../utils/api';
 import { loadWatchProgress } from '../utils/player';
 import DetailHero from '../components/DetailHero';
@@ -14,6 +15,12 @@ export default function MovieDetail() {
     queryKey: ['movie', id],
     queryFn: () => api.getMovieDetails(id),
   });
+
+  useEffect(() => {
+    if (movie?.title) {
+      document.title = `${movie.title} - HIJISTREAM`;
+    }
+  }, [movie]);
 
   if (isLoading) {
     return (

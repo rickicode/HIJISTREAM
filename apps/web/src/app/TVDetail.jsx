@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import api from '../utils/api';
 import DetailHero from '../components/DetailHero';
 import EpisodeList from '../components/EpisodeList';
@@ -14,6 +15,12 @@ export default function TVDetail() {
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),
   });
+
+  useEffect(() => {
+    if (show?.title) {
+      document.title = `${show.title} - HIJISTREAM`;
+    }
+  }, [show]);
 
   if (isLoading) {
     return (

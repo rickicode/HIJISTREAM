@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Film } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { getAllWatchProgress } from '../utils/player';
@@ -32,6 +33,10 @@ function HorizontalScroll({ children }) {
 }
 
 export default function Home() {
+  useEffect(() => {
+    document.title = 'HIJISTREAM - Stream Movies & TV Shows';
+  }, []);
+
   const watchProgress = getAllWatchProgress();
 
   const { data: trendingMovies, isLoading: moviesLoading } = useQuery({
@@ -50,7 +55,7 @@ export default function Home() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Continue Watching */}
-      {watchProgress.length > 0 && (
+      {watchProgress.length > 0 ? (
         <section>
           <SectionHeader title="Continue Watching" />
           <HorizontalScroll>
@@ -64,6 +69,15 @@ export default function Home() {
               </div>
             ))}
           </HorizontalScroll>
+        </section>
+      ) : (
+        <section className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+          <Film className="mx-auto text-gray-300 mb-3" size={48} />
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Welcome to HIJISTREAM</h2>
+          <p className="text-sm text-gray-500 mb-4">Start watching movies and TV shows to see your progress here</p>
+          <Link to="/movies" className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            Browse Movies
+          </Link>
         </section>
       )}
 

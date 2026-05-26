@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon } from 'lucide-react';
 import api from '../utils/api';
@@ -7,6 +7,10 @@ import ContentGrid from '../components/ContentGrid';
 
 export default function Search() {
   const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    document.title = 'Search - HIJISTREAM';
+  }, []);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['search', query],

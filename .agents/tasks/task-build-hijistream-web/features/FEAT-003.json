@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Polish, performance optimization, and final production readiness. This includes: code splitting with React.lazy, image optimization, infinite scroll implementation, keyboard shortcuts, proper meta tags/SEO, final responsive tweaks, and ensuring the complete app matches PRD/TDD requirements.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Implement proper infinite scroll on Movies and TV browse pages using IntersectionObserver - when user scrolls near bottom, automatically load next page. Show a small loading spinner at bottom while loading more.",
     "Add keyboard shortcuts support: Arrow keys for grid navigation, Enter to select, Escape to go back, Space for play/pause in player, F for fullscreen in player. Use useEffect with keydown listeners.",

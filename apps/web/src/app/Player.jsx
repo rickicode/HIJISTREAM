@@ -1,3 +1,4 @@
+import { useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import VideoPlayer from '../components/VideoPlayer';
@@ -6,6 +7,7 @@ export default function Player() {
   const { type, id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const playerContainerRef = useRef(null);
 
   const season = searchParams.get('season');
   const episode = searchParams.get('episode');
@@ -28,20 +30,49 @@ export default function Player() {
     contentId = `${id}_s${s}e${e}`;
   }
 
-  const handleBack = () => {
+  useEffect(() => {
+    document.title = 'Now Playing - HIJISTREAM';
+  }, []);
+
+  const handleBack = useCallback(() => {
     if (type === 'movie') {
       navigate(-1);
     } else {
       navigate(`/tv/${id}`);
     }
-  };
+  }, [type, id, navigate]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      if (e.key === 'Escape') {
+        handleBack();
+      } else if (e.key === 'f' || e.key === 'F') {
+        const container = playerContainerRef.current;
+        if (container) {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else {
+            container.requestFullscreen();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleBack]);
 
   return (
-    <VideoPlayer
-      embedUrl={embedUrl}
-      title={title}
-      contentId={contentId}
-      onBack={handleBack}
-    />
+    <div ref={playerContainerRef}>
+      <VideoPlayer
+        embedUrl={embedUrl}
+        title={title}
+        contentId={contentId}
+        onBack={handleBack}
+      />
+    </div>
   );
 }

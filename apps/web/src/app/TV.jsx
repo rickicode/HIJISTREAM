@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import api from '../utils/api';
 import TabNavigation from '../components/TabNavigation';
@@ -18,6 +18,7 @@ const apiFns = {
 
 export default function TV() {
   const [activeTab, setActiveTab] = useState('latest');
+  const observerRef = useRef(null);
 
   const {
     data,
@@ -39,6 +40,23 @@ export default function TV() {
     initialPageParam: 1,
   });
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (observerRef.current) observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  useEffect(() => {
+    document.title = 'TV Shows - HIJISTREAM';
+  }, []);
+
   const items = data?.pages?.flatMap((page) => page.items || []) || [];
 
   return (
@@ -54,14 +72,10 @@ export default function TV() {
           onRetry={refetch}
         />
         {hasNextPage && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >
-              {isFetchingNextPage ? 'Loading...' : 'Load More'}
-            </button>
+          <div ref={observerRef} className="flex justify-center py-8">
+            {isFetchingNextPage && (
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            )}
           </div>
         )}
       </div>

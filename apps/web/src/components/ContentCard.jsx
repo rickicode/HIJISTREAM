@@ -9,7 +9,7 @@ export default function ContentCard({ item, type = 'movie', watchProgress }) {
   return (
     <Link
       to={href}
-      className="group block border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all duration-200 hover:scale-[1.02]"
+      className="group block border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all duration-200 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
     >
       <div className="relative aspect-[2/3] bg-gray-100">
         <img
