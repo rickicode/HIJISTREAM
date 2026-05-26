@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Search, Menu, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 
 function NavLink({ to, children }) {
@@ -27,6 +28,7 @@ function NavLink({ to, children }) {
 export default function Layout() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   useKeyboardShortcuts();
 
@@ -99,7 +101,7 @@ export default function Layout() {
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-400">HIJISTREAM - Stream Movies & TV Shows</p>
             <button
-              onClick={() => { localStorage.clear(); window.location.reload(); }}
+              onClick={() => { localStorage.clear(); queryClient.clear(); window.location.reload(); }}
               className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
               Clear Cache

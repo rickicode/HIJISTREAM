@@ -3,7 +3,8 @@ import { useState } from 'react';
 
 export default function ContentCard({ item, type = 'movie', watchProgress }) {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const href = type === 'movie' ? `/movies/${item.tmdb_id}` : `/tv/${item.tmdb_id}`;
+  const effectiveType = item._detectedType || type;
+  const href = effectiveType === 'movie' ? `/movies/${item.tmdb_id}` : `/tv/${item.tmdb_id}`;
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()).slice(0, 2) : [];
 
   return (

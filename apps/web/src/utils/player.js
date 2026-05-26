@@ -20,13 +20,16 @@ export function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
   return url;
 }
 
-export function saveWatchProgress(id, time, duration) {
+export function saveWatchProgress(id, time, duration, metadata = {}) {
   const progress = {
     id,
     time,
     duration,
     percentage: duration > 0 ? Math.round((time / duration) * 100) : 0,
     updatedAt: Date.now(),
+    title: metadata.title || '',
+    poster_url: metadata.poster_url || '',
+    type: metadata.type || 'movie',
   };
   storage.setItem(PROGRESS_PREFIX + id, progress);
 }

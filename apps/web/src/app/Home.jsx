@@ -62,8 +62,8 @@ export default function Home() {
             {watchProgress.map((item) => (
               <div key={item.id} className="w-[160px] shrink-0">
                 <ContentCard
-                  item={{ tmdb_id: item.id, title: item.id, poster_url: '', ...item }}
-                  type="movie"
+                  item={{ tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
+                  type={item.type || 'movie'}
                   watchProgress={item.percentage}
                 />
               </div>

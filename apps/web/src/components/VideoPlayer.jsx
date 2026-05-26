@@ -2,11 +2,12 @@ import { useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { saveWatchProgress } from '../utils/player';
 
-export default function VideoPlayer({ embedUrl, title, contentId, onBack }) {
+export default function VideoPlayer({ embedUrl, title, contentId, onBack, metadata = {} }) {
   const lastSaveRef = useRef(0);
 
   const handleMessage = useCallback(
     (event) => {
+      if (event.origin !== 'https://vaplayer.ru') return;
       if (!event.data || typeof event.data !== 'object') return;
 
       const data = event.data;
@@ -19,7 +20,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack }) {
           const now = Date.now();
           if (now - lastSaveRef.current >= 5000) {
             lastSaveRef.current = now;
-            saveWatchProgress(contentId, player_progress, player_duration);
+            saveWatchProgress(contentId, player_progress, player_duration, metadata);
           }
         }
       }
@@ -29,7 +30,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack }) {
         const now = Date.now();
         if (now - lastSaveRef.current >= 5000) {
           lastSaveRef.current = now;
-          saveWatchProgress(contentId, data.time, data.duration);
+          saveWatchProgress(contentId, data.time, data.duration, metadata);
         }
       }
     },

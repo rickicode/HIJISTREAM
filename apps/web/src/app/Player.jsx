@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import VideoPlayer from '../components/VideoPlayer';
 
@@ -7,28 +7,39 @@ export default function Player() {
   const { type, id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const playerContainerRef = useRef(null);
 
   const season = searchParams.get('season');
   const episode = searchParams.get('episode');
 
-  const progress = loadWatchProgress(id);
+  // Get metadata from route state or fallback to stored progress
+  const routeState = location.state || {};
+  const storedProgress = loadWatchProgress(id);
+
+  const progress = storedProgress;
   const resumeAt = progress?.time || undefined;
 
   let embedUrl = '';
-  let title = '';
+  let title = routeState.title || '';
   let contentId = id;
 
   if (type === 'movie') {
     embedUrl = getMovieEmbedUrl(id, resumeAt);
-    title = `Movie - ${id}`;
+    title = title || `Movie - ${id}`;
   } else {
     const s = season || '1';
     const e = episode || '1';
     embedUrl = getTVEmbedUrl(id, s, e, resumeAt);
-    title = `TV - S${s}E${e}`;
+    title = title || `TV - S${s}E${e}`;
     contentId = `${id}_s${s}e${e}`;
   }
+
+  const metadata = {
+    title: routeState.title || storedProgress?.title || title,
+    poster_url: routeState.poster_url || storedProgress?.poster_url || '',
+    type: type || 'movie',
+  };
 
   useEffect(() => {
     document.title = 'Now Playing - HIJISTREAM';
@@ -72,6 +83,7 @@ export default function Player() {
         title={title}
         contentId={contentId}
         onBack={handleBack}
+        metadata={metadata}
       />
     </div>
   );
