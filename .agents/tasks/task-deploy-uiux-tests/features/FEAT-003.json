@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Add Vitest as test framework and write integration tests that validate real API responses from vidapi.ru, testing response structure and data integrity",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Install vitest as a devDependency: run `bun add -d vitest` in apps/web/",
     "Add test script to apps/web/package.json: add `\"test\": \"vitest run\"` to scripts section",
