@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Project scaffolding and core infrastructure - Set up the React+Vite project with all dependencies, configure Tailwind CSS with the design system tokens, set up React Router DOM routing structure, create utility modules (api.js, cache.js, player.js, storage.js), and create Zustand stores (contentStore.js, playerStore.js). This establishes the complete foundation.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create /apps/web/ directory and initialize with Vite React template (npm create vite@latest . -- --template react)",
     "Install all dependencies: react-router-dom, zustand, @tanstack/react-query, tailwindcss, postcss, autoprefixer, lucide-react",
@@ -37,5 +37,5 @@
     "Run 'cd /projects/sandbox/HIJISTREAM/apps/web && timeout 10 npm run dev || true' and confirm server starts on port 5173"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Used Bun instead of npm per user request. Node.js v22 installed via mise (needed MISE_NODE_VERIFY=false due to GPG agent not being available). Bun v1.2.14 was pre-installed. Build succeeds cleanly with code splitting producing vendor, state, and per-route chunks."
 }
