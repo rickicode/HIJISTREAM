@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "UI/UX audit and polish across all pages and components to ensure production quality, consistency with the design system, and professional appearance as a streaming platform",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Audit and fix `apps/web/src/components/ContentCard.jsx`: Ensure rounded-xl maps to 12px (it does via Tailwind default which is 12px). Verify ghost border is 1px solid #E5E7EB (border-gray-200). Ensure hover transitions are smooth (duration-200). Verify image lazy loading with proper placeholder animation. Confirm no drop shadows are applied.",
     "Audit and fix `apps/web/src/components/TabNavigation.jsx`: Ensure active tab indicator is consistent (border-b-2 border-blue-600 text-gray-900 font-medium). Ensure inactive is text-gray-500 hover:text-gray-700. Verify the overlapping border technique works cleanly.",
@@ -39,5 +39,5 @@
     "Run `bun run build` in apps/web/ - must succeed"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All UI/UX fixes applied successfully. Four key changes made: (1) main.jsx Suspense fallback replaced with animated spinner, (2) EpisodeList play button now visible on mobile using sm:opacity-0 pattern, (3) VideoPlayer handleMessage useCallback fixed by wrapping metadata in a ref to avoid stale closure, (4) Home.jsx horizontal scroll card width adjusted to w-[150px] sm:w-[160px]. All other components (ContentCard, SearchBar, Layout, TabNavigation, DetailHero, LoadingState, ErrorState, Movies, TV) already follow design system conventions correctly. Lint: 0 errors, typecheck: pass, build: success."
 }
