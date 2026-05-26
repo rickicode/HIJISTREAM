@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Create all Expo Router screens: root layout, tab layout with 4 tabs (Home, Movies, TV, Search), detail pages (movie/[id], tv/[id]), player screen, and home screen with Continue Watching section.",
+  "status": "pending",
+  "steps": [
+    "Create /apps/mobile/src/app/_layout.jsx - root layout that wraps the app with QueryClientProvider (@tanstack/react-query), SafeAreaProvider, and loads Inter font via expo-font. Sets up dark StatusBar. Uses Stack from expo-router with headerShown: false.",
+    "Create /apps/mobile/src/app/index.jsx - entry redirect to (tabs)/home using expo-router Redirect component.",
+    "Create /apps/mobile/src/app/(tabs)/_layout.jsx - tab layout using expo-router Tabs component. 4 tabs: Home (Home icon), Movies (Film icon), TV (Tv icon), Search (Search icon). Tab bar styled dark with active color #2563EB. Icons from lucide-react-native.",
+    "Create /apps/mobile/src/app/(tabs)/home.jsx - home screen. Shows 'Continue Watching' section (horizontal FlatList of items from getAllWatchProgress). Below shows 'Trending Movies' row and 'Trending TV' row - each a horizontal FlatList with ContentCards. Uses @tanstack/react-query to fetch trending data from api.js.",
+    "Create /apps/mobile/src/app/(tabs)/movies.jsx - movies browse screen. TabBar at top (Latest, Trending, Top Rated, Upcoming). ContentGrid below showing paginated movie results. Uses useInfiniteQuery for pagination with onEndReached loading more pages.",
+    "Create /apps/mobile/src/app/(tabs)/tv.jsx - TV shows browse screen. Same pattern as movies.jsx but for TV endpoints (getLatestTV, getTrendingTV, getTopRatedTV). TabBar + ContentGrid with pagination.",
+    "Create /apps/mobile/src/app/(tabs)/search.jsx - search screen with SearchBar at top and ContentGrid below showing results. Uses useQuery with enabled: query.length > 0. Shows empty state when no query.",
+    "Create /apps/mobile/src/app/movie/[id].jsx - movie detail screen. Uses useLocalSearchParams() to get id. Fetches movie details with useQuery + api.getMovieDetails(id). Shows DetailHero component. Play button navigates to player screen.",
+    "Create /apps/mobile/src/app/tv/[id].jsx - TV detail screen. Fetches TV details with useQuery + api.getTVDetails(id). Shows DetailHero + EpisodeList. Play episode navigates to player with season/episode params.",
+    "Create /apps/mobile/src/app/player.jsx - player screen. Receives params (type, id, season, episode) via useLocalSearchParams(). Constructs embed URL using player.js utilities. Renders VideoPlayer component full screen. Back button returns to previous screen."
+  ],
+  "acceptance_criteria": [
+    "All screen files exist in the correct Expo Router file structure under /apps/mobile/src/app/",
+    "Root layout provides QueryClientProvider and font loading",
+    "Tab layout has 4 tabs with correct icons",
+    "Home screen shows Continue Watching and trending content",
+    "Movies and TV screens have tab navigation and paginated grids",
+    "Detail screens fetch and display content correctly",
+    "Player screen constructs correct embed URL and renders WebView player",
+    "All screens use dark theme styling consistent with TV viewing",
+    "The app can be exported with `bunx expo export --platform android` without build errors"
+  ],
+  "verification": [
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/mobile && bunx expo export --platform android` to verify the app compiles",
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/mobile && bun run lint` if lint is configured"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
