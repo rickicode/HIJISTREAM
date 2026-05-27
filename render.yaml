@@ -5,10 +5,10 @@ services:
     buildCommand: cd apps/web && bun install && bun run build
     staticPublishPath: apps/web/dist
     pullRequestPreviewsEnabled: true
+    envVars:
+      - key: TMDB_API_KEY
+        sync: false
     routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://vidapi.ru/*
       - type: rewrite
         source: /*
         destination: /index.html

@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Replace VidAPI with TMDB API in backend server and edge functions. Rewrite apps/server/src/index.js to proxy TMDB API with response transformation. Update Vercel Edge Function and Cloudflare Function to do the same. Add TMDB genre ID mapping. VidAPI embed URLs are constructed from TMDB IDs in the response transform.",
+  "status": "in_progress",
+  "steps": [
+    "Rewrite apps/server/src/index.js: Replace the VidAPI upstream proxy with TMDB API routing. Add TMDB_API_KEY from process.env. Implement endpoint mapping: GET /api/movies/popular -> TMDB /movie/popular, GET /api/movies/trending -> TMDB /trending/movie/week, GET /api/movies/top-rated -> TMDB /movie/top_rated, GET /api/movies/upcoming -> TMDB /movie/upcoming, GET /api/tv/popular -> TMDB /tv/popular, GET /api/tv/trending -> TMDB /trending/tv/week, GET /api/tv/top-rated -> TMDB /tv/top_rated, GET /api/movie/{id} -> TMDB /movie/{id}?append_to_response=credits,external_ids, GET /api/tv/{id} -> TMDB /tv/{id}?append_to_response=credits,external_ids, GET /api/tv/{id}/season/{season} -> TMDB /tv/{id}/season/{season}, GET /api/search?query=... -> TMDB /search/multi. All responses transformed to consistent format with embed_url from vaplayer.ru. Keep in-memory cache with TTLs (5min lists, 10min details, 2min search). Keep CORS. Keep /health endpoint.",
+    "Add a TMDB genre ID mapping object in the server (e.g., { 28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western', 10759: 'Action & Adventure', 10762: 'Kids', 10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap', 10767: 'Talk', 10768: 'War & Politics' }).",
+    "Create apps/server/.env.example with TMDB_API_KEY=your_tmdb_api_key_here and PORT=3001.",
+    "Rewrite apps/web/api/[...path].js (Vercel Edge Function): Route requests through TMDB API with TMDB_API_KEY from process.env.TMDB_API_KEY. Same endpoint mapping and response transformation as the server. Include TMDB genre map inline. Cache-Control: s-maxage=300 for lists, s-maxage=600 for details, no-cache for errors.",
+    "Rewrite apps/web/functions/api/[[path]].js (Cloudflare Pages Function): Same TMDB proxy logic. Access TMDB_API_KEY from context.env.TMDB_API_KEY. Same response transform.",
+    "Update render.yaml: Remove the rewrite from /api/* to vidapi.ru. Change service type from 'static' to use the Bun server, or add env vars. Add TMDB_API_KEY as environment variable placeholder.",
+    "Update apps/server/Dockerfile to pass TMDB_API_KEY as ENV.",
+    "Server should gracefully handle missing TMDB_API_KEY: return 503 with message 'TMDB_API_KEY not configured'."
+  ],
+  "acceptance_criteria": [
+    "Backend server starts without errors with TMDB_API_KEY set",
+    "GET /api/movies/popular returns transformed TMDB data with poster_url, embed_url, genre names",
+    "GET /api/movie/{id} returns detail with overview, runtime, credits, embed_url",
+    "GET /api/tv/{id}/season/{season} returns episodes list",
+    "GET /api/search?query=test returns multi-search results",
+    "No references to vidapi.ru catalog endpoints remain (only vaplayer.ru embed URLs)",
+    "Missing TMDB_API_KEY returns 503 gracefully",
+    "Vercel Edge Function and Cloudflare Function have same behavior"
+  ],
+  "verification": [
+    "Run 'bun run start' in apps/server with TMDB_API_KEY set and test endpoints with curl",
+    "Verify no vidapi.ru references remain for catalog data (grep)"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
