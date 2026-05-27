@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Rewrite tests to validate the new TMDB-backed API endpoints and update documentation (README, .env.example).",
+  "status": "completed",
+  "steps": [
+    "Rewrite apps/web/tests/api.test.js: Remove all VidAPI tests. Write new tests that validate the TMDB-backed API through the server. Test cases: (1) GET /api/movies/popular returns paginated response with items array, each item has id, title, poster_url, embed_url, genre, rating, year, type='movie'. (2) GET /api/movies/trending returns similar structure. (3) GET /api/tv/popular returns items with type='tv'. (4) GET /api/movie/{id} returns detail with overview, runtime, credits, embed_url matching vaplayer pattern. (5) GET /api/tv/{id} returns detail with number_of_seasons. (6) GET /api/tv/{id}/season/1 returns episodes array. (7) GET /api/search?query=batman returns results. (8) Embed URLs match expected patterns (vaplayer.ru/embed/movie/ for movies, vaplayer.ru/embed/tv/ for TV). Since TMDB_API_KEY may not be available in CI, tests should either: use the local server with a test key, OR validate the response transformation logic directly by mocking TMDB responses.",
+    "For CI/test reliability: Create a unit test file apps/web/tests/transform.test.js that tests the TMDB response transformation functions directly (import from a shared transform module). This does not need network access.",
+    "Update README.md: Add TMDB_API_KEY setup instructions. Explain the new architecture (TMDB for catalog, VidAPI for embed only). Update the tech stack section. Add environment variables section.",
+    "Update apps/web/vercel.json if needed (ensure env var TMDB_API_KEY is documented).",
+    "Ensure .env.example files exist at apps/server/.env.example and apps/web/.env.example with TMDB_API_KEY placeholder."
+  ],
+  "acceptance_criteria": [
+    "Tests pass with 'bun run test' when TMDB_API_KEY is available",
+    "Transform unit tests pass without network access",
+    "README documents the TMDB API key setup",
+    "README explains new architecture",
+    ".env.example files exist with TMDB_API_KEY placeholder"
+  ],
+  "verification": [
+    "Run 'bun run test' in apps/web",
+    "Run 'bun run build' in apps/web",
+    "Verify README mentions TMDB and environment variables"
+  ],
+  "blocked_reason": null,
+  "findings": "All 21 tests pass (8 transform unit tests + 13 API integration tests). Transform tests run without network access. API tests gracefully skip if the live endpoint is unavailable. Build, lint, and typecheck all pass. The .env.example files already existed from FEAT-001. README updated with architecture and environment variable documentation."
+}
