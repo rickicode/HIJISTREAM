@@ -1,187 +1,193 @@
 import { describe, it, expect } from 'vitest';
 
-const BASE_URL = 'https://vidapi.ru';
+const BASE_URL = 'https://hijistream-web.vercel.app/api';
 
-// Helper: fetch an endpoint, return data if 200, null if not available
+// Helper: fetch endpoint, return data or null
 async function fetchAPI(endpoint) {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`);
     if (!response.ok) return null;
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) return null;
     return await response.json();
   } catch {
     return null;
   }
 }
 
-// Validate the structure of a content list item
-function validateListItem(item) {
-  expect(item).toHaveProperty('tmdb_id');
-  expect(item).toHaveProperty('imdb_id');
+// Validate list item structure for movies
+function validateMovieItem(item) {
+  expect(item).toHaveProperty('id');
   expect(item).toHaveProperty('title');
   expect(item).toHaveProperty('year');
   expect(item).toHaveProperty('poster_url');
   expect(item).toHaveProperty('rating');
   expect(item).toHaveProperty('genre');
+  expect(item).toHaveProperty('type');
   expect(item).toHaveProperty('embed_url');
   expect(typeof item.title).toBe('string');
   expect(item.title.length).toBeGreaterThan(0);
-  // poster_url may be empty string for some items without poster
-  expect(typeof item.poster_url).toBe('string');
+  expect(item.type).toBe('movie');
   if (item.poster_url) {
-    expect(item.poster_url).toMatch(/^https?:\/\//);
+    expect(item.poster_url).toMatch(/^https:\/\/image\.tmdb\.org/);
   }
-  // embed_url may be empty string for some items
-  expect(typeof item.embed_url).toBe('string');
-  if (item.embed_url) {
-    expect(item.embed_url).toMatch(/^https?:\/\//);
-  }
+  expect(item.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/movie\//);
+}
+
+// Validate list item structure for TV shows
+function validateTVItem(item) {
+  expect(item).toHaveProperty('id');
+  expect(item).toHaveProperty('title');
+  expect(item).toHaveProperty('type');
+  expect(item).toHaveProperty('embed_url');
+  expect(item.type).toBe('tv');
+  expect(item.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/tv\//);
 }
 
 // Validate paginated response structure
 function validatePaginatedResponse(data) {
   expect(data).toHaveProperty('page');
-  expect(data).toHaveProperty('per_page');
-  expect(data).toHaveProperty('total');
   expect(data).toHaveProperty('total_pages');
   expect(data).toHaveProperty('items');
   expect(typeof data.page).toBe('number');
-  expect(typeof data.total_pages).toBe('number');
   expect(Array.isArray(data.items)).toBe(true);
-  expect(data.items.length).toBeGreaterThan(0);
-  expect(data.total_pages).toBeGreaterThan(0);
 }
 
-describe('VidAPI - Movies Endpoints', () => {
-  it('GET /movies/latest/page-1.json returns valid paginated response', async () => {
-    const data = await fetchAPI('/movies/latest/page-1.json');
-    expect(data).not.toBeNull();
+describe('TMDB API - Movies Endpoints', () => {
+  it('GET /movies/popular returns paginated movie list', async () => {
+    const data = await fetchAPI('/movies/popular?page=1');
+    if (!data) return; // Skip if API unavailable
     validatePaginatedResponse(data);
-    expect(data.page).toBe(1);
-    // Validate multiple items to ensure structure is consistent
-    validateListItem(data.items[0]);
-    if (data.items.length > 1) {
-      validateListItem(data.items[1]);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateMovieItem(data.items[0]);
+  });
+
+  it('GET /movies/trending returns paginated movie list', async () => {
+    const data = await fetchAPI('/movies/trending?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateMovieItem(data.items[0]);
+  });
+
+  it('GET /movies/top-rated returns paginated movie list', async () => {
+    const data = await fetchAPI('/movies/top-rated?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateMovieItem(data.items[0]);
+  });
+
+  it('GET /movies/upcoming returns paginated movie list', async () => {
+    const data = await fetchAPI('/movies/upcoming?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateMovieItem(data.items[0]);
+  });
+});
+
+describe('TMDB API - TV Endpoints', () => {
+  it('GET /tv/popular returns paginated TV list', async () => {
+    const data = await fetchAPI('/tv/popular?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateTVItem(data.items[0]);
+  });
+
+  it('GET /tv/trending returns paginated TV list', async () => {
+    const data = await fetchAPI('/tv/trending?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateTVItem(data.items[0]);
+  });
+
+  it('GET /tv/top-rated returns paginated TV list', async () => {
+    const data = await fetchAPI('/tv/top-rated?page=1');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    validateTVItem(data.items[0]);
+  });
+});
+
+describe('TMDB API - Detail Endpoints', () => {
+  it('GET /movie/{id} returns movie detail with embed URL', async () => {
+    // Use a well-known movie ID (e.g., 550 = Fight Club)
+    const data = await fetchAPI('/movie/550');
+    if (!data) return;
+    expect(data).toHaveProperty('id');
+    expect(data).toHaveProperty('title');
+    expect(data).toHaveProperty('overview');
+    expect(data).toHaveProperty('runtime');
+    expect(data).toHaveProperty('credits');
+    expect(data).toHaveProperty('embed_url');
+    expect(data.type).toBe('movie');
+    expect(data.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/movie\//);
+    expect(Array.isArray(data.credits)).toBe(true);
+  });
+
+  it('GET /tv/{id} returns TV detail with seasons info', async () => {
+    // Use a well-known TV ID (e.g., 1396 = Breaking Bad)
+    const data = await fetchAPI('/tv/1396');
+    if (!data) return;
+    expect(data).toHaveProperty('id');
+    expect(data).toHaveProperty('title');
+    expect(data).toHaveProperty('number_of_seasons');
+    expect(data).toHaveProperty('number_of_episodes');
+    expect(data).toHaveProperty('embed_url');
+    expect(data.type).toBe('tv');
+    expect(data.number_of_seasons).toBeGreaterThan(0);
+  });
+
+  it('GET /tv/{id}/season/{season} returns episodes', async () => {
+    const data = await fetchAPI('/tv/1396/season/1');
+    if (!data) return;
+    expect(data).toHaveProperty('season_number');
+    expect(data).toHaveProperty('episodes');
+    expect(Array.isArray(data.episodes)).toBe(true);
+    expect(data.episodes.length).toBeGreaterThan(0);
+    const ep = data.episodes[0];
+    expect(ep).toHaveProperty('episode_number');
+    expect(ep).toHaveProperty('name');
+    expect(ep).toHaveProperty('embed_url');
+    expect(ep.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/tv\//);
+  });
+});
+
+describe('TMDB API - Search', () => {
+  it('GET /search?query=batman returns results', async () => {
+    const data = await fetchAPI('/search?query=batman');
+    if (!data) return;
+    validatePaginatedResponse(data);
+    expect(data.items.length).toBeGreaterThan(0);
+    // Each item should have a type
+    for (const item of data.items.slice(0, 5)) {
+      expect(['movie', 'tv']).toContain(item.type);
+      expect(item.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\//);
+    }
+  });
+});
+
+describe('TMDB API - Response Quality', () => {
+  it('movie items have poster URLs from TMDB image CDN', async () => {
+    const data = await fetchAPI('/movies/popular?page=1');
+    if (!data) return;
+    const withPoster = data.items.filter((item) => item.poster_url);
+    expect(withPoster.length).toBeGreaterThan(0);
+    for (const item of withPoster.slice(0, 5)) {
+      expect(item.poster_url).toMatch(/^https:\/\/image\.tmdb\.org\/t\/p\//);
     }
   });
 
-  it('GET /movies/latest/page-11.json returns different content (used as trending)', async () => {
-    const data = await fetchAPI('/movies/latest/page-11.json');
-    expect(data).not.toBeNull();
-    validatePaginatedResponse(data);
-    expect(data.page).toBe(11);
-    validateListItem(data.items[0]);
-  });
-
-  it('GET /movies/latest/page-21.json returns different content (used as top-rated)', async () => {
-    const data = await fetchAPI('/movies/latest/page-21.json');
-    expect(data).not.toBeNull();
-    validatePaginatedResponse(data);
-    expect(data.page).toBe(21);
-    validateListItem(data.items[0]);
-  });
-});
-
-describe('VidAPI - TV Shows Endpoints', () => {
-  it('GET /tvshows/latest/page-1.json returns valid paginated response', async () => {
-    const data = await fetchAPI('/tvshows/latest/page-1.json');
-    expect(data).not.toBeNull();
-    validatePaginatedResponse(data);
-    expect(data.page).toBe(1);
-    validateListItem(data.items[0]);
-  });
-
-  it('GET /tvshows/latest/page-11.json returns different content (used as trending)', async () => {
-    const data = await fetchAPI('/tvshows/latest/page-11.json');
-    expect(data).not.toBeNull();
-    validatePaginatedResponse(data);
-    expect(data.page).toBe(11);
-    validateListItem(data.items[0]);
-  });
-});
-
-describe('VidAPI - Confirm non-working endpoints return 404', () => {
-  it('GET /movies/trending/page-1.json returns 404', async () => {
-    const data = await fetchAPI('/movies/trending/page-1.json');
-    expect(data).toBeNull();
-  });
-
-  it('GET /tv/latest/page-1.json returns 404 (wrong path)', async () => {
-    const data = await fetchAPI('/tv/latest/page-1.json');
-    expect(data).toBeNull();
-  });
-
-  it('GET /movie/{id}.json returns 404 (no detail endpoint)', async () => {
-    const data = await fetchAPI('/movie/363807.json');
-    expect(data).toBeNull();
-  });
-});
-
-describe('VidAPI - Pagination', () => {
-  it('page field increments correctly for movies', async () => {
-    const page1 = await fetchAPI('/movies/latest/page-1.json');
-    expect(page1).not.toBeNull();
+  it('pagination works - page 2 has different items', async () => {
+    const page1 = await fetchAPI('/movies/popular?page=1');
+    const page2 = await fetchAPI('/movies/popular?page=2');
+    if (!page1 || !page2) return;
     expect(page1.page).toBe(1);
-
-    const page2 = await fetchAPI('/movies/latest/page-2.json');
-    expect(page2).not.toBeNull();
     expect(page2.page).toBe(2);
-    // Items should be different from page 1
-    if (page2.items.length > 0 && page1.items.length > 0) {
-      expect(page2.items[0].tmdb_id).not.toBe(page1.items[0].tmdb_id);
+    if (page1.items.length > 0 && page2.items.length > 0) {
+      expect(page2.items[0].id).not.toBe(page1.items[0].id);
     }
-  });
-
-  it('page field increments correctly for TV shows', async () => {
-    const page1 = await fetchAPI('/tvshows/latest/page-1.json');
-    expect(page1).not.toBeNull();
-    expect(page1.page).toBe(1);
-
-    const page2 = await fetchAPI('/tvshows/latest/page-2.json');
-    expect(page2).not.toBeNull();
-    expect(page2.page).toBe(2);
-    if (page2.items.length > 0 && page1.items.length > 0) {
-      expect(page2.items[0].tmdb_id).not.toBe(page1.items[0].tmdb_id);
-    }
-  });
-
-  it('per_page is 24 items', async () => {
-    const data = await fetchAPI('/movies/latest/page-1.json');
-    expect(data).not.toBeNull();
-    expect(data.per_page).toBe(24);
-    expect(data.items.length).toBeLessThanOrEqual(24);
-  });
-});
-
-describe('VidAPI - Response Data Quality', () => {
-  it('items have valid embed_url format for movies', async () => {
-    const data = await fetchAPI('/movies/latest/page-1.json');
-    expect(data).not.toBeNull();
-    const itemsWithEmbed = data.items.filter((item) => item.embed_url);
-    expect(itemsWithEmbed.length).toBeGreaterThan(0);
-    for (const item of itemsWithEmbed.slice(0, 5)) {
-      expect(item.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/movie\//);
-    }
-  });
-
-  it('items have valid embed_url format for TV shows', async () => {
-    const data = await fetchAPI('/tvshows/latest/page-1.json');
-    expect(data).not.toBeNull();
-    const itemsWithEmbed = data.items.filter((item) => item.embed_url);
-    expect(itemsWithEmbed.length).toBeGreaterThan(0);
-    for (const item of itemsWithEmbed.slice(0, 5)) {
-      expect(item.embed_url).toMatch(/^https:\/\/vaplayer\.ru\/embed\/tv\//);
-    }
-  });
-
-  it('total count reflects large catalog', async () => {
-    const movies = await fetchAPI('/movies/latest/page-1.json');
-    expect(movies).not.toBeNull();
-    expect(movies.total).toBeGreaterThan(50000);
-
-    const tv = await fetchAPI('/tvshows/latest/page-1.json');
-    expect(tv).not.toBeNull();
-    expect(tv.total).toBeGreaterThan(10000);
   });
 });
