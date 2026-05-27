@@ -36,8 +36,8 @@ export default function Search() {
 
       {!query && (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <SearchIcon className="text-gray-300 mb-4" size={48} />
-          <p className="text-gray-500 text-sm">
+          <SearchIcon className="text-[#6B6B6B] mb-4" size={48} />
+          <p className="text-[#A1A1A1] text-sm">
             Start typing to search movies and TV shows
           </p>
         </div>
@@ -45,7 +45,7 @@ export default function Search() {
 
       {query && !isLoading && typedItems.length === 0 && !error && (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-[#A1A1A1] text-sm">
             No results found for &apos;{query}&apos;
           </p>
         </div>

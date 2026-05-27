@@ -8,7 +8,7 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
   return (
     <div className="flex flex-col md:flex-row gap-8">
       <div className="relative w-full md:w-[300px] shrink-0">
-        <div className="relative aspect-[2/3] bg-gray-100 rounded-xl overflow-hidden shadow-lg">
+        <div className="relative aspect-[2/3] bg-[#1A1A1A] rounded-xl overflow-hidden shadow-2xl shadow-black/50">
           <img
             src={item.poster_url}
             alt={item.title}
@@ -19,17 +19,17 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
             }`}
           />
           {!imgLoaded && (
-            <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+            <div className="absolute inset-0 shimmer-bg animate-shimmer" />
           )}
         </div>
       </div>
       <div className="flex-1">
-        <h1 className="text-3xl font-bold text-gray-900">{item.title}</h1>
-        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+        <h1 className="text-3xl font-bold text-white">{item.title}</h1>
+        <div className="flex items-center gap-4 mt-3 text-sm text-[#A1A1A1]">
           {item.year && <span>{item.year}</span>}
           {item.rating && (
             <span className="flex items-center gap-1">
-              <Star size={14} className="text-yellow-500 fill-yellow-500" />
+              <Star size={14} className="text-[#FBBF24] fill-[#FBBF24]" />
               {item.rating}
             </span>
           )}
@@ -45,7 +45,7 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
             {genres.map((genre) => (
               <span
                 key={genre}
-                className="bg-gray-100 rounded-full px-3 py-1 text-sm text-gray-700"
+                className="bg-[#262626] rounded-full px-3 py-1 text-sm text-[#A1A1A1]"
               >
                 {genre}
               </span>
@@ -53,14 +53,14 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
           </div>
         )}
         {item.overview && (
-          <p className="mt-4 text-gray-600 leading-relaxed max-w-2xl">
+          <p className="mt-4 text-[#A1A1A1] leading-relaxed max-w-2xl">
             {item.overview}
           </p>
         )}
         {onPlay && (
           <button
             onClick={onPlay}
-            className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-xl text-base font-medium hover:bg-blue-700 transition-colors"
+            className="mt-6 inline-flex items-center gap-2 bg-[#6366F1] text-white px-8 py-3 rounded-xl text-base font-medium hover:bg-[#818CF8] transition-colors"
           >
             <Play size={20} fill="white" />
             Play

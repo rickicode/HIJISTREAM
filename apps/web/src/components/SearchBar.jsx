@@ -73,7 +73,7 @@ export default function SearchBar({ onSearch, initialQuery = '' }) {
   return (
     <div className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B6B6B]" size={18} />
         <input
           ref={inputRef}
           type="text"
@@ -82,27 +82,27 @@ export default function SearchBar({ onSearch, initialQuery = '' }) {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           placeholder="Search movies and TV shows..."
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 pl-10 text-sm focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 focus:border-transparent outline-none transition-all"
+          className="w-full bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl px-4 py-3 pl-10 text-sm text-white placeholder:text-[#6B6B6B] focus:ring-2 focus:ring-[#6366F1]/20 focus:border-[#6366F1] outline-none transition-all"
         />
         {query && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6B6B] hover:text-white"
           >
             <X size={18} />
           </button>
         )}
       </div>
       {showHistory && (
-        <div className="absolute z-10 top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="px-4 py-2 text-xs text-gray-500 font-medium">Recent Searches</div>
+        <div className="absolute z-10 top-full left-0 right-0 mt-2 bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl shadow-2xl shadow-black/50 overflow-hidden">
+          <div className="px-4 py-2 text-xs text-[#6B6B6B] font-medium">Recent Searches</div>
           {history.map((item, idx) => (
             <button
               key={idx}
               onClick={() => handleHistoryClick(item)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#A1A1A1] hover:bg-[#262626] hover:text-white transition-colors text-left"
             >
-              <Clock size={14} className="text-gray-400 shrink-0" />
+              <Clock size={14} className="text-[#6B6B6B] shrink-0" />
               <span className="truncate">{item}</span>
             </button>
           ))}

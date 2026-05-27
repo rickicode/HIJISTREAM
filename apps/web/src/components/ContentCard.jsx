@@ -10,9 +10,9 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
   return (
     <Link
       to={href}
-      className="group block border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all duration-200 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+      className="group block bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl overflow-hidden hover:border-[#404040] hover:scale-[1.05] card-glow transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F0F]"
     >
-      <div className="relative aspect-[2/3] bg-gray-100">
+      <div className="relative aspect-[2/3]">
         <img
           src={item.poster_url}
           alt={item.title}
@@ -23,23 +23,26 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
           }`}
         />
         {!imgLoaded && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+          <div className="absolute inset-0 shimmer-bg animate-shimmer rounded-xl" />
         )}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#1A1A1A] to-transparent pointer-events-none" />
         {watchProgress != null && watchProgress > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-300">
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#262626]">
             <div
-              className="h-full bg-blue-600"
+              className="h-full bg-[#6366F1]"
               style={{ width: `${watchProgress}%` }}
             />
           </div>
         )}
       </div>
       <div className="p-3">
-        <h3 className="font-medium text-sm text-gray-900 truncate">{item.title}</h3>
+        <h3 className="font-medium text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-1">
-          {item.year && <span className="text-xs text-gray-500">{item.year}</span>}
+          {item.year && <span className="text-xs text-[#A1A1A1]">{item.year}</span>}
           {item.rating && (
-            <span className="text-xs text-gray-500">&#9733; {item.rating}</span>
+            <span className="text-xs text-[#A1A1A1]">
+              <span className="text-[#FBBF24]">&#9733;</span> {item.rating}
+            </span>
           )}
         </div>
         {genres.length > 0 && (
@@ -47,7 +50,7 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
             {genres.map((genre) => (
               <span
                 key={genre}
-                className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full"
+                className="bg-[#262626] text-[#A1A1A1] text-xs px-2 py-0.5 rounded-full"
               >
                 {genre}
               </span>

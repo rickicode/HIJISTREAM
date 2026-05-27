@@ -17,7 +17,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
 
   return (
     <div className="mt-8">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Episodes</h2>
+      <h2 className="text-xl font-semibold text-white mb-4">Episodes</h2>
       {totalSeasons > 1 && (
         <div className="flex flex-wrap gap-2 mb-4">
           {Array.from({ length: totalSeasons }).map((_, i) => (
@@ -26,8 +26,8 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
               onClick={() => setActiveSeason(i + 1)}
               className={`px-4 py-2 text-sm rounded-lg transition-colors ${
                 activeSeason === i + 1
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-[#6366F1] text-white'
+                  : 'bg-[#1A1A1A] text-[#A1A1A1] hover:bg-[#262626] hover:text-white'
               }`}
             >
               Season {i + 1}
@@ -43,19 +43,19 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           return (
             <div
               key={epNumber}
-              className="flex items-center justify-between py-3 px-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition-colors group"
+              className="flex items-center justify-between py-3 px-3 border-b border-[#2E2E2E] hover:bg-[#1A1A1A] rounded-lg transition-colors group"
             >
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500 w-8">
+                <span className="text-sm text-[#6B6B6B] w-8">
                   {String(epNumber).padStart(2, '0')}
                 </span>
-                <span className="text-sm text-gray-900">
+                <span className="text-sm text-white">
                   {epTitle}
                 </span>
               </div>
               <button
                 onClick={() => onPlayEpisode(activeSeason, epNumber)}
-                className="sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all"
+                className="sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded-full bg-[#6366F1] text-white hover:bg-[#818CF8] transition-all"
               >
                 <Play size={14} fill="white" />
               </button>
