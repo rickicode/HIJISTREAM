@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Add Vercel and Cloudflare Pages deployment configuration, plus a comprehensive root README.md with deploy buttons and project documentation",
+  "status": "completed",
+  "steps": [
+    "Create `apps/web/vercel.json` with buildCommand: 'bun run build', outputDirectory: 'dist', framework: 'vite', and rewrites for SPA routing (all paths to /index.html)",
+    "Create `apps/web/wrangler.toml` with name 'hijistream', compatibility_date '2024-01-01', and [site] bucket='./dist' for Cloudflare Pages static site deployment",
+    "Create a comprehensive root `README.md` at `/projects/sandbox/HIJISTREAM/README.md` containing: project title and description (HIJISTREAM - streaming platform), Deploy to Vercel button ([![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/user/HIJISTREAM&root-directory=apps/web)), Deploy to Cloudflare Pages instructions (step-by-step with wrangler), Tech Stack section (React 18, Vite 5, Tailwind CSS, React Query, React Router, Bun), Project Structure section showing monorepo layout, Features list (Movies browsing, TV shows, Search, Watch Progress, Responsive design), Local Development instructions using Bun (bun install, bun run dev, bun run build, bun run test)"
+  ],
+  "acceptance_criteria": [
+    "apps/web/vercel.json exists with valid JSON and correct Vite SPA configuration",
+    "apps/web/wrangler.toml exists with correct Cloudflare Pages config",
+    "README.md at project root exists with Deploy to Vercel badge/button, Cloudflare deploy instructions, tech stack, project structure, and development setup instructions",
+    "bun run build still succeeds after changes"
+  ],
+  "verification": [
+    "Run `bun run build` in apps/web/ to confirm build still works",
+    "Run `cat apps/web/vercel.json` and verify valid JSON",
+    "Run `cat apps/web/wrangler.toml` and verify valid TOML",
+    "Verify README.md exists at project root with deploy buttons"
+  ],
+  "blocked_reason": null,
+  "findings": "All three files created successfully. Build passes without issues. Bun is used throughout (not npm/yarn) as per project conventions."
+}

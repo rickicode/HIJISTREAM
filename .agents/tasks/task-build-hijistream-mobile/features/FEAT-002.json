@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Create all UI components adapted for React Native and TV navigation: TVFocusable, ContentCard, ContentGrid, VideoPlayer, SearchBar, TabBar, DetailHero, EpisodeList, LoadingState, ErrorState. All styled with StyleSheet using dark theme optimized for TV.",
+  "status": "completed",
+  "steps": [
+    "Create /apps/mobile/src/components/TVFocusable.jsx - a wrapper component using TouchableOpacity with TV parallax properties (magnification: 1.05, shiftDistanceX: 10, shiftDistanceY: 10). Implements focus/blur state with 3px #2563EB border on focus. Min 80x80dp touch target. Accepts children, onPress, style, and hasTVPreferredFocus props.",
+    "Create /apps/mobile/src/components/ContentCard.jsx - displays movie/TV poster card. Uses Image with lazy loading, shows title, year, rating, genre pills below. Focus border via TVFocusable wrapper. Aspect ratio 2:3 for poster. Shows progress bar overlay when watchProgress prop exists. On press navigates to detail page using expo-router.",
+    "Create /apps/mobile/src/components/ContentGrid.jsx - displays items in a FlatList with numColumns (4-6 based on screen width via Dimensions). Handles loading state (shows LoadingState), error state (shows ErrorState), and renders ContentCards. Supports onEndReached for pagination.",
+    "Create /apps/mobile/src/components/VideoPlayer.jsx - wraps react-native-webview (WebView) to load the vaplayer.ru embed URL. Handles onMessage events from the player (progress, pause, complete). Saves watch progress via player.js utility every 5 seconds. Shows a back button header. Full screen on TV.",
+    "Create /apps/mobile/src/components/SearchBar.jsx - TextInput styled for TV with large font. Includes debounce (300ms). Shows search icon (lucide-react-native). Handles TV remote text input. Dark background with white text.",
+    "Create /apps/mobile/src/components/TabBar.jsx - horizontal row of tab buttons (Latest, Trending, Top Rated, Upcoming). Active tab has border-bottom with #2563EB. Each tab is focusable for D-pad navigation. Uses ScrollView horizontal for overflow.",
+    "Create /apps/mobile/src/components/DetailHero.jsx - displays poster image (left) + metadata (right) in a row layout. Shows title, year, rating (star icon), genres as pills, overview text, and a Play button. Adapted from web's DetailHero but using RN StyleSheet.",
+    "Create /apps/mobile/src/components/EpisodeList.jsx - season selector buttons + episode list (FlatList). Each episode row shows number, title, and play button on focus. Season buttons switch which episodes are displayed.",
+    "Create /apps/mobile/src/components/LoadingState.jsx - animated skeleton placeholders using View with opacity animation. Supports 'grid', 'card', and 'detail' types like the web version.",
+    "Create /apps/mobile/src/components/ErrorState.jsx - centered error message with AlertCircle icon (lucide-react-native) and 'Try Again' button. Dark theme styling."
+  ],
+  "acceptance_criteria": [
+    "All 10 component files exist in /apps/mobile/src/components/",
+    "TVFocusable implements focus state with blue border and parallax properties",
+    "ContentCard navigates using expo-router (router.push)",
+    "ContentGrid uses FlatList with dynamic numColumns",
+    "VideoPlayer uses react-native-webview with onMessage handler",
+    "All components use StyleSheet.create for styling (dark theme)",
+    "Components use lucide-react-native for icons"
+  ],
+  "verification": [
+    "Verify all 10 component files exist in src/components/",
+    "Check that imports are correct (react-native, expo-router, lucide-react-native, etc.)"
+  ],
+  "blocked_reason": null,
+  "findings": "All 10 components created and verified. Build (bun run export) bundles 893 modules successfully. Lint passes clean. Fixed no-undef for setTimeout/clearTimeout by destructuring from global. Removed unused View import from TabBar. All components use StyleSheet.create with dark theme colors, lucide-react-native icons, and TV navigation patterns."
+}

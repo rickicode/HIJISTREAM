@@ -1,0 +1,23 @@
+{
+  "project_type": "React SPA with Vite - Video Streaming Platform (HIJISTREAM/VidStream)",
+  "language": "JavaScript (JSX)",
+  "build_system": "Vite with npm - standard React SPA build",
+  "test_framework": "Vitest (Vite-native testing) - no tests exist yet, will add basic tests",
+  "build_command": "cd /projects/sandbox/HIJISTREAM/apps/web && npm run build",
+  "test_command": "cd /projects/sandbox/HIJISTREAM/apps/web && npm run dev -- --host 0.0.0.0 --port 5173",
+  "verification_instructions": "1. Run npm run build to verify production build succeeds. 2. Run npm run dev to start dev server and verify app loads. 3. Check that all routes render correctly.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "1. cd /projects/sandbox/HIJISTREAM/apps/web && npm install. 2. npm run dev to start development server.",
+  "environment_constraints": "OPEN_INTERNET - full network access. Node.js v22 available via nvm. npm/pnpm/yarn available.",
+  "contribution_requirements": "Must match PRD.md and TDD.md specifications exactly. UI must be production-quality with Inter font, ghost borders, proper loading/error states. API integration with vidapi.ru.",
+  "key_patterns": "React functional components with hooks, Zustand for state, React Query for data fetching, Tailwind CSS for styling, React Router DOM for routing, lucide-react for icons, localStorage for caching, iframe for video player embed",
+  "relevant_files": [
+    "PRD.md",
+    "TDD.md",
+    "apps/web/src/app/",
+    "apps/web/src/components/",
+    "apps/web/src/utils/",
+    "apps/web/src/stores/"
+  ],
+  "directory_structure": "Monorepo structure: /apps/web/src/ contains app/ (pages), components/ (reusable UI), utils/ (api, cache, player, storage), stores/ (zustand stores). Web platform focus with React+Vite."
+}

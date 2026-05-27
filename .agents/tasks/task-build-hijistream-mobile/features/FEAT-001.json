@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Initialize the Expo React Native project at /apps/mobile/ with all dependencies, configure Expo Router, and create the complete utility layer (api, cache, storage, player) adapted from the web app for AsyncStorage.",
+  "status": "completed",
+  "steps": [
+    "Create /apps/mobile/ directory. Initialize an Expo project using `bunx create-expo-app@latest . --template blank` or manually set up package.json with Expo SDK 52+.",
+    "Configure package.json with all required dependencies: expo, expo-router, react-native, react-native-webview, @react-native-async-storage/async-storage, @tanstack/react-query, zustand, lucide-react-native, react-native-svg, expo-font, @expo-google-fonts/inter, react-native-safe-area-context, react-native-screens, expo-linking, expo-constants, expo-status-bar, react-native-gesture-handler. Use Bun for installation.",
+    "Create app.json (or app.config.js) with: name 'HIJISTREAM', slug 'hijistream', Android TV support (isAndroidTV: true), minimum API 24, orientation landscape, and Expo Router config (scheme: 'hijistream').",
+    "Create babel.config.js with expo preset and expo-router/babel plugin.",
+    "Create /apps/mobile/src/utils/storage.js - an AsyncStorage wrapper that mirrors the web storage.js API (getItem, setItem, removeItem, clear, getAllKeys) but uses @react-native-async-storage/async-storage. All methods should be async.",
+    "Create /apps/mobile/src/utils/cache.js - adapted from web's cache.js to use async storage. Same TTL constants (CONTENT_LIST: 86400, CONTENT_DETAIL: 604800, IMAGES: 2592000, SEARCH: 3600). All methods (get, set, clear, cleanup) are async.",
+    "Create /apps/mobile/src/utils/api.js - same endpoints and structure as web's api.js (getLatestMovies, getTrendingMovies, getTopRatedMovies, getUpcomingMovies, getLatestTV, getTrendingTV, getTopRatedTV, getMovieDetails, getTVDetails, search). Use async cache. Base URL: https://vidapi.ru.",
+    "Create /apps/mobile/src/utils/player.js - same functions as web (getMovieEmbedUrl, getTVEmbedUrl, saveWatchProgress, loadWatchProgress, getAllWatchProgress) adapted for async AsyncStorage.",
+    "Add scripts to package.json: 'start': 'expo start', 'android': 'expo run:android', 'lint': 'expo lint', 'export': 'expo export --platform android'.",
+    "Create metro.config.js if needed for the monorepo setup (watchFolders pointing to apps/mobile).",
+    "Run `bun install` to verify all dependencies install correctly."
+  ],
+  "acceptance_criteria": [
+    "package.json exists at /apps/mobile/package.json with all required dependencies",
+    "app.json (or app.config.js) is configured for Android TV with Expo Router",
+    "All four utility files exist in /apps/mobile/src/utils/ (storage.js, cache.js, api.js, player.js)",
+    "The utility files use async/await patterns compatible with AsyncStorage",
+    "bun install completes without errors"
+  ],
+  "verification": [
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install` and confirm it completes successfully",
+    "Verify all utility files exist and have correct async API patterns"
+  ],
+  "blocked_reason": null,
+  "findings": "Bun install succeeded with 841 packages. Expo lint auto-configured eslint with eslint-config-expo. Expo export builds successfully (893 modules bundled). The expo lint command auto-installs eslint and eslint-config-expo as devDependencies when first run."
+}

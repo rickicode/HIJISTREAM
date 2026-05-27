@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "HIJISTREAM",
+    "slug": "hijistream",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "scheme": "hijistream",
+    "platforms": ["android"],
+    "android": {
+      "package": "com.hijistream.tv",
+      "isAndroidTV": true,
+      "minSdkVersion": 24
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

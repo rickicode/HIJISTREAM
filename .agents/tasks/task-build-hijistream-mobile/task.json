@@ -1,0 +1,14 @@
+{
+  "task_id": "task-build-hijistream-mobile",
+  "task_description": "Build the HIJISTREAM mobile/TV application (Android TV/Google TV) using Expo React Native as specified in TDD.md. The app mirrors the existing web app functionality with TV-optimized navigation (D-pad, focus indicators) and uses AsyncStorage for caching.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "Expo export (bun run export) bundles successfully into dist/. Lint (bun run lint) passes with zero errors. Two review passes completed - all critical issues fixed (WebView iframe bridge, VirtualizedList nesting, dynamic columns, removed unused deps, removed deprecated TV props). No test framework in scope for mobile app."
+  }
+}

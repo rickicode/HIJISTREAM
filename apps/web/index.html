@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   img-src 'self' https://image.tmdb.org https://vidapi.ru https://vaplayer.ru; 
+                   frame-src https://vaplayer.ru; 
+                   script-src 'self' 'unsafe-inline'; 
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                   connect-src 'self' https://vidapi.ru https://vaplayer.ru;
+                   font-src 'self' https://fonts.gstatic.com;">
+    <meta name="description" content="HIJISTREAM - Stream thousands of movies and TV shows for free. Watch the latest releases, trending content, and top-rated titles.">
+    <meta property="og:title" content="HIJISTREAM">
+    <meta property="og:description" content="Stream thousands of movies and TV shows">
+    <meta property="og:type" content="website">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>HIJISTREAM</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
