@@ -31,6 +31,32 @@ A streaming platform for movies and TV shows built with React, Vite, and Tailwin
    wrangler pages deploy dist --project-name=hijistream
    ```
 
+## CI/CD
+
+### Auto Build APK (GitHub Actions)
+
+The project includes automated APK building via GitHub Actions:
+
+- **Trigger:** Create a release (or push a tag like `v1.0.0`, `v1.0.1`, etc.)
+- **Output:** Separate APKs for `arm64-v8a` (64-bit ARM), `armeabi-v7a` (32-bit ARM), and a universal APK
+- **Artifacts:** APKs are available as build artifacts in the Actions tab
+- **Release:** When you create a GitHub Release with a tag (e.g., `v1.0.1`), APKs are automatically attached to the release
+
+To trigger a release build:
+1. Go to GitHub Releases
+2. Create a new release with a tag (e.g., `v1.0.1`)
+3. The workflow builds APKs and attaches them to the release automatically
+
+You can also trigger a build manually from the Actions tab using "Run workflow".
+
+### Web CI (Lint, Typecheck, Build, Test)
+
+On every push to `main` and every pull request:
+- Lint check
+- TypeScript type check
+- Production build
+- Integration tests (Vitest)
+
 ## Features
 
 - Movies browsing with categories (Latest, Trending, Top Rated, Upcoming)
@@ -57,6 +83,10 @@ A streaming platform for movies and TV shows built with React, Vite, and Tailwin
 
 ```
 HIJISTREAM/
+├── .github/
+│   └── workflows/
+│       ├── build-apk.yml     # Auto build Android APK on release/tag
+│       └── build-web.yml     # Web CI (lint, typecheck, build, test)
 ├── apps/
 │   ├── web/              # React SPA (Vite + Tailwind)
 │   │   ├── src/
