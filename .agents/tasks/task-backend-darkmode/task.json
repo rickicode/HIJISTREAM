@@ -1,7 +1,7 @@
 {
   "task_id": "task-backend-darkmode",
   "task_description": "Two major architectural changes: 1) Create Bun-based API backend server that proxies vidapi.ru requests (frontend never calls vidapi.ru directly), 2) Complete dark mode redesign of all UI to premium Netflix/Apple TV+ inspired dark theme.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
   "blocked_reason": null,
   "verification": {
