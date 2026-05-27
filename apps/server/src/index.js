@@ -7,9 +7,9 @@ const MAX_CACHE_SIZE = 10000;
 
 // TTL constants (milliseconds)
 const TTL = {
-  LIST: 86400000,      // 24 hours
-  DETAIL: 604800000,   // 7 days
-  SEARCH: 3600000,     // 1 hour
+  LIST: 300000,        // 5 minutes
+  DETAIL: 600000,      // 10 minutes
+  SEARCH: 120000,      // 2 minutes
 };
 
 function getTTL(path) {
