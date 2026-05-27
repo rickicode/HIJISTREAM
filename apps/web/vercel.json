@@ -1,16 +1,12 @@
 {
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=86400" }
-      ]
+  "functions": {
+    "api/[...path].js": {
+      "runtime": "@vercel/edge"
     }
-  ],
+  },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://vidapi.ru/:path*" },
-    { "source": "/:path*", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
