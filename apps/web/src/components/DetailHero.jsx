@@ -9,16 +9,22 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
     <div className="flex flex-col md:flex-row gap-8">
       <div className="relative w-full md:w-[300px] shrink-0">
         <div className="relative aspect-[2/3] bg-[#1A1A1A] rounded-xl overflow-hidden shadow-2xl shadow-black/50">
-          <img
-            src={item.poster_url}
-            alt={item.title}
-            loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
-              imgLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-          />
-          {!imgLoaded && (
+          {item.poster_url ? (
+            <img
+              src={item.poster_url}
+              alt={item.title}
+              loading="lazy"
+              onLoad={() => setImgLoaded(true)}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                imgLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+          ) : (
+            <div className="w-full h-full bg-[#262626] flex items-center justify-center">
+              <span className="text-[#6B6B6B] text-sm text-center px-4">{item.title}</span>
+            </div>
+          )}
+          {item.poster_url && !imgLoaded && (
             <div className="absolute inset-0 shimmer-bg animate-shimmer" />
           )}
         </div>
@@ -27,7 +33,7 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
         <h1 className="text-3xl font-bold text-white">{item.title}</h1>
         <div className="flex items-center gap-4 mt-3 text-sm text-[#A1A1A1]">
           {item.year && <span>{item.year}</span>}
-          {item.rating && (
+          {item.rating && item.rating !== '0.0' && (
             <span className="flex items-center gap-1">
               <Star size={14} className="text-[#FBBF24] fill-[#FBBF24]" />
               {item.rating}

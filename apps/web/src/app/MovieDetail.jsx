@@ -43,6 +43,7 @@ export default function MovieDetail() {
   const _progress = loadWatchProgress(movie.imdb_id || id);
 
   const handlePlay = () => {
+    // Movie embed URL uses IMDB ID: /embed/movie/{IMDB_ID}
     const playId = movie.imdb_id || id;
     navigate(`/player/movie/${playId}`);
   };

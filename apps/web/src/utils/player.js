@@ -13,7 +13,11 @@ export function getMovieEmbedUrl(imdbId, resumeAt) {
 }
 
 export function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}`;
+  // API provides embed URL as: /embed/tv/{TMDB_ID} (no season/episode path)
+  let url = `${PLAYER_BASE_URL}/tv/${tmdbId}`;
+  if (season && episode) {
+    url += `/${season}/${episode}`;
+  }
   if (resumeAt) {
     url += `?t=${resumeAt}`;
   }
