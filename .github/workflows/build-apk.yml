@@ -7,6 +7,9 @@ on:
     types: [created]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build APK (arm64-v8a & armeabi-v7a)
@@ -14,16 +17,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
@@ -41,7 +44,7 @@ jobs:
         working-directory: apps/mobile
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Configure ABI splits for ARM
         run: |
@@ -60,7 +63,7 @@ jobs:
         run: find apps/mobile/android -name "*.apk" -type f
 
       - name: Upload APK artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hijistream-apk
           path: |
@@ -69,7 +72,7 @@ jobs:
 
       - name: Upload APKs to Release
         if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: apps/mobile/android/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
