@@ -6,7 +6,7 @@ import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
 const TABS = [
-  { id: 'latest', label: 'Latest' },
+  { id: 'popular', label: 'Popular' },
   { id: 'trending', label: 'Trending' },
   { id: 'top-rated', label: 'Top Rated' },
   { id: 'upcoming', label: 'Upcoming' },
@@ -14,8 +14,8 @@ const TABS = [
 
 function fetchMovies(tab, page) {
   switch (tab) {
-    case 'latest':
-      return api.getLatestMovies(page);
+    case 'popular':
+      return api.getPopularMovies(page);
     case 'trending':
       return api.getTrendingMovies(page);
     case 'top-rated':
@@ -23,12 +23,12 @@ function fetchMovies(tab, page) {
     case 'upcoming':
       return api.getUpcomingMovies(page);
     default:
-      return api.getLatestMovies(page);
+      return api.getPopularMovies(page);
   }
 }
 
 export default function MoviesScreen() {
-  const [activeTab, setActiveTab] = useState('latest');
+  const [activeTab, setActiveTab] = useState('popular');
 
   const {
     data,

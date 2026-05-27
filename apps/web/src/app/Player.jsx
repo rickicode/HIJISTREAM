@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import VideoPlayer from '../components/VideoPlayer';
 
@@ -7,7 +7,11 @@ export default function Player() {
   const { type, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const playerContainerRef = useRef(null);
+
+  const season = searchParams.get('season');
+  const episode = searchParams.get('episode');
 
   // Get metadata from route state or fallback to stored progress
   const routeState = location.state || {};
@@ -18,16 +22,14 @@ export default function Player() {
 
   let embedUrl = '';
   let title = routeState.title || '';
-  let contentId = id;
+  const contentId = id;
 
   if (type === 'movie') {
     embedUrl = getMovieEmbedUrl(id, resumeAt);
     title = title || `Movie - ${id}`;
   } else {
-    // TV embed URL is just /embed/tv/{TMDB_ID} - no season/episode
-    embedUrl = getTVEmbedUrl(id, null, null, resumeAt);
+    embedUrl = getTVEmbedUrl(id, season || 1, episode || 1, resumeAt);
     title = title || `TV - ${id}`;
-    contentId = id;
   }
 
   const metadata = {

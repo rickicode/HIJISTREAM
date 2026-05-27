@@ -50,7 +50,7 @@ export default function Search() {
       {query && (
         <ContentGrid
           items={items}
-          type="movie"
+          type="mixed"
           isLoading={isLoading}
           error={error}
           onRetry={refetch}

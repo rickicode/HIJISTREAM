@@ -6,26 +6,26 @@ import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
 const TABS = [
-  { id: 'latest', label: 'Latest' },
+  { id: 'popular', label: 'Popular' },
   { id: 'trending', label: 'Trending' },
   { id: 'top-rated', label: 'Top Rated' },
 ];
 
 function fetchTV(tab, page) {
   switch (tab) {
-    case 'latest':
-      return api.getLatestTV(page);
+    case 'popular':
+      return api.getPopularTV(page);
     case 'trending':
       return api.getTrendingTV(page);
     case 'top-rated':
       return api.getTopRatedTV(page);
     default:
-      return api.getLatestTV(page);
+      return api.getPopularTV(page);
   }
 }
 
 export default function TVScreen() {
-  const [activeTab, setActiveTab] = useState('latest');
+  const [activeTab, setActiveTab] = useState('popular');
 
   const {
     data,

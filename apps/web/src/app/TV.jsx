@@ -5,19 +5,19 @@ import TabNavigation from '../components/TabNavigation';
 import ContentGrid from '../components/ContentGrid';
 
 const tabs = [
-  { id: 'latest', label: 'Latest' },
+  { id: 'popular', label: 'Popular' },
   { id: 'trending', label: 'Trending' },
   { id: 'top-rated', label: 'Top Rated' },
 ];
 
 const apiFns = {
-  latest: (page) => api.getLatestTV(page),
+  popular: (page) => api.getPopularTV(page),
   trending: (page) => api.getTrendingTV(page),
   'top-rated': (page) => api.getTopRatedTV(page),
 };
 
 export default function TV() {
-  const [activeTab, setActiveTab] = useState('latest');
+  const [activeTab, setActiveTab] = useState('popular');
   const observerRef = useRef(null);
 
   const {
