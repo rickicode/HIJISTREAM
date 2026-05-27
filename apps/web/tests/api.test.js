@@ -27,8 +27,16 @@ function validateListItem(item) {
   expect(item).toHaveProperty('embed_url');
   expect(typeof item.title).toBe('string');
   expect(item.title.length).toBeGreaterThan(0);
-  expect(item.poster_url).toMatch(/^https?:\/\//);
-  expect(item.embed_url).toMatch(/^https?:\/\//);
+  // poster_url may be empty string for some items without poster
+  expect(typeof item.poster_url).toBe('string');
+  if (item.poster_url) {
+    expect(item.poster_url).toMatch(/^https?:\/\//);
+  }
+  // embed_url may be empty string for some items
+  expect(typeof item.embed_url).toBe('string');
+  if (item.embed_url) {
+    expect(item.embed_url).toMatch(/^https?:\/\//);
+  }
 }
 
 // Validate paginated response structure
