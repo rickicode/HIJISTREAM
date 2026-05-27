@@ -119,8 +119,8 @@ const api = {
       return found;
     }
 
-    // Not found - return a minimal object with the embed URL
-    const fallback = {
+    // Not found - return a minimal object with the embed URL (NOT cached)
+    return {
       tmdb_id: id,
       imdb_id: null,
       title: `Movie ${id}`,
@@ -131,8 +131,6 @@ const api = {
       type: 'movie',
       embed_url: `https://vaplayer.ru/embed/movie/${id}`,
     };
-    cacheManager.set(cacheKey, fallback, TTL.CONTENT_DETAIL);
-    return fallback;
   },
 
   // TV details - same approach
@@ -168,7 +166,8 @@ const api = {
       return found;
     }
 
-    const fallback = {
+    // Not found - return a minimal object with the embed URL (NOT cached)
+    return {
       tmdb_id: id,
       imdb_id: null,
       title: `TV Show ${id}`,
@@ -179,8 +178,6 @@ const api = {
       type: 'tv',
       embed_url: `https://vaplayer.ru/embed/tv/${id}`,
     };
-    cacheManager.set(cacheKey, fallback, TTL.CONTENT_DETAIL);
-    return fallback;
   },
 
   // Search - client-side filter from cached data

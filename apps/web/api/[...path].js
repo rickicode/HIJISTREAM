@@ -31,12 +31,18 @@ export default async function handler(request) {
 
     const body = await upstreamResponse.text();
 
-    return new Response(body, {
+    // Only cache successful responses with actual content
+    const hasContent = upstreamResponse.ok && body && body.length > 2;
+    const cacheHeader = hasContent
+      ? 'public, s-maxage=300, stale-while-revalidate=600'
+      : 'no-store, no-cache, must-revalidate';
+
+    return new Response(body || JSON.stringify({ error: 'Not Found' }), {
       status: upstreamResponse.status,
       headers: {
         'Content-Type': upstreamResponse.headers.get('content-type') || 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'Cache-Control': cacheHeader,
       },
     });
   } catch (error) {
