@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Replace VidAPI with TMDB API in backend server and edge functions. Rewrite apps/server/src/index.js to proxy TMDB API with response transformation. Update Vercel Edge Function and Cloudflare Function to do the same. Add TMDB genre ID mapping. VidAPI embed URLs are constructed from TMDB IDs in the response transform.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Rewrite apps/server/src/index.js: Replace the VidAPI upstream proxy with TMDB API routing. Add TMDB_API_KEY from process.env. Implement endpoint mapping: GET /api/movies/popular -> TMDB /movie/popular, GET /api/movies/trending -> TMDB /trending/movie/week, GET /api/movies/top-rated -> TMDB /movie/top_rated, GET /api/movies/upcoming -> TMDB /movie/upcoming, GET /api/tv/popular -> TMDB /tv/popular, GET /api/tv/trending -> TMDB /trending/tv/week, GET /api/tv/top-rated -> TMDB /tv/top_rated, GET /api/movie/{id} -> TMDB /movie/{id}?append_to_response=credits,external_ids, GET /api/tv/{id} -> TMDB /tv/{id}?append_to_response=credits,external_ids, GET /api/tv/{id}/season/{season} -> TMDB /tv/{id}/season/{season}, GET /api/search?query=... -> TMDB /search/multi. All responses transformed to consistent format with embed_url from vaplayer.ru. Keep in-memory cache with TTLs (5min lists, 10min details, 2min search). Keep CORS. Keep /health endpoint.",
     "Add a TMDB genre ID mapping object in the server (e.g., { 28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western', 10759: 'Action & Adventure', 10762: 'Kids', 10763: 'News', 10764: 'Reality', 10765: 'Sci-Fi & Fantasy', 10766: 'Soap', 10767: 'Talk', 10768: 'War & Politics' }).",
@@ -28,5 +28,5 @@
     "Verify no vidapi.ru references remain for catalog data (grep)"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build passes, all 14 existing tests pass (they test vidapi.ru directly, not our new backend). Lint has 0 errors (1 pre-existing warning). Typecheck passes. Server starts and returns 503 gracefully when TMDB_API_KEY is not set. The frontend api.js still references old VidAPI endpoints - will need updating in FEAT-002/FEAT-003 to use new /api/movies/popular etc."
 }
