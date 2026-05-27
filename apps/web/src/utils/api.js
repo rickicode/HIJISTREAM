@@ -1,6 +1,8 @@
 import cacheManager, { TTL } from './cache';
 
-const BASE_URL = 'https://vidapi.ru';
+// In development, Vite proxy forwards /api/* to vidapi.ru
+// In production, Vercel/Cloudflare rewrites handle the proxy
+const BASE_URL = '/api';
 
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = cacheManager.get(cacheKey);
