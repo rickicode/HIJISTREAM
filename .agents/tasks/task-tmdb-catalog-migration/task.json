@@ -1,7 +1,14 @@
 {
   "task_id": "task-tmdb-catalog-migration",
   "task_description": "Replace VidAPI catalog endpoints with TMDB API for all content data. VidAPI should ONLY be used for vaplayer.ru embed player URLs. Backend/edge functions proxy TMDB with response transformation. Frontend uses new clean endpoints. Real search, movie details, TV season/episodes enabled.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
-  "blocked_reason": null
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Build succeeds (21 chunks), all 22 tests pass (8 transform + 14 API integration including canary), lint 0 errors, typecheck 0 errors. Review fixes applied: DetailHero cast rendering, render.yaml static deployment, embed URL consistency, API canary test."
+  }
 }

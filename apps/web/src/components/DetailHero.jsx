@@ -85,12 +85,13 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
             <div className="mt-4">
               <h3 className="text-sm font-medium text-[#A1A1A1] mb-2">Cast</h3>
               <div className="flex flex-wrap gap-2">
-                {cast.map((actor) => (
+                {cast.map((actor, index) => (
                   <span
-                    key={actor}
+                    key={actor.name || index}
                     className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-full px-3 py-1 text-sm text-white"
                   >
-                    {actor}
+                    {actor.name}
+                    {actor.character && <span className="text-[#6B6B6B]"> as {actor.character}</span>}
                   </span>
                 ))}
               </div>

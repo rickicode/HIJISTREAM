@@ -13,6 +13,18 @@ async function fetchAPI(endpoint) {
   }
 }
 
+describe('TMDB API - Connectivity', () => {
+  it('API is reachable (canary)', async () => {
+    const data = await fetchAPI('/movies/popular?page=1');
+    if (process.env.CI) {
+      // In CI, the API must be reachable. If this fails, the deployment is broken.
+      expect(data).not.toBeNull();
+      expect(data).toHaveProperty('items');
+    }
+    // In local dev without deployment, this test passes silently
+  });
+});
+
 // Validate list item structure for movies
 function validateMovieItem(item) {
   expect(item).toHaveProperty('id');

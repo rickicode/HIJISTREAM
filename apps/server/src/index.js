@@ -113,7 +113,7 @@ function transformMovieDetail(movie) {
     runtime: movie.runtime || null,
     credits: movie.credits?.cast?.slice(0, 10).map(c => ({ name: c.name, character: c.character, profile_path: c.profile_path })) || [],
     type: 'movie',
-    embed_url: `https://vaplayer.ru/embed/movie/${movie.external_ids?.imdb_id || movie.imdb_id || movie.id}`,
+    embed_url: `https://vaplayer.ru/embed/movie/${movie.id}`,
   };
 }
 

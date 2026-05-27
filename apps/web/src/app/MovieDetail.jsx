@@ -40,7 +40,7 @@ export default function MovieDetail() {
   if (!movie) return null;
 
   const handlePlay = () => {
-    const playId = movie.imdb_id || movie.id || id;
+    const playId = movie.id || id;
     navigate(`/player/movie/${playId}`);
   };
 

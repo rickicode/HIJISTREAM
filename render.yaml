@@ -6,8 +6,8 @@ services:
     staticPublishPath: apps/web/dist
     pullRequestPreviewsEnabled: true
     envVars:
-      - key: TMDB_API_KEY
-        sync: false
+      - key: VITE_API_URL
+        value: https://hijistream-web.vercel.app/api
     routes:
       - type: rewrite
         source: /*
