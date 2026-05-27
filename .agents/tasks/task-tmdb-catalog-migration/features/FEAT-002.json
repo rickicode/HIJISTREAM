@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Rewrite frontend API client and update all components/pages to use new TMDB-backed endpoints. Enable real search, movie/TV details with overview/credits/runtime, season/episode selection, and proper TMDB poster URLs.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Rewrite apps/web/src/utils/api.js: Replace all VidAPI endpoint calls with new clean endpoints. New methods: getPopularMovies(page), getTrendingMovies(page), getTopRatedMovies(page), getUpcomingMovies(page), getPopularTV(page), getTrendingTV(page), getTopRatedTV(page), getMovieDetails(id), getTVDetails(id), getTVSeason(id, season), search(query, page). Each returns fetchWithCache with appropriate TTL. Remove the old page-offset simulation and client-side search. Response format from backend already includes poster_url, embed_url, etc.",
     "Update apps/web/src/app/Movies.jsx: Change tabs to Popular/Trending/Top Rated/Upcoming. Update apiFns to use new api methods (api.getPopularMovies, api.getTrendingMovies, api.getTopRatedMovies, api.getUpcomingMovies). The response format changes: data.results becomes data.items, data.total_pages stays the same.",
@@ -38,5 +38,5 @@
     "Run 'bun run typecheck' in apps/web - must pass"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build succeeds, lint passes (1 pre-existing warning in main.jsx about react-refresh), typecheck passes, all 14 tests pass. The tests still hit the old VidAPI directly (testing that upstream), not our new backend proxy. ContentCard now supports both item.id (new TMDB API) and item.tmdb_id (legacy). Mobile app updated with same API structure pointing to Vercel edge function by default."
 }
