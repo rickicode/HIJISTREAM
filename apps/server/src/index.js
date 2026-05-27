@@ -3,6 +3,7 @@ const UPSTREAM = 'https://vidapi.ru';
 
 // In-memory cache
 const cache = new Map();
+const MAX_CACHE_SIZE = 10000;
 
 // TTL constants (milliseconds)
 const TTL = {
@@ -28,8 +29,25 @@ function getCached(key) {
 }
 
 function setCache(key, data, ttl) {
-  cache.set(key, { data, expiresAt: Date.now() + ttl });
+  // Evict oldest entries if cache exceeds max size
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const keysToDelete = [...cache.keys()].slice(0, cache.size - MAX_CACHE_SIZE + 1);
+    for (const k of keysToDelete) {
+      cache.delete(k);
+    }
+  }
+  cache.set(key, { data, expiresAt: Date.now() + ttl, createdAt: Date.now() });
 }
+
+// Periodic cache cleanup: sweep expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (now > entry.expiresAt) {
+      cache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 
 function corsHeaders() {
   return {
