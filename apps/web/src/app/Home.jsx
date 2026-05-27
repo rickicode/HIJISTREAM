@@ -10,11 +10,11 @@ import LoadingState from '../components/LoadingState';
 function SectionHeader({ title, href = null }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+      <h2 className="text-xl font-semibold text-white">{title}</h2>
       {href && (
         <Link
           to={href}
-          className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 transition-colors"
+          className="flex items-center gap-1 text-sm text-[#6366F1] hover:text-[#818CF8] transition-colors"
         >
           See All
           <ChevronRight size={16} />
@@ -71,11 +71,11 @@ export default function Home() {
           </HorizontalScroll>
         </section>
       ) : (
-        <section className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
-          <Film className="mx-auto text-gray-300 mb-3" size={48} />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Welcome to HIJISTREAM</h2>
-          <p className="text-sm text-gray-500 mb-4">Start watching movies and TV shows to see your progress here</p>
-          <Link to="/movies" className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+        <section className="text-center py-12 bg-[#1A1A1A] rounded-xl border border-[#2E2E2E]">
+          <Film className="mx-auto text-[#6B6B6B] mb-3" size={48} />
+          <h2 className="text-lg font-semibold text-white mb-2">Welcome to HIJISTREAM</h2>
+          <p className="text-sm text-[#A1A1A1] mb-4">Start watching movies and TV shows to see your progress here</p>
+          <Link to="/movies" className="inline-flex items-center gap-2 bg-[#6366F1] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#818CF8] transition-colors">
             Browse Movies
           </Link>
         </section>

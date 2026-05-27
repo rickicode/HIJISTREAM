@@ -46,10 +46,10 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 
   return (
     <div className="bg-black min-h-screen">
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-900">
+      <div className="flex items-center gap-3 px-4 py-3 bg-[#0F0F0F]">
         <button
           onClick={onBack}
-          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+          className="p-2 rounded-lg text-[#A1A1A1] hover:text-white hover:bg-[#262626] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
         >
           <ArrowLeft size={20} />
         </button>

@@ -1,0 +1,47 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Complete dark mode redesign of ALL UI components and pages to a premium Netflix/Apple TV+ inspired dark theme. Update Tailwind config, global CSS, all 10 components, and all 7 pages.",
+  "status": "completed",
+  "steps": [
+    "Update apps/web/tailwind.config.js with new dark color palette: background #0F0F0F, surface #1A1A1A, surface-elevated #262626, border #2E2E2E, border-hover #404040, text-primary #FFFFFF, text-secondary #A1A1A1, text-muted #6B6B6B, primary #6366F1, primary-hover #818CF8, primary-muted rgba(99,102,241,0.15), success #10B981, warning #F59E0B, error #EF4444, rating #FBBF24. Add custom animations for shimmer effect.",
+    "Update apps/web/src/index.css - Dark body background (#0F0F0F), text color white, add shimmer keyframe animation, add glassmorphism utility class (backdrop-blur-xl bg-opacity), add glow utility for card hover effects.",
+    "Update apps/web/index.html - Change meta theme-color to #0F0F0F if applicable. Keep font loading as-is.",
+    "Redesign apps/web/src/components/Layout.jsx - Dark sticky header with backdrop-blur-xl and bg-[#0F0F0F]/80, subtle bottom border #2E2E2E, logo in primary color (#6366F1), nav links white/gray with primary active state, mobile menu dark themed, footer dark themed. Remove all bg-white, text-gray-900, border-gray-200 references.",
+    "Redesign apps/web/src/components/ContentCard.jsx - Dark card bg-[#1A1A1A], subtle border #2E2E2E, hover:scale-[1.05] with shadow-lg shadow-indigo-500/10 glow, rounded-xl, image fills card with gradient overlay at bottom (from-transparent to-[#1A1A1A]) for title/metadata. Text white/gray. Genre badges dark bg. Remove all light theme classes.",
+    "Redesign apps/web/src/components/DetailHero.jsx - Full-width layout option with backdrop image, gradient overlay (from-[#0F0F0F] via-[#0F0F0F]/60 to-transparent), poster with shadow, metadata in white/gray, genre badges dark, play button in primary color with hover glow. Remove all light theme classes.",
+    "Redesign apps/web/src/components/TabNavigation.jsx - Dark tabs, pill-shaped active state with primary bg and white text, inactive tabs text-[#A1A1A1] with hover:text-white. Remove border-b, use subtle background differentiation instead.",
+    "Redesign apps/web/src/components/SearchBar.jsx - Dark input bg-[#1A1A1A], border #2E2E2E, focus:border-[#6366F1] with ring glow, placeholder text-[#6B6B6B], text white. History dropdown dark bg-[#1A1A1A], hover items bg-[#262626]. Remove all light theme classes.",
+    "Redesign apps/web/src/components/LoadingState.jsx - Dark skeleton shimmer effect on bg-[#1A1A1A] surfaces with shimmer animation (gradient sweep from transparent to #262626 to transparent). Replace all bg-gray-200 animate-pulse with dark shimmer.",
+    "Redesign apps/web/src/components/ErrorState.jsx - Dark theme, icon color #6B6B6B, title white, description #A1A1A1, retry button primary color #6366F1 with hover #818CF8.",
+    "Redesign apps/web/src/components/EpisodeList.jsx - Dark cards, episode items bg-[#1A1A1A] on hover bg-[#262626], text white/gray, season buttons dark with primary active state, play button primary color.",
+    "Redesign apps/web/src/components/VideoPlayer.jsx - Already dark, just ensure consistency with new color tokens (header bar bg-[#0F0F0F]).",
+    "Redesign apps/web/src/components/ContentGrid.jsx - No background changes needed (just wrapper), but ensure it passes through dark theme correctly.",
+    "Redesign apps/web/src/app/Home.jsx - Dark welcome section bg-[#1A1A1A] with border-[#2E2E2E], section headers white, 'See All' link in primary color, horizontal scroll sections, CTA button primary color. Netflix-style horizontal rows.",
+    "Redesign apps/web/src/app/Movies.jsx - Dark page title white, spinner in primary color, dark background throughout.",
+    "Redesign apps/web/src/app/TV.jsx - Same as Movies dark treatment.",
+    "Redesign apps/web/src/app/MovieDetail.jsx - Dark background, loading/error states inherit dark theme.",
+    "Redesign apps/web/src/app/TVDetail.jsx - Dark background, loading/error states inherit dark theme.",
+    "Redesign apps/web/src/app/Search.jsx - Dark background, empty state icon/text in dark colors, no results text gray.",
+    "Redesign apps/web/src/app/Player.jsx - Already mostly dark, ensure consistency.",
+    "Update apps/web/src/main.jsx - Suspense fallback spinner should use primary color #6366F1 instead of blue-600."
+  ],
+  "acceptance_criteria": [
+    "All components use dark color palette - NO white backgrounds, NO light gray surfaces anywhere",
+    "Card hover produces scale + glow effect (shadow-indigo-500/10 or similar)",
+    "Header has glassmorphism effect (backdrop-blur + semi-transparent bg)",
+    "Loading states use dark shimmer animation (not gray pulse)",
+    "All text is white (#FFFFFF) or gray (#A1A1A1, #6B6B6B) - never dark gray on white",
+    "Primary accent color is indigo #6366F1 throughout (buttons, links, active states)",
+    "bun run lint passes with 0 errors",
+    "bun run typecheck passes with 0 errors",
+    "bun run build succeeds"
+  ],
+  "verification": [
+    "Run `bun run lint` in apps/web/ - 0 errors",
+    "Run `bun run typecheck` in apps/web/ - 0 errors",
+    "Run `bun run build` in apps/web/ - success"
+  ],
+  "blocked_reason": null,
+  "findings": "All 17 files updated successfully. Tailwind config, index.css, all 10 components, and all 7 pages converted to dark theme. Verified: lint 0 errors, typecheck 0 errors, build success. Grep confirms zero light theme class remnants in src/. Pre-existing lint warning in main.jsx (react-refresh/only-export-components) remains unchanged."
+}

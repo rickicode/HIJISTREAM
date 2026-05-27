@@ -1,0 +1,10 @@
+{
+  "name": "hijistream-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.js",
+    "start": "bun src/index.js"
+  }
+}

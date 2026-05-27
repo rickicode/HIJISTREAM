@@ -1,6 +1,6 @@
 import cacheManager, { TTL } from './cache';
 
-const BASE_URL = 'https://vidapi.ru';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = cacheManager.get(cacheKey);
