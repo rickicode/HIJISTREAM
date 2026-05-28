@@ -65,7 +65,10 @@
     "popular": "Populer",
     "topRated": "Rating Tertinggi",
     "upcoming": "Akan Datang",
-    "ongoing": "Sedang Tayang"
+    "ongoing": "Sedang Tayang",
+    "searchPlaceholder": "Cari film dan serial TV...",
+    "recentSearches": "Pencarian Terakhir",
+    "closeSearch": "Tutup"
   },
   "player": {
     "play": "Putar",

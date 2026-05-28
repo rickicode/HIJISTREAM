@@ -65,7 +65,10 @@
     "popular": "人気",
     "topRated": "高評価",
     "upcoming": "近日公開",
-    "ongoing": "放送中"
+    "ongoing": "放送中",
+    "searchPlaceholder": "映画やテレビ番組を検索...",
+    "recentSearches": "最近の検索",
+    "closeSearch": "閉じる"
   },
   "player": {
     "play": "再生",

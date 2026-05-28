@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Search, Menu, X, ChevronDown, Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import Logo from './Logo';
+import SearchModal from './SearchModal';
 import { useTranslation } from '../i18n';
 import { SUPPORTED_LOCALES } from '../i18n/locales';
 
@@ -26,15 +27,15 @@ function NavLink({ to, children }) {
 }
 
 export default function Layout() {
-  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const { t, locale, setLocale } = useTranslation();
   const queryClient = useQueryClient();
   const dropdownRef = useRef(null);
 
-  useKeyboardShortcuts();
+  useKeyboardShortcuts({ onSearchOpen: () => setSearchModalOpen(true) });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,7 +78,7 @@ export default function Layout() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate('/search')}
+                onClick={() => setSearchModalOpen(true)}
                 className="p-2 rounded text-muted-foreground hover:text-white transition-colors"
                 aria-label="Search"
               >
@@ -174,6 +175,7 @@ export default function Layout() {
           </div>
         </div>
       </footer>
+      <SearchModal open={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
     </div>
   );
 }

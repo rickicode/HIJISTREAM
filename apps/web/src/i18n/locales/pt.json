@@ -65,7 +65,10 @@
     "popular": "Popular",
     "topRated": "Mais Bem Avaliados",
     "upcoming": "Em Breve",
-    "ongoing": "No Ar"
+    "ongoing": "No Ar",
+    "searchPlaceholder": "Buscar filmes e series...",
+    "recentSearches": "Buscas Recentes",
+    "closeSearch": "Fechar"
   },
   "player": {
     "play": "Reproduzir",

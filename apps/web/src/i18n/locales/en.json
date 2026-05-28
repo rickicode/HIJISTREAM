@@ -65,7 +65,10 @@
     "popular": "Popular",
     "topRated": "Top Rated",
     "upcoming": "Upcoming",
-    "ongoing": "On Air"
+    "ongoing": "On Air",
+    "searchPlaceholder": "Search movies and TV shows...",
+    "recentSearches": "Recent Searches",
+    "closeSearch": "Close"
   },
   "player": {
     "play": "Play",
