@@ -85,5 +85,11 @@
   },
   "downloads": {
     "emptyState": "다운로드한 항목이 여기에 표시됩니다"
+  },
+  "filters": {
+    "popular": "인기",
+    "topRated": "평점순",
+    "newest": "최신",
+    "revenue": "수익순"
   }
 }

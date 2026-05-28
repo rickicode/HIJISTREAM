@@ -85,5 +85,11 @@
   },
   "downloads": {
     "emptyState": "Seus downloads aparecerao aqui"
+  },
+  "filters": {
+    "popular": "Popular",
+    "topRated": "Melhor Avaliado",
+    "newest": "Mais Recente",
+    "revenue": "Receita"
   }
 }

@@ -325,9 +325,12 @@ const server = Bun.serve({
       else if (pathname === '/api/discover/movie') {
         const with_genres = url.searchParams.get('with_genres') || '';
         const with_origin_country = url.searchParams.get('with_origin_country') || '';
-        const params = { sort_by: 'popularity.desc', page, ...langParam };
+        const sort_by = url.searchParams.get('sort_by') || 'popularity.desc';
+        const vote_count_gte = url.searchParams.get('vote_count.gte') || '';
+        const params = { sort_by, page, ...langParam };
         if (with_genres) params.with_genres = with_genres;
         if (with_origin_country) params.with_origin_country = with_origin_country;
+        if (vote_count_gte) params['vote_count.gte'] = vote_count_gte;
         const data = await fetchTMDB('/3/discover/movie', params);
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
@@ -336,9 +339,12 @@ const server = Bun.serve({
       else if (pathname === '/api/discover/tv') {
         const with_genres = url.searchParams.get('with_genres') || '';
         const with_origin_country = url.searchParams.get('with_origin_country') || '';
-        const params = { sort_by: 'popularity.desc', page, ...langParam };
+        const sort_by = url.searchParams.get('sort_by') || 'popularity.desc';
+        const vote_count_gte = url.searchParams.get('vote_count.gte') || '';
+        const params = { sort_by, page, ...langParam };
         if (with_genres) params.with_genres = with_genres;
         if (with_origin_country) params.with_origin_country = with_origin_country;
+        if (vote_count_gte) params['vote_count.gte'] = vote_count_gte;
         const data = await fetchTMDB('/3/discover/tv', params);
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);

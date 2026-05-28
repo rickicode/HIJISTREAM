@@ -1,13 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
-import api, { TMDB_COUNTRIES } from '../utils/api';
+import api, { TMDB_COUNTRIES, SORT_OPTIONS } from '../utils/api';
 import ContentGrid from '../components/ContentGrid';
 
 export default function CountryDetail() {
   const { code } = useParams();
   const { t, locale } = useTranslation();
+  const [sortBy, setSortBy] = useState('popularity.desc');
 
   const country = TMDB_COUNTRIES.find((c) => c.iso === code);
   const countryName = country ? `${country.flag} ${t(`countries.${country.code}`)}` : code;
@@ -25,9 +26,9 @@ export default function CountryDetail() {
     isFetchingNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['country-detail', code, locale],
+    queryKey: ['country-detail', code, locale, sortBy],
     queryFn: ({ pageParam }) =>
-      api.getDiscoverByCountry('movie', code, pageParam),
+      api.getDiscoverByCountry('movie', code, pageParam, sortBy),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage?.items?.length > 0) return allPages.length + 1;
@@ -39,7 +40,23 @@ export default function CountryDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6">{countryName}</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">{countryName}</h1>
+
+      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+        {SORT_OPTIONS.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => setSortBy(option.id)}
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              sortBy === option.id
+                ? 'bg-primary text-white'
+                : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'
+            }`}
+          >
+            {t(option.label)}
+          </button>
+        ))}
+      </div>
 
       <ContentGrid
         items={items}

@@ -58,6 +58,13 @@ export const GENRE_IDS = {
   scienceFiction: 878, tvMovie: 10770, thriller: 53, war: 10752, western: 37,
 };
 
+export const SORT_OPTIONS = [
+  { id: 'popularity.desc', label: 'filters.popular' },
+  { id: 'vote_average.desc', label: 'filters.topRated' },
+  { id: 'primary_release_date.desc', label: 'filters.newest' },
+  { id: 'revenue.desc', label: 'filters.revenue' },
+];
+
 const api = {
   getPopularMovies(page = 1) {
     return fetchWithCache(`/movies/popular?page=${page}`, `movies_popular_${page}`, TTL.CONTENT_LIST);
@@ -113,17 +120,17 @@ const api = {
   getGenres(type = 'movie') {
     return fetchWithCache(`/genres/${type}`, `genres_${type}`, TTL.CONTENT_LIST);
   },
-  getDiscoverByCountry(type = 'movie', countryCode, page = 1) {
+  getDiscoverByCountry(type = 'movie', countryCode, page = 1, sortBy = 'popularity.desc') {
     return fetchWithCache(
-      `/discover/${type}?with_origin_country=${countryCode}&page=${page}`,
-      `discover_country_${type}_${countryCode}_${page}`,
+      `/discover/${type}?with_origin_country=${countryCode}&page=${page}&sort_by=${sortBy}${sortBy === 'vote_average.desc' ? '&vote_count.gte=50' : ''}`,
+      `discover_country_${type}_${countryCode}_${page}_${sortBy}`,
       TTL.CONTENT_LIST
     );
   },
-  getDiscoverByGenre(type = 'movie', genreId, page = 1) {
+  getDiscoverByGenre(type = 'movie', genreId, page = 1, sortBy = 'popularity.desc') {
     return fetchWithCache(
-      `/discover/${type}?with_genres=${genreId}&page=${page}`,
-      `discover_genre_${type}_${genreId}_${page}`,
+      `/discover/${type}?with_genres=${genreId}&page=${page}&sort_by=${sortBy}${sortBy === 'vote_average.desc' ? '&vote_count.gte=50' : ''}`,
+      `discover_genre_${type}_${genreId}_${page}_${sortBy}`,
       TTL.CONTENT_LIST
     );
   },

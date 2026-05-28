@@ -85,5 +85,11 @@
   },
   "downloads": {
     "emptyState": "Unduhan Anda akan muncul di sini"
+  },
+  "filters": {
+    "popular": "Populer",
+    "topRated": "Rating Tertinggi",
+    "newest": "Terbaru",
+    "revenue": "Pendapatan"
   }
 }

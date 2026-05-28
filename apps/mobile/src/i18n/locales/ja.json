@@ -85,5 +85,11 @@
   },
   "downloads": {
     "emptyState": "ダウンロードはここに表示されます"
+  },
+  "filters": {
+    "popular": "人気",
+    "topRated": "高評価",
+    "newest": "最新",
+    "revenue": "興行収入"
   }
 }

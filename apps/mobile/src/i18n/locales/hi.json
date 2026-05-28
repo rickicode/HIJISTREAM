@@ -85,5 +85,11 @@
   },
   "downloads": {
     "emptyState": "आपके डाउनलोड यहां दिखाई देंगे"
+  },
+  "filters": {
+    "popular": "लोकप्रिय",
+    "topRated": "शीर्ष रेटेड",
+    "newest": "नवीनतम",
+    "revenue": "राजस्व"
   }
 }
