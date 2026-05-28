@@ -1,7 +1,7 @@
 {
   "task_id": "task-vidapi-audit-remediation",
   "task_description": "Audit and remediate VidAPI integration across web and mobile surfaces. Fix embed URL parameter compliance (resumeAt instead of t), add netflix skin parameter, add ds_lang default language parameter, implement topbar language selector (EN/ID), and filter invalid/unavailable movies from lists.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002"],
   "blocked_reason": null,
   "verification": {
