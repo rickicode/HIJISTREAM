@@ -19,9 +19,9 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
       className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-black"
       onClick={onPlay}
     >
-      {item.backdrop_url && (
+      {(item.backdrop_url || item.poster_url) && (
         <img
-          src={item.backdrop_url}
+          src={item.backdrop_url || item.poster_url}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />

@@ -45,6 +45,7 @@ export default function TVDetailScreen() {
         episode: '1',
         title: show.title,
         poster_url: show.poster_url || '',
+        backdrop_url: show.backdrop_url || '',
       },
     });
   };
@@ -59,6 +60,7 @@ export default function TVDetailScreen() {
         episode: String(episode),
         title: show.title,
         poster_url: show.poster_url || '',
+        backdrop_url: show.backdrop_url || '',
       },
     });
   };
@@ -66,7 +68,7 @@ export default function TVDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <PlayerBox item={show} onPlay={handlePlay} />
-      <DetailHero item={show} type="tv" onPlay={handlePlay} />
+      <DetailHero item={show} type="tv" />
       <EpisodeList
         episodes={show.episodes || []}
         seasons={show.number_of_seasons || 1}

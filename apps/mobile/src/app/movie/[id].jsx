@@ -42,6 +42,7 @@ export default function MovieDetailScreen() {
         id: movie.imdb_id || id,
         title: movie.title,
         poster_url: movie.poster_url || '',
+        backdrop_url: movie.backdrop_url || '',
       },
     });
   };
@@ -49,7 +50,7 @@ export default function MovieDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <PlayerBox item={movie} onPlay={handlePlay} />
-      <DetailHero item={movie} type="movie" onPlay={handlePlay} />
+      <DetailHero item={movie} type="movie" />
       {recommendedItems.length > 0 && (
         <ContentRail
           title="More Like This"

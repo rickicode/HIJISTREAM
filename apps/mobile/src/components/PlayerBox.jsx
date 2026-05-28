@@ -1,16 +1,15 @@
-import { View, ImageBackground, StyleSheet, Dimensions } from 'react-native';
+import { View, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
 import { Play } from 'lucide-react-native';
 import { colors, borderRadius } from '../theme';
 import TVFocusable from './TVFocusable';
 
-const { width: screenWidth } = Dimensions.get('window');
-const playerHeight = screenWidth * (9 / 16);
-
 export default function PlayerBox({ item, onPlay }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const playerHeight = screenWidth * (9 / 16);
   const backdropUri = item.backdrop_url || item.poster_url;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: screenWidth, height: playerHeight }]}>
       <ImageBackground
         source={{ uri: backdropUri }}
         style={styles.backdrop}
@@ -29,8 +28,6 @@ export default function PlayerBox({ item, onPlay }) {
 
 const styles = StyleSheet.create({
   container: {
-    width: screenWidth,
-    height: playerHeight,
     backgroundColor: colors.background,
   },
   backdrop: {
