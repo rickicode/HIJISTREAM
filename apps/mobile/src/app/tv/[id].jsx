@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -13,10 +14,17 @@ import ErrorState from '../../components/ErrorState';
 export default function TVDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const [selectedSeason, setSelectedSeason] = useState(1);
 
   const { data: show, isLoading, error, refetch } = useQuery({
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),
+  });
+
+  const { data: seasonData } = useQuery({
+    queryKey: ['tv-season', id, selectedSeason],
+    queryFn: () => api.getTVSeason(id, selectedSeason),
+    enabled: !!show?.number_of_seasons,
   });
 
   const { data: recommendations } = useQuery({
@@ -70,10 +78,11 @@ export default function TVDetailScreen() {
       <PlayerBox item={show} onPlay={handlePlay} />
       <DetailHero item={show} type="tv" />
       <EpisodeList
-        episodes={show.episodes || []}
+        episodes={seasonData?.episodes || []}
         seasons={show.number_of_seasons || 1}
         tmdbId={id}
         onPlayEpisode={handlePlayEpisode}
+        onSeasonChange={setSelectedSeason}
       />
       {recommendedItems.length > 0 && (
         <ContentRail
