@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
+import { getDsLang } from '../utils/language';
 import { colors } from '../theme';
 import VideoPlayer from '../components/VideoPlayer';
 
@@ -17,11 +18,13 @@ export default function PlayerScreen() {
     async function buildUrl() {
       const progress = await loadWatchProgress(contentId);
       const resumeAt = progress?.time || 0;
+      const dsLang = await getDsLang();
+      const options = { skin: 'netflix', dsLang };
 
       if (type === 'movie') {
-        setEmbedUrl(getMovieEmbedUrl(id, resumeAt));
+        setEmbedUrl(getMovieEmbedUrl(id, resumeAt, options));
       } else {
-        setEmbedUrl(getTVEmbedUrl(id, season || '1', episode || '1', resumeAt));
+        setEmbedUrl(getTVEmbedUrl(id, season || '1', episode || '1', resumeAt, options));
       }
     }
     buildUrl();

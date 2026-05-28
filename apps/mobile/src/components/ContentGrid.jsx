@@ -30,9 +30,11 @@ export default function ContentGrid({
     return <ErrorState error={error} onRetry={onRetry} />;
   }
 
+  const validItems = (items || []).filter(item => item && (item.id || item.tmdb_id));
+
   return (
     <FlatList
-      data={items}
+      data={validItems}
       numColumns={numColumns}
       key={`grid-${numColumns}`}
       keyExtractor={(item) => String(item.tmdb_id)}

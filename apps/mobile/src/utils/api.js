@@ -2,6 +2,11 @@ import cacheManager, { TTL } from './cache';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://hijistream-web.vercel.app/api';
 
+function filterValidItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.filter(item => item && item.id && item.title && item.title.trim() !== '');
+}
+
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = await cacheManager.get(cacheKey);
   if (cached) return cached;
@@ -12,6 +17,11 @@ async function fetchWithCache(endpoint, cacheKey, ttl) {
   }
 
   const data = await response.json();
+
+  if (data && Array.isArray(data.items)) {
+    data.items = filterValidItems(data.items);
+  }
+
   await cacheManager.set(cacheKey, data, ttl);
   return data;
 }
