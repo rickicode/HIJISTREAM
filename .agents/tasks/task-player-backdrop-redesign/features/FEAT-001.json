@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Move backdrop image from DetailHero to PlayerBox on the web surface. PlayerBox should display the backdrop_url as a background image when not playing, with a play button overlay. When playing, the VideoPlayer renders as before. DetailHero should have its large backdrop removed since the image is now in the player area. On TVDetail, add a PlayerBox-style backdrop preview (since TVDetail currently shows the VideoPlayer inline without PlayerBox).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Modify apps/web/src/components/PlayerBox.jsx: Add a `backdropUrl` prop (or use `item.backdrop_url`). When not playing, render the backdrop image as a full background of the aspect-video container with a dark gradient overlay and a centered play button. Keep the existing onClick handler.",
     "Modify apps/web/src/components/DetailHero.jsx: Remove the large backdrop section (the absolute-positioned 450px-tall image container with gradients at the top). Keep the poster, title, metadata, genres, cast, overview, and play button - but no longer render the large backdrop background. Adjust pt-[200px] since the backdrop is removed - reduce to a smaller top padding. The section should be a clean info area with the poster and text on a dark background.",
@@ -22,5 +22,5 @@
     "Run `bun run lint` in apps/web"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Build and lint pass cleanly. PlayerBox now shows backdrop_url as background with gradient overlay when not playing. DetailHero has its large backdrop section removed (no more 450px absolute container or pt-[200px]). TVDetail now uses PlayerBox component instead of inline VideoPlayer, matching MovieDetail pattern. handlePlayEpisode from EpisodeList still works - it updates currentSeason/currentEpisode state which PlayerBox uses."
 }
