@@ -7,17 +7,26 @@ import TVFocusable from './TVFocusable';
 export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode }) {
   const totalSeasons = typeof seasons === 'number' ? seasons : 1;
   const [activeSeason, setActiveSeason] = useState(1);
-  const episodesPerSeason = 10;
 
   const hasEpisodeData = Array.isArray(episodes) && episodes.length > 0;
   const seasonEpisodes = hasEpisodeData
     ? episodes.filter(
         (ep) => ep.season === activeSeason || ep.season_number === activeSeason
       )
-    : Array.from({ length: episodesPerSeason }).map((_, i) => ({
-        episode: i + 1,
-        title: `Episode ${i + 1}`,
-      }));
+    : [];
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyText}>No episodes available for this season</Text>
+      <TVFocusable
+        onPress={() => onPlayEpisode(activeSeason, 1)}
+        style={styles.playSeasonButton}
+      >
+        <Play color="#000000" size={16} fill="#000000" />
+        <Text style={styles.playSeasonText}>Play Season {activeSeason}</Text>
+      </TVFocusable>
+    </View>
+  );
 
   const renderEpisode = ({ item: ep, index }) => {
     const epNumber = ep.episode_number || ep.episode || index + 1;
@@ -77,14 +86,18 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           ))}
         </View>
       )}
-      <FlatList
-        data={seasonEpisodes}
-        keyExtractor={(item, index) =>
-          String(item.episode_number || item.episode || index)
-        }
-        renderItem={renderEpisode}
-        scrollEnabled={false}
-      />
+      {seasonEpisodes.length === 0 ? (
+        renderEmptyState()
+      ) : (
+        <FlatList
+          data={seasonEpisodes}
+          keyExtractor={(item, index) =>
+            String(item.episode_number || item.episode || index)
+          }
+          renderItem={renderEpisode}
+          scrollEnabled={false}
+        />
+      )}
     </View>
   );
 }
@@ -180,5 +193,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 36,
     minHeight: 36,
+  },
+  emptyState: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: colors.textMuted,
+    ...typography.body,
+    textAlign: 'center',
+  },
+  playSeasonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.md,
+    minWidth: 140,
+    minHeight: 48,
+  },
+  playSeasonText: {
+    color: '#000000',
+    ...typography.subtitle,
+    fontWeight: '600',
   },
 });

@@ -35,7 +35,9 @@ export default function HomeScreen() {
 
   const movies = trendingMovies?.items?.slice(0, 10) || [];
   const tvShows = trendingTV?.items?.slice(0, 10) || [];
-  const heroItem = movies[0] || null;
+  const heroItem = movies.length > 0
+    ? movies[Math.floor(Math.random() * Math.min(movies.length, 5))]
+    : null;
 
   const sections = [];
 

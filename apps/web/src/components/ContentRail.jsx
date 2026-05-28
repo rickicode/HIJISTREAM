@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 
-export default function ContentRail({ title, href, items = [], type = 'movie', isLoading }) {
+export default function ContentRail({ title, href = '', items = [], type = 'movie', isLoading = false }) {
   const scrollRef = useRef(null);
 
   const scroll = (direction) => {
@@ -52,7 +52,7 @@ export default function ContentRail({ title, href, items = [], type = 'movie', i
               ))
             : items.map((item) => (
                 <div key={item.id || item.tmdb_id} className="w-[150px] sm:w-[180px] shrink-0">
-                  <ContentCard item={item} type={type} />
+                  <ContentCard item={item} type={item.type || type} watchProgress={item.percentage} />
                 </div>
               ))}
         </div>
