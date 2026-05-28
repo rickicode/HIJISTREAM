@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "fix",
   "description": "Web surface: Fix VidAPI embed URL compliance, add netflix skin parameter, add ds_lang parameter support, add topbar language selector (English/Indonesian), and implement invalid movie filtering",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Fix apps/web/src/utils/player.js - Change `?t=` to `?resumeAt=` in both getMovieEmbedUrl and getTVEmbedUrl to match VidAPI documentation (resumeAt is the documented parameter, not t).",
     "2. Add skin parameter support to apps/web/src/utils/player.js - Add an optional `skin` parameter (default: 'netflix') to getMovieEmbedUrl and getTVEmbedUrl that appends `&skin=netflix` to the embed URL. Create a helper function buildEmbedParams(options) that constructs query string from { resumeAt, skin, dsLang }.",
@@ -37,5 +37,5 @@
     "cd apps/web && bun run test"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All verification steps passed: typecheck (0 errors), lint (0 errors), build (success), test (42 tests passing including 15 new player.test.js tests and 5 new filtering tests in transform.test.js). Git pull failed due to sandbox auth token issue but proceeded with existing codebase."
 }
