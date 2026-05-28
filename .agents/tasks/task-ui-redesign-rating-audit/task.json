@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ui-redesign-rating-audit",
+  "task_description": "Total UI redesign for mobile APK (Home page, bottom nav, genre/country pages) + cross-platform IMDB rating audit + download removal verification + full mobile codebase bug audit with fixes.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

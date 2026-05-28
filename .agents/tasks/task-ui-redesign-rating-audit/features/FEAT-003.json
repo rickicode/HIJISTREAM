@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Redesign genre/[id].jsx and country/[code].jsx category pages to improve visual quality. Fix the ugly hero header in genre page, apply consistent design to country page.",
+  "status": "pending",
+  "steps": [
+    "In apps/mobile/src/app/genre/[id].jsx: Redesign the heroHeader section. Remove the current 140px height box with muted primary overlay approach. Replace with a more refined design: reduce height to 100px, use a subtle gradient from a darkened version of colors.primary (e.g., rgba(229,9,20,0.08) blending to transparent), center the genre title with larger typography (fontSize: 32, fontWeight: '800'), position the back button at top-left with proper spacing. Remove heroBackground and heroOverlay views. Use a single clean dark gradient background instead.",
+    "In apps/mobile/src/app/country/[code].jsx: Apply a similar refined header design for consistency. The current header is simpler (just a row with back button + title) but lacks visual polish. Add a subtle background treatment similar to the genre page - use a container with a very subtle gradient background (rgba(255,255,255,0.03) at top fading to transparent). Increase the title fontSize to match (use typography.hero or fontSize 28). Add paddingVertical to the header for better spacing.",
+    "Verify genre navigation from DetailHero genre pills still works: genre pills call router.push('/genre/{genreId}') which routes to the redesigned genre/[id].jsx page - confirm the useLocalSearchParams still receives 'id' correctly."
+  ],
+  "acceptance_criteria": [
+    "Genre page header no longer uses the ugly muted primary overlay",
+    "Genre page has a refined, darker gradient header with proper title sizing",
+    "Country page header has consistent visual treatment",
+    "Back button functions correctly on both pages",
+    "Sort/filter TabBar below the header is unaffected and still works",
+    "ContentGrid below still receives items and renders correctly",
+    "Genre navigation from DetailHero genre pills still routes to correct genre page"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

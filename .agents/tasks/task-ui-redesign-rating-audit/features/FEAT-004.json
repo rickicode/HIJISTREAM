@@ -1,0 +1,39 @@
+{
+  "id": "FEAT-004",
+  "type": "fix",
+  "description": "IMDB Rating cross-platform audit: Verify rating badges display correctly on both mobile and web ContentCard components. Also confirm download removal (already confirmed no download code exists). Also perform full mobile codebase bug audit and fix all issues found.",
+  "status": "pending",
+  "steps": [
+    "RATING AUDIT - Mobile ContentCard (apps/mobile/src/components/ContentCard.jsx): Verify the rating badge logic correctly handles all edge cases. Current logic: shows badge when item.rating exists AND item.rating !== '0' AND item.rating !== '0.0'. This is correct. The badge is positioned absolute top-right (top:6, right:6) which is good. Confirm it does not overlap with the progress bar (progress bar is at bottom: 0). No changes needed if logic is sound.",
+    "RATING AUDIT - Web ContentCard (apps/web/src/components/ContentCard.jsx): Verify identical rating badge behavior. Current logic: shows badge when item.poster_url AND item.rating AND item.rating !== '0' AND item.rating !== '0.0'. NOTE: The web version also requires item.poster_url to show the rating badge - this means if poster_url is missing but rating exists, the badge is hidden. This is intentional (badge overlays the poster image). Confirm parity with mobile approach.",
+    "RATING AUDIT - API data shape: The API response items have a 'rating' field (string). Confirmed from api.js filterValidItems checks item.id and item.title. The ContentCard on both platforms uses item.rating. This matches.",
+    "DOWNLOAD REMOVAL AUDIT: Already searched the entire apps/mobile/ directory for 'download', 'Download', 'unduh', 'Unduh', 'offline', 'ArrowDownToLine', 'HardDrive' - NO matches found. The codebase is clean of download references. Document this finding.",
+    "BUG AUDIT - TVFocusable.jsx: The component applies minWidth:80, minHeight:80 and borderWidth:3 to ALL children via styles.container. This is problematic because it forces a minimum size on elements like ContentCard, rating badges, small buttons etc. The minWidth/minHeight was intended for TV remote focus targets but 80px is too large for many use cases. FIX: Remove the minWidth and minHeight from the container style, and remove the borderWidth:3 (replaced with borderWidth: 0 and only show border when focused). The individual components that use TVFocusable (ContentCard, buttons, etc.) already set their own min sizes.",
+    "BUG AUDIT - SearchBar.jsx: The onSearch callback is not wrapped in useCallback, but it's used in a useEffect dependency array. If the parent re-renders frequently (e.g., from query state changes), this could cause infinite loops since onSearch identity changes every render. However, looking at the actual usage, the debounce timer prevents actual infinite loops. This is not a critical bug but should note: the clearTimeout/setTimeout destructuring from global is unusual. Leave as-is, it works.",
+    "BUG AUDIT - VideoPlayer.jsx: The metadata prop in the dependency array of handleMessage callback could cause unnecessary re-renders since metadata is an object created inline in player.jsx. This causes handleMessage to be recreated every render, but WebView onMessage doesn't cause issues with stale closures since it only reads current values. Not a critical bug.",
+    "BUG AUDIT - EpisodeList.jsx: Hardcoded English strings found: 'Episodes', 'No episodes available for this season', 'Play Season {activeSeason}'. These should use the t() translation function. FIX: Replace 'Episodes' with t('player.episodes'), add new i18n keys for the empty state and play season text.",
+    "BUG AUDIT - ErrorState.jsx: Hardcoded English strings: 'Something went wrong', 'Try Again'. FIX: Replace with t('common.error') and t('common.retry'). Note: ErrorState does not currently import useTranslation - need to add the import and hook call.",
+    "BUG AUDIT - home.jsx: The heroItem is computed with useMemo using Math.random() inside. This means on re-renders where movies array reference changes (e.g., from React Query background refetch), a NEW random hero will be picked. This could cause jarring UI changes. However, the movies array is wrapped in useMemo itself, so it only changes when trendingMovies changes. This is acceptable behavior.",
+    "BUG AUDIT - ContentGrid.jsx: The container padding uses spacing.xl (32) which is quite large for a mobile grid. This reduces the content area significantly. FIX: Change to spacing.md (16) for better content density on mobile screens.",
+    "BUG AUDIT - Add missing i18n keys to all 7 locale JSON files for the new strings needed by EpisodeList and ErrorState fixes."
+  ],
+  "acceptance_criteria": [
+    "Rating badge displays correctly on mobile ContentCard (star + number, top-right, hidden when rating is 0 or missing)",
+    "Rating badge displays correctly on web ContentCard (same behavior)",
+    "No download-related code exists anywhere in apps/mobile/ (confirmed already clean)",
+    "TVFocusable no longer forces minWidth/minHeight/borderWidth on all children - only shows border on focus",
+    "EpisodeList uses t() for all user-visible strings instead of hardcoded English",
+    "ErrorState uses t() for all user-visible strings instead of hardcoded English",
+    "ContentGrid padding reduced from spacing.xl to spacing.md",
+    "All 7 locale files updated with new i18n keys",
+    "No build errors after all fixes"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && npm run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

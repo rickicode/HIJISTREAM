@@ -2,4 +2,8 @@
 module.exports = {
   extends: 'expo',
   ignorePatterns: ['/dist/*'],
+  globals: {
+    setTimeout: 'readonly',
+    clearTimeout: 'readonly',
+  },
 };
