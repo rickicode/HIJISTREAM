@@ -19,9 +19,9 @@ export default function PlayerScreen() {
       const resumeAt = progress?.time || 0;
 
       if (type === 'movie') {
-        setEmbedUrl(getMovieEmbedUrl(id, resumeAt));
+        setEmbedUrl(await getMovieEmbedUrl(id, resumeAt));
       } else {
-        setEmbedUrl(getTVEmbedUrl(id, season || '1', episode || '1', resumeAt));
+        setEmbedUrl(await getTVEmbedUrl(id, season || '1', episode || '1', resumeAt));
       }
     }
     buildUrl();
@@ -45,9 +45,7 @@ export default function PlayerScreen() {
       <View style={styles.playerWrapper}>
         <VideoPlayer
           embedUrl={embedUrl}
-          title={title || ''}
           contentId={contentId}
-          onBack={() => router.back()}
           metadata={{
             title: title || '',
             poster_url: poster_url || '',

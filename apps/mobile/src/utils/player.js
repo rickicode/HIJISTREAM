@@ -1,23 +1,24 @@
 import storage from './storage';
+import { getDsLang } from './language';
 
 const PLAYER_BASE_URL = 'https://vaplayer.ru/embed';
 const PROGRESS_PREFIX = 'watch_progress_';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function getMovieEmbedUrl(imdbId, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/movie/${imdbId}`;
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+export async function getMovieEmbedUrl(imdbId, resumeAt) {
+  const parts = ['skin=netflix'];
+  if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
+  const dsLang = await getDsLang();
+  if (dsLang) parts.push(`ds_lang=${dsLang}`);
+  return `${PLAYER_BASE_URL}/movie/${imdbId}?${parts.join('&')}`;
 }
 
-export function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}`;
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+export async function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
+  const parts = ['skin=netflix'];
+  if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
+  const dsLang = await getDsLang();
+  if (dsLang) parts.push(`ds_lang=${dsLang}`);
+  return `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}?${parts.join('&')}`;
 }
 
 export async function saveWatchProgress(id, time, duration, metadata = {}) {

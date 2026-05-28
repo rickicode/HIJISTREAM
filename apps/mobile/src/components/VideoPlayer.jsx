@@ -1,12 +1,10 @@
 import { useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme';
+import { colors } from '../theme';
 import { saveWatchProgress } from '../utils/player';
-import TVFocusable from './TVFocusable';
 
-export default function VideoPlayer({ embedUrl, title, contentId, onBack, metadata = {} }) {
+export default function VideoPlayer({ embedUrl, contentId, metadata = {} }) {
   const lastSaveRef = useRef(0);
 
   const injectedJavaScript = useMemo(
@@ -66,14 +64,6 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TVFocusable onPress={onBack} style={styles.backButton}>
-          <ArrowLeft color={colors.text} size={20} />
-        </TVFocusable>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
       <WebView
         source={{ uri: embedUrl }}
         style={styles.webview}
@@ -90,29 +80,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.backgroundElevated,
-    gap: spacing.sm,
-  },
-  backButton: {
-    minWidth: 40,
-    minHeight: 40,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
+    backgroundColor: '#000000',
   },
   webview: {
     flex: 1,

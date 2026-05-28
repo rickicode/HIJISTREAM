@@ -26,7 +26,6 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
               embedUrl={embedUrl}
               title={item.title}
               contentId={contentId}
-              onBack={onClose}
               metadata={metadata}
             />
           </div>
