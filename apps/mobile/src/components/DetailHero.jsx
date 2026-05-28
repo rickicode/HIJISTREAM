@@ -1,32 +1,44 @@
-import { View, Text, Image, StyleSheet } from 'react-native';
-import { Play, Star } from 'lucide-react-native';
+import { View, Text, Image, ImageBackground, StyleSheet } from 'react-native';
+import { Play } from 'lucide-react-native';
+import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
+  const backdropUri = item.backdrop_url || item.poster_url;
 
   return (
     <View style={styles.container}>
-      <View style={styles.posterContainer}>
-        <Image
-          source={{ uri: item.poster_url }}
-          style={styles.poster}
-          resizeMode="cover"
-        />
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.title}>{item.title}</Text>
-        <View style={styles.metaRow}>
-          {item.year && <Text style={styles.metaText}>{item.year}</Text>}
-          {item.rating && (
-            <View style={styles.ratingContainer}>
-              <Star color="#EAB308" size={14} fill="#EAB308" />
-              <Text style={styles.metaText}>{item.rating}</Text>
+      <ImageBackground
+        source={{ uri: backdropUri }}
+        style={styles.backdrop}
+        resizeMode="cover"
+      >
+        <View style={styles.gradientOverlay1} />
+        <View style={styles.gradientOverlay2} />
+        <View style={styles.gradientOverlay3} />
+      </ImageBackground>
+      <View style={styles.infoSection}>
+        <View style={styles.posterRow}>
+          <View style={styles.posterContainer}>
+            <Image
+              source={{ uri: item.poster_url }}
+              style={styles.poster}
+              resizeMode="cover"
+            />
+          </View>
+          <View style={styles.metaContainer}>
+            <Text style={styles.title}>{item.title}</Text>
+            <View style={styles.metaRow}>
+              {item.year && <Text style={styles.metaText}>{item.year}</Text>}
+              {item.rating && (
+                <Text style={styles.ratingText}>{item.rating}</Text>
+              )}
+              {item.runtime && (
+                <Text style={styles.metaText}>{item.runtime} min</Text>
+              )}
             </View>
-          )}
-          {item.runtime && (
-            <Text style={styles.metaText}>{item.runtime} min</Text>
-          )}
+          </View>
         </View>
         {genres.length > 0 && (
           <View style={styles.genreRow}>
@@ -38,13 +50,13 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
           </View>
         )}
         {item.overview && (
-          <Text style={styles.overview} numberOfLines={5}>
+          <Text style={styles.overview} numberOfLines={4}>
             {item.overview}
           </Text>
         )}
         {onPlay && (
           <TVFocusable onPress={onPlay} style={styles.playButton}>
-            <Play color="#FFFFFF" size={20} fill="#FFFFFF" />
+            <Play color="#000000" size={20} fill="#000000" />
             <Text style={styles.playText}>Play</Text>
           </TVFocusable>
         )}
@@ -55,84 +67,112 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: colors.background,
+  },
+  backdrop: {
+    height: 350,
+    justifyContent: 'flex-end',
+  },
+  gradientOverlay1: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20,20,20,0.2)',
+  },
+  gradientOverlay2: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 180,
+    backgroundColor: 'rgba(20,20,20,0.6)',
+  },
+  gradientOverlay3: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 80,
+    backgroundColor: 'rgba(20,20,20,0.9)',
+  },
+  infoSection: {
+    padding: spacing.md,
+  },
+  posterRow: {
     flexDirection: 'row',
-    padding: 40,
-    gap: 24,
+    gap: spacing.md,
+    marginTop: -60,
   },
   posterContainer: {
-    width: 250,
+    width: 150,
     aspectRatio: 2 / 3,
-    borderRadius: 12,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    backgroundColor: '#262626',
+    backgroundColor: colors.backgroundElevated,
   },
   poster: {
     width: '100%',
     height: '100%',
   },
-  info: {
+  metaContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.sm,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '700',
+    color: colors.text,
+    ...typography.hero,
+    marginBottom: spacing.sm,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 12,
+    gap: spacing.md,
   },
   metaText: {
-    color: '#9CA3AF',
-    fontSize: 14,
+    color: colors.textSecondary,
+    ...typography.body,
   },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  ratingText: {
+    color: colors.rating,
+    ...typography.body,
+    fontWeight: '600',
   },
   genreRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 16,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   genrePill: {
-    backgroundColor: '#262626',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   genreText: {
-    color: '#9CA3AF',
-    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    ...typography.caption,
   },
   overview: {
-    color: '#D1D5DB',
-    fontSize: 14,
+    color: colors.textSecondary,
+    ...typography.body,
     lineHeight: 22,
-    marginTop: 16,
+    marginTop: spacing.md,
   },
   playButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#2563EB',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    marginTop: 24,
-    alignSelf: 'flex-start',
-    minWidth: 140,
+    gap: spacing.sm,
+    backgroundColor: colors.text,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.lg,
+    minWidth: 80,
     minHeight: 50,
   },
   playText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

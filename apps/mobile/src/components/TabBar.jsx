@@ -1,4 +1,5 @@
 import { ScrollView, Text, StyleSheet } from 'react-native';
+import { colors, spacing, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
 export default function TabBar({ tabs, activeTab, onTabChange }) {
@@ -29,13 +30,13 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 40,
-    paddingVertical: 8,
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   tab: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
     minWidth: 80,
@@ -44,15 +45,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   activeTab: {
-    borderBottomColor: '#2563EB',
+    borderBottomColor: colors.primary,
   },
   tabText: {
-    color: '#9CA3AF',
-    fontSize: 15,
+    color: colors.textMuted,
+    ...typography.subtitle,
     fontWeight: '400',
   },
   activeTabText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontWeight: '700',
   },
 });

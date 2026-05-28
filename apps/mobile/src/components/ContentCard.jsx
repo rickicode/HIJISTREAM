@@ -1,10 +1,10 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
 export default function ContentCard({ item, type = 'movie', watchProgress = null }) {
   const router = useRouter();
-  const genres = item.genre ? item.genre.split(',').map((g) => g.trim()).slice(0, 2) : [];
 
   const handlePress = () => {
     const effectiveType = item._detectedType || type;
@@ -33,18 +33,8 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
-        <View style={styles.metaRow}>
-          {item.year && <Text style={styles.metaText}>{item.year}</Text>}
-          {item.rating && <Text style={styles.metaText}>&#9733; {item.rating}</Text>}
-        </View>
-        {genres.length > 0 && (
-          <View style={styles.genreRow}>
-            {genres.map((genre) => (
-              <View key={genre} style={styles.genrePill}>
-                <Text style={styles.genreText}>{genre}</Text>
-              </View>
-            ))}
-          </View>
+        {item.year && (
+          <Text style={styles.year}>{item.year}</Text>
         )}
       </View>
     </TVFocusable>
@@ -54,15 +44,15 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: borderRadius.sm,
     overflow: 'hidden',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: colors.card,
     minWidth: 80,
     minHeight: 80,
   },
   posterContainer: {
     aspectRatio: 2 / 3,
-    backgroundColor: '#262626',
+    backgroundColor: colors.backgroundElevated,
     position: 'relative',
   },
   poster: {
@@ -75,44 +65,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: '#374151',
+    backgroundColor: colors.border,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.primary,
   },
   info: {
-    padding: 8,
+    padding: spacing.xs,
   },
   title: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    color: colors.text,
+    ...typography.body,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  metaText: {
-    color: '#9CA3AF',
-    fontSize: 11,
-  },
-  genreRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 6,
-  },
-  genrePill: {
-    backgroundColor: '#262626',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  genreText: {
-    color: '#9CA3AF',
-    fontSize: 10,
+  year: {
+    color: colors.textMuted,
+    ...typography.small,
+    marginTop: 2,
   },
 });

@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Complete Netflix-style mobile app redesign. Rebuild all React Native components and screens to match the web Netflix aesthetic with mobile-native ergonomics. Use the same color tokens (#141414 bg, #E50914 primary red, white text) and design language but adapted for touch interaction, ScrollView-based rails, and native navigation patterns.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Create `apps/mobile/src/theme.js` - a shared design tokens file exporting colors (background: '#141414', backgroundElevated: '#1a1a1a', card: '#181818', primary: '#E50914', primaryHover: '#F40612', text: '#FFFFFF', textMuted: '#808080', textSecondary: '#b3b3b3', border: '#333333', rating: '#46d369', overlay: 'rgba(0,0,0,0.7)'), spacing, borderRadius, and typography constants. This serves as the single source of truth for all mobile styling.",
     "Rewrite `apps/mobile/src/app/_layout.jsx` - update Stack screenOptions contentStyle backgroundColor to '#141414', keep existing QueryClient, SafeAreaProvider, font loading, and SplashScreen logic.",

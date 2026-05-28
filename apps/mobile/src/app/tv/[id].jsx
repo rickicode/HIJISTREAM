@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
+import { colors } from '../../theme';
 import DetailHero from '../../components/DetailHero';
 import EpisodeList from '../../components/EpisodeList';
 import LoadingState from '../../components/LoadingState';
@@ -68,6 +69,6 @@ export default function TVDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: colors.background,
   },
 });

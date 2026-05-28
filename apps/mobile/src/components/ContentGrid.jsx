@@ -1,4 +1,5 @@
 import { FlatList, StyleSheet, useWindowDimensions } from 'react-native';
+import { colors, spacing } from '../theme';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
@@ -49,10 +50,11 @@ export default function ContentGrid({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 40,
+    padding: spacing.xl,
+    backgroundColor: colors.background,
   },
   row: {
-    gap: 16,
-    marginBottom: 16,
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
 });
