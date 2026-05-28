@@ -12,6 +12,8 @@ const TVDetail = lazy(() => import('./app/TVDetail'));
 const Anime = lazy(() => import('./app/Anime'));
 const Player = lazy(() => import('./app/Player'));
 const Search = lazy(() => import('./app/Search'));
+const GenreDetail = lazy(() => import('./app/GenreDetail'));
+const CountryDetail = lazy(() => import('./app/CountryDetail'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +47,8 @@ export default function App() {
                 <Route path="/anime" element={<Anime />} />
                 <Route path="/player/:type/:id" element={<Player />} />
                 <Route path="/search" element={<Search />} />
+                <Route path="/genre/:id" element={<GenreDetail />} />
+                <Route path="/country/:code" element={<CountryDetail />} />
               </Route>
             </Routes>
           </Suspense>

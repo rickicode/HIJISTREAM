@@ -2,10 +2,14 @@ import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../utils/api';
 import { getAllWatchProgress } from '../utils/player';
+import { useTranslation } from '../i18n';
 import HeroBanner from '../components/HeroBanner';
 import ContentRail from '../components/ContentRail';
+import BrowseSection from '../components/BrowseSection';
 
 export default function Home() {
+  const { t, locale } = useTranslation();
+
   useEffect(() => {
     document.title = 'HIJISTREAM - Stream Movies & TV Shows';
   }, []);
@@ -13,22 +17,22 @@ export default function Home() {
   const watchProgress = getAllWatchProgress();
 
   const { data: trendingMovies, isLoading: moviesLoading } = useQuery({
-    queryKey: ['trending-movies-home'],
+    queryKey: ['trending-movies-home', locale],
     queryFn: () => api.getTrendingMovies(1),
   });
 
   const { data: trendingTV, isLoading: tvLoading } = useQuery({
-    queryKey: ['trending-tv-home'],
+    queryKey: ['trending-tv-home', locale],
     queryFn: () => api.getTrendingTV(1),
   });
 
   const { data: tvOnTheAir, isLoading: onTheAirLoading } = useQuery({
-    queryKey: ['tv-on-the-air-home'],
+    queryKey: ['tv-on-the-air-home', locale],
     queryFn: () => api.getTVOnTheAir(1),
   });
 
   const { data: animeTrending, isLoading: animeLoading } = useQuery({
-    queryKey: ['anime-trending-home'],
+    queryKey: ['anime-trending-home', locale],
     queryFn: () => api.getAnimeTrending(1),
   });
 
@@ -45,16 +49,20 @@ export default function Home() {
     <div className="space-y-8 pb-12">
       <HeroBanner item={heroItem} type="movie" />
 
+      <div className="px-4 sm:px-8 md:px-12">
+        <BrowseSection />
+      </div>
+
       {watchProgress.length > 0 && (
         <ContentRail
-          title="Continue Watching"
+          title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
         />
       )}
 
       <ContentRail
-        title="Trending Movies"
+        title={t('common.trending') + ' ' + t('nav.movies')}
         href="/movies"
         items={movieItems}
         type="movie"
@@ -62,7 +70,7 @@ export default function Home() {
       />
 
       <ContentRail
-        title="Trending TV Shows"
+        title={t('common.trending') + ' ' + t('nav.tvShows')}
         href="/tv"
         items={tvItems}
         type="tv"
@@ -70,7 +78,7 @@ export default function Home() {
       />
 
       <ContentRail
-        title="Ongoing Series"
+        title={t('common.ongoing')}
         href="/tv"
         items={onTheAirItems}
         type="tv"
@@ -78,7 +86,7 @@ export default function Home() {
       />
 
       <ContentRail
-        title="Trending Anime"
+        title={t('common.trending') + ' ' + t('nav.anime')}
         href="/anime"
         items={animeItems}
         type="tv"
