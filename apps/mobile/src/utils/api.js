@@ -47,6 +47,24 @@ const api = {
   getTVSeason(id, season) {
     return fetchWithCache(`/tv/${id}/season/${season}`, `tv_season_${id}_${season}`, TTL.CONTENT_DETAIL);
   },
+  getMovieRecommendations(id) {
+    return fetchWithCache(`/movies/${id}/recommendations`, `movie_recommendations_${id}`, TTL.CONTENT_LIST);
+  },
+  getTVRecommendations(id) {
+    return fetchWithCache(`/tv/${id}/recommendations`, `tv_recommendations_${id}`, TTL.CONTENT_LIST);
+  },
+  getAnimeTrending(page = 1) {
+    return fetchWithCache(`/anime/trending?page=${page}`, `anime_trending_${page}`, TTL.CONTENT_LIST);
+  },
+  getAnimeOngoing(page = 1) {
+    return fetchWithCache(`/anime/ongoing?page=${page}`, `anime_ongoing_${page}`, TTL.CONTENT_LIST);
+  },
+  getAnimeTopRated(page = 1) {
+    return fetchWithCache(`/anime/top-rated?page=${page}`, `anime_toprated_${page}`, TTL.CONTENT_LIST);
+  },
+  getTVOnTheAir(page = 1) {
+    return fetchWithCache(`/tv/on-the-air?page=${page}`, `tv_ontheair_${page}`, TTL.CONTENT_LIST);
+  },
   search(query, page = 1) {
     return fetchWithCache(`/search?query=${encodeURIComponent(query)}&page=${page}`, `search_${query}_${page}`, TTL.SEARCH);
   },

@@ -293,6 +293,47 @@ const server = Bun.serve({
         result = transformSearchResults(data);
         ttl = TTL.SEARCH;
       }
+      // Route: GET /api/anime/trending
+      else if (pathname === '/api/anime/trending') {
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page });
+        const items = (data.results || []).map(transformTVListItem);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/anime/ongoing
+      else if (pathname === '/api/anime/ongoing') {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, sort_by: 'popularity.desc', page });
+        const items = (data.results || []).map(transformTVListItem);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/anime/top-rated
+      else if (pathname === '/api/anime/top-rated') {
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page });
+        const items = (data.results || []).map(transformTVListItem);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/tv/on-the-air
+      else if (pathname === '/api/tv/on-the-air') {
+        const data = await fetchTMDB('/3/tv/on_the_air', { page });
+        const items = (data.results || []).map(transformTVListItem);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/movies/:id/recommendations
+      else if (pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/);
+        const movieId = match[1];
+        const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page });
+        const items = (data.results || []).map(transformMovieListItem);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/tv/:id/recommendations
+      else if (pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/);
+        const tvId = match[1];
+        const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page });
+        const items = (data.results || []).map(transformTVListItem);
+        result = wrapPaginatedList(data, items);
+      }
       // Route: GET /api/tv/:id/season/:season
       else if (pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/)) {
         const match = pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/);
