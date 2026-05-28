@@ -242,88 +242,122 @@ const server = Bun.serve({
 
     try {
       const page = url.searchParams.get('page') || '1';
+      const language = url.searchParams.get('language') || '';
+      const langParam = language ? { language } : {};
       let result;
       let ttl = TTL.LIST;
 
       // Route: GET /api/movies/popular
       if (pathname === '/api/movies/popular') {
-        const data = await fetchTMDB('/3/movie/popular', { page });
+        const data = await fetchTMDB('/3/movie/popular', { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/movies/trending
       else if (pathname === '/api/movies/trending') {
-        const data = await fetchTMDB('/3/trending/movie/week', { page });
+        const data = await fetchTMDB('/3/trending/movie/week', { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/movies/top-rated
       else if (pathname === '/api/movies/top-rated') {
-        const data = await fetchTMDB('/3/movie/top_rated', { page });
+        const data = await fetchTMDB('/3/movie/top_rated', { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/movies/upcoming
       else if (pathname === '/api/movies/upcoming') {
-        const data = await fetchTMDB('/3/movie/upcoming', { page });
+        const data = await fetchTMDB('/3/movie/upcoming', { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/popular
       else if (pathname === '/api/tv/popular') {
-        const data = await fetchTMDB('/3/tv/popular', { page });
+        const data = await fetchTMDB('/3/tv/popular', { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/trending
       else if (pathname === '/api/tv/trending') {
-        const data = await fetchTMDB('/3/trending/tv/week', { page });
+        const data = await fetchTMDB('/3/trending/tv/week', { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/top-rated
       else if (pathname === '/api/tv/top-rated') {
-        const data = await fetchTMDB('/3/tv/top_rated', { page });
+        const data = await fetchTMDB('/3/tv/top_rated', { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/search
       else if (pathname === '/api/search') {
         const query = url.searchParams.get('query') || '';
-        const data = await fetchTMDB('/3/search/multi', { query, page });
+        const data = await fetchTMDB('/3/search/multi', { query, page, ...langParam });
         result = transformSearchResults(data);
         ttl = TTL.SEARCH;
       }
       // Route: GET /api/anime/trending
       else if (pathname === '/api/anime/trending') {
-        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page });
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/anime/ongoing
       else if (pathname === '/api/anime/ongoing') {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page });
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/anime/top-rated
       else if (pathname === '/api/anime/top-rated') {
-        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page });
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/on-the-air
       else if (pathname === '/api/tv/on-the-air') {
-        const data = await fetchTMDB('/3/tv/on_the_air', { page });
+        const data = await fetchTMDB('/3/tv/on_the_air', { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/discover/movie
+      else if (pathname === '/api/discover/movie') {
+        const with_genres = url.searchParams.get('with_genres') || '';
+        const with_origin_country = url.searchParams.get('with_origin_country') || '';
+        const params = { sort_by: 'popularity.desc', page, ...langParam };
+        if (with_genres) params.with_genres = with_genres;
+        if (with_origin_country) params.with_origin_country = with_origin_country;
+        const data = await fetchTMDB('/3/discover/movie', params);
+        const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/discover/tv
+      else if (pathname === '/api/discover/tv') {
+        const with_genres = url.searchParams.get('with_genres') || '';
+        const with_origin_country = url.searchParams.get('with_origin_country') || '';
+        const params = { sort_by: 'popularity.desc', page, ...langParam };
+        if (with_genres) params.with_genres = with_genres;
+        if (with_origin_country) params.with_origin_country = with_origin_country;
+        const data = await fetchTMDB('/3/discover/tv', params);
+        const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
+        result = wrapPaginatedList(data, items);
+      }
+      // Route: GET /api/genres/movie
+      else if (pathname === '/api/genres/movie') {
+        const data = await fetchTMDB('/3/genre/movie/list', { ...langParam });
+        result = { genres: data.genres || [] };
+      }
+      // Route: GET /api/genres/tv
+      else if (pathname === '/api/genres/tv') {
+        const data = await fetchTMDB('/3/genre/tv/list', { ...langParam });
+        result = { genres: data.genres || [] };
       }
       // Route: GET /api/movies/:id/recommendations
       else if (pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/)) {
         const match = pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/);
         const movieId = match[1];
-        const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page });
+        const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
@@ -331,7 +365,7 @@ const server = Bun.serve({
       else if (pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/)) {
         const match = pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/);
         const tvId = match[1];
-        const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page });
+        const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
@@ -340,7 +374,7 @@ const server = Bun.serve({
         const match = pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/);
         const tmdbId = match[1];
         const seasonNum = match[2];
-        const data = await fetchTMDB(`/3/tv/${tmdbId}/season/${seasonNum}`);
+        const data = await fetchTMDB(`/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
         result = transformSeason(data, tmdbId);
         ttl = TTL.DETAIL;
       }
@@ -348,7 +382,7 @@ const server = Bun.serve({
       else if (pathname.match(/^\/api\/movie\/(\d+)$/)) {
         const match = pathname.match(/^\/api\/movie\/(\d+)$/);
         const movieId = match[1];
-        const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids' });
+        const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
         result = transformMovieDetail(data);
         ttl = TTL.DETAIL;
       }
@@ -356,7 +390,7 @@ const server = Bun.serve({
       else if (pathname.match(/^\/api\/tv\/(\d+)$/)) {
         const match = pathname.match(/^\/api\/tv\/(\d+)$/);
         const tvId = match[1];
-        const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids' });
+        const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
         result = transformTVDetail(data);
         ttl = TTL.DETAIL;
       }
