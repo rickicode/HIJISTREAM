@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import DetailHero from '../components/DetailHero';
 import EpisodeList from '../components/EpisodeList';
-import VideoPlayer from '../components/VideoPlayer';
+import PlayerBox from '../components/PlayerBox';
+import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { getTVEmbedUrl, loadWatchProgress } from '../utils/player';
@@ -28,6 +29,14 @@ export default function TVDetail() {
     queryFn: () => api.getTVSeason(id, selectedSeason),
     enabled: !!show?.number_of_seasons,
   });
+
+  const { data: recommendations } = useQuery({
+    queryKey: ['tv-recommendations', id],
+    queryFn: () => api.getTVRecommendations(id),
+    enabled: !!show,
+  });
+
+  const recommendedItems = recommendations?.items?.slice(0, 12) || [];
 
   useEffect(() => {
     if (show?.title) {
@@ -93,18 +102,18 @@ export default function TVDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-      {isPlaying && (
-        <div className="mb-6">
-          <VideoPlayer
-            embedUrl={embedUrl}
-            title={show.title || `TV - ${id}`}
-            contentId={tvId}
-            onBack={handleClosePlayer}
-            metadata={metadata}
-          />
-        </div>
-      )}
-      <DetailHero item={show} type="tv" onPlay={handlePlay} />
+      <PlayerBox
+        item={show}
+        isPlaying={isPlaying}
+        onPlay={handlePlay}
+        onClose={handleClosePlayer}
+        embedUrl={embedUrl}
+        contentId={tvId}
+        metadata={metadata}
+      />
+      <div className="mt-8">
+        <DetailHero item={show} type="tv" />
+      </div>
       <EpisodeList
         tvId={id}
         seasons={numberOfSeasons}
@@ -114,6 +123,15 @@ export default function TVDetail() {
         onPlayEpisode={handlePlayEpisode}
         isLoading={seasonLoading}
       />
+      {recommendedItems.length > 0 && (
+        <div className="mt-10">
+          <ContentRail
+            title="Related Series"
+            items={recommendedItems}
+            type="tv"
+          />
+        </div>
+      )}
     </div>
   );
 }

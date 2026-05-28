@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { colors } from '../../theme';
 import DetailHero from '../../components/DetailHero';
+import ContentRail from '../../components/ContentRail';
 import LoadingState from '../../components/LoadingState';
 import ErrorState from '../../components/ErrorState';
 
@@ -15,6 +16,14 @@ export default function MovieDetailScreen() {
     queryKey: ['movie', id],
     queryFn: () => api.getMovieDetails(id),
   });
+
+  const { data: recommendations } = useQuery({
+    queryKey: ['movie-recommendations', id],
+    queryFn: () => api.getMovieRecommendations(id),
+    enabled: !!movie,
+  });
+
+  const recommendedItems = recommendations?.items?.slice(0, 12) || [];
 
   if (isLoading) {
     return <LoadingState type="detail" />;
@@ -39,6 +48,13 @@ export default function MovieDetailScreen() {
   return (
     <ScrollView style={styles.container}>
       <DetailHero item={movie} type="movie" onPlay={handlePlay} />
+      {recommendedItems.length > 0 && (
+        <ContentRail
+          title="More Like This"
+          items={recommendedItems}
+          type="movie"
+        />
+      )}
     </ScrollView>
   );
 }

@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
 import DetailHero from '../components/DetailHero';
-import VideoPlayer from '../components/VideoPlayer';
+import PlayerBox from '../components/PlayerBox';
+import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { getMovieEmbedUrl, loadWatchProgress } from '../utils/player';
@@ -18,6 +19,14 @@ export default function MovieDetail() {
     queryKey: ['movie', id],
     queryFn: () => api.getMovieDetails(id),
   });
+
+  const { data: recommendations } = useQuery({
+    queryKey: ['movie-recommendations', id],
+    queryFn: () => api.getMovieRecommendations(id),
+    enabled: !!movie,
+  });
+
+  const recommendedItems = recommendations?.items?.slice(0, 12) || [];
 
   useEffect(() => {
     if (movie?.title) {
@@ -72,18 +81,27 @@ export default function MovieDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-      {isPlaying && (
-        <div className="mb-6">
-          <VideoPlayer
-            embedUrl={embedUrl}
-            title={movie.title || `Movie - ${id}`}
-            contentId={playId}
-            onBack={handleClosePlayer}
-            metadata={metadata}
+      <PlayerBox
+        item={movie}
+        isPlaying={isPlaying}
+        onPlay={handlePlay}
+        onClose={handleClosePlayer}
+        embedUrl={embedUrl}
+        contentId={playId}
+        metadata={metadata}
+      />
+      <div className="mt-8">
+        <DetailHero item={movie} type="movie" />
+      </div>
+      {recommendedItems.length > 0 && (
+        <div className="mt-10">
+          <ContentRail
+            title="More Like This"
+            items={recommendedItems}
+            type="movie"
           />
         </div>
       )}
-      <DetailHero item={movie} type="movie" onPlay={handlePlay} />
     </div>
   );
 }
