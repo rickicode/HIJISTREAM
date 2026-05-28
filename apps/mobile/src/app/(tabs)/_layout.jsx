@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Film, Tv, Search } from 'lucide-react-native';
+import { Home, Film, Tv, Search, Sparkles } from 'lucide-react-native';
 import { colors } from '../../theme';
 
 export default function TabLayout() {
@@ -42,6 +42,13 @@ export default function TabLayout() {
         options={{
           title: 'TV Shows',
           tabBarIcon: ({ color, size }) => <Tv color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="anime"
+        options={{
+          title: 'Anime',
+          tabBarIcon: ({ color, size }) => <Sparkles color={color} size={size} />,
         }}
       />
       <Tabs.Screen

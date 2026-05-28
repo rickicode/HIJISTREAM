@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../utils/api';
 import { getAllWatchProgress } from '../utils/player';
@@ -22,11 +22,24 @@ export default function Home() {
     queryFn: () => api.getTrendingTV(1),
   });
 
-  const movieItems = trendingMovies?.items?.slice(0, 10) || [];
+  const { data: tvOnTheAir, isLoading: onTheAirLoading } = useQuery({
+    queryKey: ['tv-on-the-air-home'],
+    queryFn: () => api.getTVOnTheAir(1),
+  });
+
+  const { data: animeTrending, isLoading: animeLoading } = useQuery({
+    queryKey: ['anime-trending-home'],
+    queryFn: () => api.getAnimeTrending(1),
+  });
+
+  const movieItems = useMemo(() => trendingMovies?.items?.slice(0, 10) || [], [trendingMovies]);
   const tvItems = trendingTV?.items?.slice(0, 10) || [];
-  const heroItem = movieItems.length > 0
-    ? movieItems[Math.floor(Math.random() * Math.min(movieItems.length, 5))]
-    : null;
+  const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
+  const animeItems = animeTrending?.items?.slice(0, 10) || [];
+  const heroItem = useMemo(() => {
+    if (movieItems.length === 0) return null;
+    return movieItems[Math.floor(Math.random() * Math.min(movieItems.length, 5))];
+  }, [movieItems]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -54,6 +67,22 @@ export default function Home() {
         items={tvItems}
         type="tv"
         isLoading={tvLoading}
+      />
+
+      <ContentRail
+        title="Ongoing Series"
+        href="/tv"
+        items={onTheAirItems}
+        type="tv"
+        isLoading={onTheAirLoading}
+      />
+
+      <ContentRail
+        title="Trending Anime"
+        href="/anime"
+        items={animeItems}
+        type="tv"
+        isLoading={animeLoading}
       />
     </div>
   );

@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Add Anime page and menu navigation on web and mobile. Add Ongoing Series and Trending Anime content rails to the Home page on both platforms.",
+  "status": "completed",
+  "steps": [
+    "Create apps/web/src/app/Anime.jsx: A new page following the same pattern as Movies.jsx and TV.jsx. Has tabs: Trending, Ongoing, Top Rated. Uses useInfiniteQuery with api.getAnimeTrending, api.getAnimeOngoing, api.getAnimeTopRated respectively. Renders TabNavigation + ContentGrid with type='tv' (since anime items are TV shows). Set document title to 'Anime - HIJISTREAM'.",
+    "In apps/web/src/App.jsx: Import the new Anime page via lazy(() => import('./app/Anime')). Add route <Route path='/anime' element={<Anime />} /> between /tv/:id and /player routes.",
+    "In apps/web/src/components/Layout.jsx: Add an 'Anime' NavLink (to='/anime') in the desktop nav between 'TV Shows' and before the search button. Also add the same link in the mobile menu dropdown.",
+    "In apps/web/src/app/Home.jsx: Add two new content rails after the existing ones: (1) 'Ongoing Series' using useQuery with key ['tv-on-the-air-home'] calling api.getTVOnTheAir(1), render in ContentRail with href='/tv'. (2) 'Trending Anime' using useQuery with key ['anime-trending-home'] calling api.getAnimeTrending(1), render in ContentRail with href='/anime'.",
+    "Create apps/mobile/src/app/(tabs)/anime.jsx: A new tab screen following the same pattern as movies.jsx. Has tabs/sections for Trending Anime, Ongoing Anime, Top Rated Anime. Uses useQuery (not infinite) for simplicity like home.jsx, calling api.getAnimeTrending, api.getAnimeOngoing, api.getAnimeTopRated. Renders FlatList with ContentRail sections for each category.",
+    "In apps/mobile/src/app/(tabs)/_layout.jsx: Add a new Tabs.Screen for 'anime' between 'tv' and 'search'. Use a suitable icon - import Clapperboard or Sparkles from lucide-react-native (or use Film). Title: 'Anime'.",
+    "In apps/mobile/src/app/(tabs)/home.jsx: Add two new sections to the FlatList: (1) 'Ongoing Series' using useQuery with key ['tv-on-the-air-home'] calling api.getTVOnTheAir(1). (2) 'Trending Anime' using useQuery with key ['anime-trending-home'] calling api.getAnimeTrending(1). Render each as ContentRail components."
+  ],
+  "acceptance_criteria": [
+    "Web has /anime route accessible from navigation with Anime link visible in both desktop and mobile nav",
+    "Anime page shows tabbed grid of anime content (Trending, Ongoing, Top Rated) with infinite scroll",
+    "Home page on web shows 'Ongoing Series' and 'Trending Anime' content rails",
+    "Mobile has an Anime tab in bottom navigation that shows anime content",
+    "Mobile home screen shows 'Ongoing Series' and 'Trending Anime' rails",
+    "All builds pass without errors"
+  ],
+  "verification": [
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint to confirm no lint errors",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run build to confirm web builds successfully",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/mobile && bun run lint to confirm no mobile lint errors"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes implemented successfully. Web: Anime.jsx page with 3 tabs (Trending, Ongoing, Top Rated) using useInfiniteQuery, route added in App.jsx, NavLink added in Layout.jsx desktop and mobile nav. Home.jsx now has Ongoing Series and Trending Anime content rails. Mobile: anime.jsx tab screen with 3 ContentRail sections, Sparkles icon in tab bar, home.jsx has 2 new sections. All lint and build pass cleanly."
+}

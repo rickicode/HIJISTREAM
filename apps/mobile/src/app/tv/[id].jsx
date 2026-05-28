@@ -5,6 +5,7 @@ import api from '../../utils/api';
 import { colors } from '../../theme';
 import DetailHero from '../../components/DetailHero';
 import EpisodeList from '../../components/EpisodeList';
+import ContentRail from '../../components/ContentRail';
 import LoadingState from '../../components/LoadingState';
 import ErrorState from '../../components/ErrorState';
 
@@ -16,6 +17,14 @@ export default function TVDetailScreen() {
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),
   });
+
+  const { data: recommendations } = useQuery({
+    queryKey: ['tv-recommendations', id],
+    queryFn: () => api.getTVRecommendations(id),
+    enabled: !!show,
+  });
+
+  const recommendedItems = recommendations?.items?.slice(0, 12) || [];
 
   if (isLoading) {
     return <LoadingState type="detail" />;
@@ -62,6 +71,13 @@ export default function TVDetailScreen() {
         tmdbId={id}
         onPlayEpisode={handlePlayEpisode}
       />
+      {recommendedItems.length > 0 && (
+        <ContentRail
+          title="Related Series"
+          items={recommendedItems}
+          type="tv"
+        />
+      )}
     </ScrollView>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -33,11 +33,24 @@ export default function HomeScreen() {
     queryFn: () => api.getTrendingTV(1),
   });
 
-  const movies = trendingMovies?.items?.slice(0, 10) || [];
+  const { data: tvOnTheAir, isLoading: onTheAirLoading } = useQuery({
+    queryKey: ['tv-on-the-air-home'],
+    queryFn: () => api.getTVOnTheAir(1),
+  });
+
+  const { data: animeTrending, isLoading: animeLoading } = useQuery({
+    queryKey: ['anime-trending-home'],
+    queryFn: () => api.getAnimeTrending(1),
+  });
+
+  const movies = useMemo(() => trendingMovies?.items?.slice(0, 10) || [], [trendingMovies]);
   const tvShows = trendingTV?.items?.slice(0, 10) || [];
-  const heroItem = movies.length > 0
-    ? movies[Math.floor(Math.random() * Math.min(movies.length, 5))]
-    : null;
+  const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
+  const animeItems = animeTrending?.items?.slice(0, 10) || [];
+  const heroItem = useMemo(() => {
+    if (movies.length === 0) return null;
+    return movies[Math.floor(Math.random() * Math.min(movies.length, 5))];
+  }, [movies]);
 
   const sections = [];
 
@@ -51,6 +64,8 @@ export default function HomeScreen() {
 
   sections.push({ key: 'trending-movies', type: 'movies' });
   sections.push({ key: 'trending-tv', type: 'tv' });
+  sections.push({ key: 'ongoing-series', type: 'ongoing-series' });
+  sections.push({ key: 'trending-anime', type: 'trending-anime' });
 
   const renderSection = ({ item: section }) => {
     if (section.type === 'hero') {
@@ -105,6 +120,30 @@ export default function HomeScreen() {
           type="tv"
           isLoading={tvLoading}
           onSeeAll={() => router.push('/(tabs)/tv')}
+        />
+      );
+    }
+
+    if (section.type === 'ongoing-series') {
+      return (
+        <ContentRail
+          title="Ongoing Series"
+          items={onTheAirItems}
+          type="tv"
+          isLoading={onTheAirLoading}
+          onSeeAll={() => router.push('/(tabs)/tv')}
+        />
+      );
+    }
+
+    if (section.type === 'trending-anime') {
+      return (
+        <ContentRail
+          title="Trending Anime"
+          items={animeItems}
+          type="tv"
+          isLoading={animeLoading}
+          onSeeAll={() => router.push('/(tabs)/anime')}
         />
       );
     }
