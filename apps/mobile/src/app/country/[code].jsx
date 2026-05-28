@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import api, { TMDB_COUNTRIES, SORT_OPTIONS } from '../../utils/api';
 import { useTranslation } from '../../i18n';
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
 import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
@@ -71,6 +71,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
+    paddingVertical: spacing.lg,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   backButton: {
     marginRight: spacing.sm,
@@ -78,6 +82,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    ...typography.title,
+    fontSize: 24,
+    fontWeight: '800',
   },
 });
