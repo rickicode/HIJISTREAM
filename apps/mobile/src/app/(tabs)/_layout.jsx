@@ -1,12 +1,69 @@
+import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Home, Film, Tv, Search, Sparkles } from 'lucide-react-native';
 import { colors } from '../../theme';
+import { getCurrentLanguage, setLanguage } from '../../utils/language';
+
+function LanguageSelector() {
+  const [lang, setLang] = useState('en');
+
+  useEffect(() => {
+    getCurrentLanguage().then(setLang);
+  }, []);
+
+  const handleLangChange = async (newLang) => {
+    await setLanguage(newLang);
+    setLang(newLang);
+  };
+
+  return (
+    <View style={langStyles.container}>
+      <TouchableOpacity onPress={() => handleLangChange('en')}>
+        <Text style={lang === 'en' ? langStyles.active : langStyles.inactive}>EN</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => handleLangChange('id')}>
+        <Text style={lang === 'id' ? langStyles.active : langStyles.inactive}>ID</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const langStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    marginRight: 12,
+    gap: 4,
+  },
+  active: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: colors.primary || '#E50914',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  inactive: {
+    color: colors.textMuted,
+    fontWeight: '500',
+    fontSize: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+});
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: colors.background,
+        },
+        headerTintColor: '#FFFFFF',
+        headerRight: () => <LanguageSelector />,
         tabBarStyle: {
           backgroundColor: colors.background,
           borderTopColor: colors.border,

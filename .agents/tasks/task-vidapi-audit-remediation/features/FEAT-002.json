@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Mobile surface: Fix VidAPI embed URL compliance, add netflix skin parameter, add ds_lang parameter support, add language selection capability, and implement invalid movie filtering",
+  "status": "completed",
+  "steps": [
+    "1. Fix apps/mobile/src/utils/player.js - Change `?t=` to `?resumeAt=` in both getMovieEmbedUrl and getTVEmbedUrl to match VidAPI documentation.",
+    "2. Add skin and dsLang parameters to apps/mobile/src/utils/player.js - Modify getMovieEmbedUrl and getTVEmbedUrl to accept an options object { skin, dsLang } and append these as query params. Default skin to 'netflix'. Example output: https://vaplayer.ru/embed/movie/12345?resumeAt=300&skin=netflix&ds_lang=id",
+    "3. Create apps/mobile/src/utils/language.js - A simple async module using AsyncStorage to store the selected language ('en' or 'id'). Export async getCurrentLanguage() and async setLanguage(lang). Default is 'en'.",
+    "4. Update apps/mobile/src/app/player.jsx - Import getCurrentLanguage and pass the dsLang and skin options to getMovieEmbedUrl/getTVEmbedUrl when building the embed URL.",
+    "5. Update apps/mobile/src/app/movie/[id].jsx - When navigating to player, include the current language preference (or let the player screen handle it).",
+    "6. Add a language selector to the mobile app - Add a simple language toggle in apps/mobile/src/app/(tabs)/_layout.jsx or in the header of the tab navigator. Show EN/ID buttons. On press, update AsyncStorage via setLanguage(). The player screen should read this when building URLs.",
+    "7. Add invalid item filtering to apps/mobile/src/utils/api.js - After fetching list data, filter items to ensure they have valid id and title fields. Export a helper filterValidItems that removes entries with falsy id or empty/missing title.",
+    "8. Update apps/mobile/src/components/ContentGrid.jsx - As a safety net, skip rendering items that lack an id or title in the FlatList keyExtractor/renderItem logic."
+  ],
+  "acceptance_criteria": [
+    "getMovieEmbedUrl(id, 300) returns URL with ?resumeAt=300 (not ?t=300)",
+    "getMovieEmbedUrl(id, 300, { skin: 'netflix', dsLang: 'id' }) returns URL with ?resumeAt=300&skin=netflix&ds_lang=id",
+    "getTVEmbedUrl(id, 1, 1, 300, { skin: 'netflix' }) returns URL with ?resumeAt=300&skin=netflix",
+    "Language selector is accessible in the mobile app (in tab layout header or settings)",
+    "Selecting ID stores preference and subsequent player URLs include ds_lang=id",
+    "ContentGrid and api.js filter out items without valid id/title",
+    "TypeScript/ESLint check passes for mobile: cd apps/mobile && npx tsc --noEmit"
+  ],
+  "verification": [
+    "cd apps/mobile && bun install && npx tsc --noEmit",
+    "cd apps/mobile && bun run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "All verification steps passed: TypeScript check (0 errors via bunx tsc --noEmit), ESLint lint (0 errors via bun run lint). Used manual query string building instead of URLSearchParams to avoid no-undef lint error (expo eslint config does not include URLSearchParams as a global). Git pull failed due to sandbox auth token issue but proceeded with existing codebase state."
+}

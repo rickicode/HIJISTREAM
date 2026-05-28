@@ -8,12 +8,21 @@ import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { getMovieEmbedUrl, loadWatchProgress } from '../utils/player';
+import { getDsLang } from '../utils/language';
 
 export default function MovieDetail() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === 'true';
   const [isPlaying, setIsPlaying] = useState(autoplay);
+
+  const [_langVersion, setLangVersion] = useState(0);
+
+  useEffect(() => {
+    const onLangChange = () => setLangVersion(v => v + 1);
+    window.addEventListener('language-change', onLangChange);
+    return () => window.removeEventListener('language-change', onLangChange);
+  }, []);
 
   const { data: movie, isLoading, error, refetch } = useQuery({
     queryKey: ['movie', id],
@@ -61,7 +70,7 @@ export default function MovieDetail() {
   const playId = movie.imdb_id || movie.id || id;
   const storedProgress = loadWatchProgress(playId);
   const resumeAt = storedProgress?.time || undefined;
-  const embedUrl = getMovieEmbedUrl(playId, resumeAt);
+  const embedUrl = getMovieEmbedUrl(playId, resumeAt, { skin: 'netflix', dsLang: getDsLang() });
 
   const handlePlay = () => {
     setIsPlaying(true);

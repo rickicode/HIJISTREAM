@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import Logo from './Logo';
+import { getCurrentLanguage, setLanguage } from '../utils/language';
 
 function NavLink({ to, children }) {
   const { pathname } = useLocation();
@@ -27,6 +28,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [lang, setLang] = useState(getCurrentLanguage);
   const queryClient = useQueryClient();
 
   useKeyboardShortcuts();
@@ -66,6 +68,26 @@ export default function Layout() {
               >
                 <Search size={20} />
               </button>
+              <div className="flex items-center gap-1 text-xs font-medium">
+                <button
+                  onClick={() => { setLanguage('en'); setLang('en'); }}
+                  className={cn(
+                    'px-1.5 py-0.5 rounded transition-colors',
+                    lang === 'en' ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white'
+                  )}
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => { setLanguage('id'); setLang('id'); }}
+                  className={cn(
+                    'px-1.5 py-0.5 rounded transition-colors',
+                    lang === 'id' ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white'
+                  )}
+                >
+                  ID
+                </button>
+              </div>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="sm:hidden p-2 rounded text-muted-foreground hover:text-white transition-colors"

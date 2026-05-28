@@ -4,20 +4,22 @@ const PLAYER_BASE_URL = 'https://vaplayer.ru/embed';
 const PROGRESS_PREFIX = 'watch_progress_';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function getMovieEmbedUrl(imdbId, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/movie/${imdbId}`;
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
+  const parts = [];
+  if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
+  if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
+  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+  const qs = parts.join('&');
+  return `${PLAYER_BASE_URL}/movie/${imdbId}${qs ? '?' + qs : ''}`;
 }
 
-export function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}`;
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
+  const parts = [];
+  if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
+  if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
+  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+  const qs = parts.join('&');
+  return `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}${qs ? '?' + qs : ''}`;
 }
 
 export async function saveWatchProgress(id, time, duration, metadata = {}) {

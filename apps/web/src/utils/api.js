@@ -2,6 +2,13 @@ import cacheManager, { TTL } from './cache';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
+function filterValidItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.filter(item => item && item.id && item.title && item.title.trim() !== '');
+}
+
+export { filterValidItems };
+
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = cacheManager.get(cacheKey);
   if (cached) return cached;
@@ -12,6 +19,9 @@ async function fetchWithCache(endpoint, cacheKey, ttl) {
   }
 
   const data = await response.json();
+  if (data && Array.isArray(data.items)) {
+    data.items = filterValidItems(data.items);
+  }
   cacheManager.set(cacheKey, data, ttl);
   return data;
 }
