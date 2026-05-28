@@ -58,7 +58,7 @@ export default function MovieDetail() {
 
   if (!movie) return null;
 
-  const playId = movie.id || id;
+  const playId = movie.imdb_id || movie.id || id;
   const storedProgress = loadWatchProgress(playId);
   const resumeAt = storedProgress?.time || undefined;
   const embedUrl = getMovieEmbedUrl(playId, resumeAt);
