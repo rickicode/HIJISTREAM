@@ -1,15 +1,17 @@
 import { View, Text, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Plus, Star } from 'lucide-react-native';
+import { Play, Plus, Check, Star } from 'lucide-react-native';
 import { colors, spacing, typography } from '../theme';
 import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
+import useMyList from '../hooks/useMyList';
 
 const BACKDROP_HEIGHT = Dimensions.get('window').height * 0.40;
 
 export default function HeroBanner({ item, type = 'movie' }) {
   const router = useRouter();
   const { t } = useTranslation();
+  const { inList, toggle: toggleList } = useMyList(item, type);
 
   if (!item) return null;
 
@@ -50,7 +52,6 @@ export default function HeroBanner({ item, type = 'movie' }) {
         style={styles.backdrop}
         resizeMode="cover"
       >
-        <View style={styles.overlay} />
         {showRating && (
           <View style={styles.ratingBadge}>
             <Star color="#FFD700" size={14} fill="#FFD700" />
@@ -69,8 +70,12 @@ export default function HeroBanner({ item, type = 'movie' }) {
               <Play color="#000000" size={18} fill="#000000" />
               <Text style={styles.playText}>{t('common.play')}</Text>
             </TVFocusable>
-            <TVFocusable onPress={() => {}} style={styles.listButton}>
-              <Plus color={colors.text} size={18} />
+            <TVFocusable onPress={toggleList} style={styles.listButton}>
+              {inList ? (
+                <Check color={colors.text} size={18} strokeWidth={3} />
+              ) : (
+                <Plus color={colors.text} size={18} />
+              )}
               <Text style={styles.listText}>{t('common.myList')}</Text>
             </TVFocusable>
           </View>
@@ -87,14 +92,6 @@ const styles = StyleSheet.create({
   backdrop: {
     height: BACKDROP_HEIGHT,
     justifyContent: 'flex-end',
-  },
-  overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(10,10,10,0.75)',
   },
   ratingBadge: {
     position: 'absolute',
@@ -114,8 +111,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: 6,
     paddingBottom: spacing.sm,
+    backgroundColor: 'rgba(10,10,10,0.75)',
   },
   title: {
     color: colors.text,
