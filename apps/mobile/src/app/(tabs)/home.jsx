@@ -65,6 +65,8 @@ export default function HomeScreen() {
   sections.push({ key: 'ongoing-series', type: 'ongoing-series' });
   sections.push({ key: 'trending-anime', type: 'trending-anime' });
 
+  const goToList = (listType) => router.push(`/list/${listType}`);
+
   const renderSection = ({ item: section }) => {
     if (section.type === 'hero') {
       return <HeroBanner item={heroItem} type="movie" />;
@@ -76,7 +78,7 @@ export default function HomeScreen() {
           title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
-          onSeeAll={() => router.push('/(tabs)/browse')}
+          onSeeAll={() => goToList('continue-watching')}
         />
       );
     }
@@ -88,7 +90,7 @@ export default function HomeScreen() {
           items={movies}
           type="movie"
           isLoading={moviesLoading}
-          onSeeAll={() => router.push('/(tabs)/browse')}
+          onSeeAll={() => goToList('trending-movies')}
         />
       );
     }
@@ -100,7 +102,7 @@ export default function HomeScreen() {
           items={tvShows}
           type="tv"
           isLoading={tvLoading}
-          onSeeAll={() => router.push('/(tabs)/browse')}
+          onSeeAll={() => goToList('trending-tv')}
         />
       );
     }
@@ -112,7 +114,7 @@ export default function HomeScreen() {
           items={onTheAirItems}
           type="tv"
           isLoading={onTheAirLoading}
-          onSeeAll={() => router.push('/(tabs)/browse')}
+          onSeeAll={() => goToList('on-the-air')}
         />
       );
     }
@@ -124,7 +126,7 @@ export default function HomeScreen() {
           items={animeItems}
           type="tv"
           isLoading={animeLoading}
-          onSeeAll={() => router.push('/(tabs)/browse')}
+          onSeeAll={() => goToList('anime-trending')}
         />
       );
     }

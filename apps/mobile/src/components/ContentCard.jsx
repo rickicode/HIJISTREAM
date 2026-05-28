@@ -1,19 +1,27 @@
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Heart } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
+import useMyList from '../hooks/useMyList';
 
 export default function ContentCard({ item, type = 'movie', watchProgress = null }) {
   const router = useRouter();
+  const effectiveType = item?._detectedType || item?.type || type;
+  const { inList, toggle } = useMyList(item, effectiveType);
 
   const handlePress = () => {
-    const effectiveType = item._detectedType || item.type || type;
     const itemId = item.id || item.tmdb_id;
     if (effectiveType === 'movie') {
       router.push(`/movie/${itemId}`);
     } else {
       router.push(`/tv/${itemId}`);
     }
+  };
+
+  const handleHeartPress = (e) => {
+    if (e?.stopPropagation) e.stopPropagation();
+    toggle();
   };
 
   return (
@@ -24,6 +32,23 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
           style={styles.poster}
           resizeMode="cover"
         />
+        <Pressable
+          onPress={handleHeartPress}
+          hitSlop={6}
+          style={({ pressed }) => [
+            styles.heartButton,
+            pressed && styles.heartButtonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="My List"
+        >
+          <Heart
+            color={inList ? colors.primary : '#FFFFFF'}
+            fill={inList ? colors.primary : 'transparent'}
+            size={16}
+            strokeWidth={2.4}
+          />
+        </Pressable>
         {item.rating && item.rating !== '0' && item.rating !== '0.0' && (
           <View style={styles.ratingBadge}>
             <Text style={styles.ratingText}>★ {item.rating}</Text>
@@ -92,6 +117,22 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 10,
     fontWeight: '700',
+  },
+  heartButton: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  heartButtonPressed: {
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    transform: [{ scale: 0.92 }],
   },
   info: {
     padding: spacing.xs,
