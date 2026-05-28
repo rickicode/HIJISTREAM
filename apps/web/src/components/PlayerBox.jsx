@@ -18,10 +18,10 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
       <div className="absolute inset-0 bg-black/60" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40" />
 
-      {/* Embed player centered inside the full-width backdrop */}
+      {/* Embed player (solid black) centered over the backdrop */}
       <div className="relative py-10 px-4 sm:px-6 lg:px-8">
         {isPlaying ? (
-          <div className="aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden shadow-2xl shadow-black/80">
+          <div className="aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden shadow-2xl shadow-black/80 bg-black">
             <VideoPlayer
               embedUrl={embedUrl}
               title={item.title}
@@ -32,11 +32,11 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
           </div>
         ) : (
           <div
-            className="relative aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden cursor-pointer bg-black/40 shadow-2xl shadow-black/80 hover:shadow-black/90 transition-shadow"
+            className="relative aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden cursor-pointer bg-black shadow-2xl shadow-black/80 hover:shadow-black/90 transition-shadow"
             onClick={onPlay}
           >
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-20 h-20 rounded-full border-2 border-white/80 bg-white/10 flex items-center justify-center hover:bg-white/20 hover:scale-110 transition-all">
+              <div className="w-20 h-20 rounded-full border-2 border-white/80 bg-black/50 flex items-center justify-center hover:bg-black/70 hover:scale-110 transition-all">
                 <Play size={40} fill="white" color="white" />
               </div>
             </div>

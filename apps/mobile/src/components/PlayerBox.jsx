@@ -5,26 +5,26 @@ import TVFocusable from './TVFocusable';
 
 export default function PlayerBox({ item, onPlay }) {
   const { width: screenWidth } = useWindowDimensions();
-  // Full width backdrop, taller than the player to show backdrop around it
+  // Full width backdrop section, taller than the player to show backdrop around it
   const sectionHeight = screenWidth * (9 / 16) + 48;
-  const playerWidth = screenWidth - 32; // small margin so backdrop peeks around edges
+  const playerWidth = screenWidth - 32;
   const playerHeight = playerWidth * (9 / 16);
   const backdropUri = item.backdrop_url || item.poster_url;
 
   return (
     <View style={[styles.outerContainer, { width: screenWidth, height: sectionHeight }]}>
-      {/* Full-width backdrop image as background */}
+      {/* Full-width backdrop image as background (OUTSIDE player) */}
       <ImageBackground
         source={{ uri: backdropUri }}
         style={styles.backdrop}
         resizeMode="cover"
       >
-        {/* Dark overlay */}
+        {/* Dark overlay on backdrop */}
         <View style={styles.darkOverlay} />
         <View style={styles.topGradient} />
         <View style={styles.bottomGradient} />
 
-        {/* Player box floating in the center over the backdrop */}
+        {/* Player box: SOLID BLACK, floating in the center over the backdrop */}
         <View style={[styles.playerBox, { width: playerWidth, height: playerHeight }]}>
           <TVFocusable onPress={onPlay} style={styles.playButton}>
             <Play color="#FFFFFF" size={32} fill="#FFFFFF" />
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   },
   darkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   topGradient: {
     position: 'absolute',
@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,20,20,0.7)',
   },
   playerBox: {
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: '#000000',  // SOLID BLACK - no backdrop visible inside
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
