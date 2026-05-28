@@ -18,7 +18,7 @@ export default function HeroBanner({ item, type = 'movie' }) {
         pathname: '/player',
         params: {
           type: 'movie',
-          id: item.imdb_id || item.tmdb_id,
+          id: item.imdb_id || item.id,
           title: item.title,
           poster_url: item.poster_url || '',
         },
@@ -28,7 +28,7 @@ export default function HeroBanner({ item, type = 'movie' }) {
         pathname: '/player',
         params: {
           type: 'tv',
-          id: item.tmdb_id,
+          id: item.id,
           season: '1',
           episode: '1',
           title: item.title,

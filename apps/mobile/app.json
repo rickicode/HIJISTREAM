@@ -3,7 +3,7 @@
     "name": "HIJISTREAM",
     "slug": "hijistream",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "default",
     "icon": "./assets/icon-1024.png",
     "scheme": "hijistream",
     "splash": {
@@ -13,8 +13,7 @@
     },
     "platforms": ["android"],
     "android": {
-      "package": "com.hijistream.tv",
-      "isAndroidTV": true,
+      "package": "com.hijistream.app",
       "minSdkVersion": 24,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

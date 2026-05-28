@@ -8,10 +8,11 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
 
   const handlePress = () => {
     const effectiveType = item._detectedType || type;
+    const itemId = item.id || item.tmdb_id;
     if (effectiveType === 'movie') {
-      router.push(`/movie/${item.tmdb_id}`);
+      router.push(`/movie/${itemId}`);
     } else {
-      router.push(`/tv/${item.tmdb_id}`);
+      router.push(`/tv/${itemId}`);
     }
   };
 

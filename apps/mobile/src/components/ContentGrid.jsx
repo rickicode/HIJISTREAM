@@ -35,7 +35,7 @@ export default function ContentGrid({
       data={items}
       numColumns={numColumns}
       key={`grid-${numColumns}`}
-      keyExtractor={(item) => String(item.tmdb_id)}
+      keyExtractor={(item) => String(item.id || item.tmdb_id)}
       renderItem={({ item }) => (
         <ContentCard item={item} type={type} watchProgress={item.watchProgress} />
       )}
