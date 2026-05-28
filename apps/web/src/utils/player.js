@@ -4,24 +4,26 @@ const PLAYER_BASE_URL = 'https://vaplayer.ru/embed';
 const PROGRESS_PREFIX = 'watch_progress_';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function getMovieEmbedUrl(imdbId, resumeAt) {
-  let url = `${PLAYER_BASE_URL}/movie/${imdbId}`;
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
+  const params = new URLSearchParams();
+  if (resumeAt) params.set('resumeAt', String(Math.floor(resumeAt)));
+  if (options.skin) params.set('skin', options.skin);
+  if (options.dsLang) params.set('ds_lang', options.dsLang);
+  const qs = params.toString();
+  return `${PLAYER_BASE_URL}/movie/${imdbId}${qs ? '?' + qs : ''}`;
 }
 
-export function getTVEmbedUrl(tmdbId, season, episode, resumeAt) {
-  // API provides embed URL as: /embed/tv/{TMDB_ID} (no season/episode path)
+export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
   let url = `${PLAYER_BASE_URL}/tv/${tmdbId}`;
   if (season && episode) {
     url += `/${season}/${episode}`;
   }
-  if (resumeAt) {
-    url += `?t=${resumeAt}`;
-  }
-  return url;
+  const params = new URLSearchParams();
+  if (resumeAt) params.set('resumeAt', String(Math.floor(resumeAt)));
+  if (options.skin) params.set('skin', options.skin);
+  if (options.dsLang) params.set('ds_lang', options.dsLang);
+  const qs = params.toString();
+  return `${url}${qs ? '?' + qs : ''}`;
 }
 
 export function saveWatchProgress(id, time, duration, metadata = {}) {

@@ -188,3 +188,49 @@ describe('TMDB Response Transform - Embed URL Format', () => {
     expect(result.embed_url).toBe('https://vaplayer.ru/embed/tv/67890');
   });
 });
+
+describe('TMDB Response Transform - Item Filtering', () => {
+  function filterValidItems(items) {
+    if (!Array.isArray(items)) return [];
+    return items.filter(item => item && item.id && item.title && item.title.trim() !== '');
+  }
+
+  it('filters out items with missing id', () => {
+    const items = [
+      { id: 1, title: 'Good' },
+      { id: null, title: 'Bad' },
+      { title: 'No ID' },
+    ];
+    const result = filterValidItems(items);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Good');
+  });
+
+  it('filters out items with missing or empty title', () => {
+    const items = [
+      { id: 1, title: 'Good' },
+      { id: 2, title: '' },
+      { id: 3, title: '   ' },
+      { id: 4 },
+    ];
+    const result = filterValidItems(items);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(1);
+  });
+
+  it('handles null/undefined input', () => {
+    expect(filterValidItems(null)).toEqual([]);
+    expect(filterValidItems(undefined)).toEqual([]);
+  });
+
+  it('handles empty array', () => {
+    expect(filterValidItems([])).toEqual([]);
+  });
+
+  it('filters out null items in array', () => {
+    const items = [null, undefined, { id: 1, title: 'Good' }];
+    const result = filterValidItems(items);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(1);
+  });
+});

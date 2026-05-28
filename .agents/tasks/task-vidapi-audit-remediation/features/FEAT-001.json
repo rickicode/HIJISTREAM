@@ -1,0 +1,41 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Web surface: Fix VidAPI embed URL compliance, add netflix skin parameter, add ds_lang parameter support, add topbar language selector (English/Indonesian), and implement invalid movie filtering",
+  "status": "in_progress",
+  "steps": [
+    "1. Fix apps/web/src/utils/player.js - Change `?t=` to `?resumeAt=` in both getMovieEmbedUrl and getTVEmbedUrl to match VidAPI documentation (resumeAt is the documented parameter, not t).",
+    "2. Add skin parameter support to apps/web/src/utils/player.js - Add an optional `skin` parameter (default: 'netflix') to getMovieEmbedUrl and getTVEmbedUrl that appends `&skin=netflix` to the embed URL. Create a helper function buildEmbedParams(options) that constructs query string from { resumeAt, skin, dsLang }.",
+    "3. Add ds_lang parameter support to apps/web/src/utils/player.js - Accept an optional `dsLang` parameter that appends `&ds_lang={value}` to the embed URL. When language is set to Indonesian, dsLang should be 'id'.",
+    "4. Create a language context/store in apps/web/src/utils/language.js - Create a simple module that reads/writes the selected language (en/id) to localStorage under key 'hijistream_lang'. Export getCurrentLanguage() which returns 'en' by default and setLanguage(lang). When 'id' is selected, this means the player's default subtitle language should be Indonesian.",
+    "5. Add topbar language selector to apps/web/src/components/Layout.jsx - Add a dropdown/button group in the header (between the search button and mobile menu button) with 'EN' and 'ID' options. Active state should be highlighted. On change, call setLanguage() and store in localStorage. Read initial state from getCurrentLanguage().",
+    "6. Update apps/web/src/app/MovieDetail.jsx to pass skin='netflix' and dsLang (from language module) to getMovieEmbedUrl. The embed URL should include ?resumeAt=X&skin=netflix&ds_lang=id (when Indonesian is selected).",
+    "7. Update apps/web/src/app/TVDetail.jsx similarly to pass skin and dsLang to getTVEmbedUrl.",
+    "8. Add invalid movie validation utility in apps/web/src/utils/player.js or a new file apps/web/src/utils/validation.js - Export a function validateMovieAvailability(items) that filters out items where the TMDB ID is known to be invalid/unavailable. For the server-side approach: the TMDB API already returns 404 for invalid movies (confirmed: movie 11473012 returns 404 from TMDB). The server already handles this by returning a 502 error. For list items, they come from TMDB list endpoints which only return valid TMDB entries, so filtering should focus on ensuring items have required fields (id, title, poster_url non-empty). Add a client-side filter function filterValidItems(items) in apps/web/src/utils/api.js that removes items without required fields (id, title). Apply this filter in fetchWithCache after receiving data.",
+    "9. Update apps/web/src/components/ContentGrid.jsx to also filter out items with missing id or title as a safety net.",
+    "10. Add server-side validation in apps/server/src/index.js - In transformMovieListItem and transformTVListItem, add a validity check: items must have a non-null id and non-empty title. Filter these in the list routes before returning.",
+    "11. Update apps/web/tests/transform.test.js to add tests for the new player.js functions (resumeAt parameter format, skin parameter, ds_lang parameter).",
+    "12. Add a new test file apps/web/tests/player.test.js that tests getMovieEmbedUrl and getTVEmbedUrl with various parameter combinations including skin and dsLang."
+  ],
+  "acceptance_criteria": [
+    "getMovieEmbedUrl(id, 300) returns URL with ?resumeAt=300 (not ?t=300)",
+    "getMovieEmbedUrl(id, 300, { skin: 'netflix', dsLang: 'id' }) returns URL with ?resumeAt=300&skin=netflix&ds_lang=id",
+    "getTVEmbedUrl(id, 1, 1, 300, { skin: 'netflix' }) returns URL with ?resumeAt=300&skin=netflix",
+    "Layout.jsx renders EN/ID language selector in the topbar",
+    "Selecting ID stores 'id' in localStorage and subsequent embed URLs include ds_lang=id",
+    "ContentGrid filters out items without id or title",
+    "Server-side transformers filter out items with null/missing id or empty title",
+    "bun run typecheck passes with 0 errors in apps/web",
+    "bun run lint passes in apps/web",
+    "bun run build succeeds in apps/web",
+    "bun run test passes all tests including new player.test.js"
+  ],
+  "verification": [
+    "cd apps/web && bun install && bun run typecheck",
+    "cd apps/web && bun run lint",
+    "cd apps/web && bun run build",
+    "cd apps/web && bun run test"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

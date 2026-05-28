@@ -8,6 +8,7 @@ import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { getMovieEmbedUrl, loadWatchProgress } from '../utils/player';
+import { getDsLang } from '../utils/language';
 
 export default function MovieDetail() {
   const { id } = useParams();
@@ -61,7 +62,7 @@ export default function MovieDetail() {
   const playId = movie.imdb_id || movie.id || id;
   const storedProgress = loadWatchProgress(playId);
   const resumeAt = storedProgress?.time || undefined;
-  const embedUrl = getMovieEmbedUrl(playId, resumeAt);
+  const embedUrl = getMovieEmbedUrl(playId, resumeAt, { skin: 'netflix', dsLang: getDsLang() });
 
   const handlePlay = () => {
     setIsPlaying(true);

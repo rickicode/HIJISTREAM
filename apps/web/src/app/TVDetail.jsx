@@ -9,6 +9,7 @@ import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 import { getTVEmbedUrl, loadWatchProgress } from '../utils/player';
+import { getDsLang } from '../utils/language';
 
 export default function TVDetail() {
   const { id } = useParams();
@@ -79,7 +80,7 @@ export default function TVDetail() {
   const tvId = show.id || id;
   const storedProgress = loadWatchProgress(`${tvId}_s${currentSeason}e${currentEpisode}`);
   const resumeAt = storedProgress?.time || undefined;
-  const embedUrl = getTVEmbedUrl(tvId, currentSeason, currentEpisode, resumeAt);
+  const embedUrl = getTVEmbedUrl(tvId, currentSeason, currentEpisode, resumeAt, { skin: 'netflix', dsLang: getDsLang() });
 
   const handlePlayEpisode = (season, episodeNumber) => {
     setCurrentSeason(season);
