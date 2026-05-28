@@ -24,6 +24,11 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
           style={styles.poster}
           resizeMode="cover"
         />
+        {item.rating && item.rating !== '0' && item.rating !== '0.0' && (
+          <View style={styles.ratingBadge}>
+            <Text style={styles.ratingText}>★ {item.rating}</Text>
+          </View>
+        )}
         {watchProgress != null && watchProgress > 0 && (
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${watchProgress}%` }]} />
@@ -71,6 +76,22 @@ const styles = StyleSheet.create({
   progressFill: {
     height: '100%',
     backgroundColor: colors.primary,
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: '700',
   },
   info: {
     padding: spacing.xs,
