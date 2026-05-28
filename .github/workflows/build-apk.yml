@@ -107,14 +107,14 @@ jobs:
         run: |
           APK=$(find apps/mobile/android/app/build/outputs/apk/release -name "*.apk" -type f | head -1)
           if [ -n "$APK" ]; then
-            cp "$APK" "hijistream-${{ matrix.abi }}.apk"
+            cp "$APK" "HIJISTREAM-${{ matrix.abi }}.apk"
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ matrix.abi }}
-          path: hijistream-${{ matrix.abi }}.apk
+          path: HIJISTREAM-${{ matrix.abi }}.apk
           retention-days: 30
 
   combine:
@@ -135,7 +135,7 @@ jobs:
       - name: Upload combined artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: hijistream-all-apks
+          name: HIJISTREAM-all-apks
           path: apks/
           retention-days: 30
 
