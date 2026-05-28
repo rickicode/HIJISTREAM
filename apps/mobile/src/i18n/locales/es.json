@@ -77,7 +77,9 @@
     "pause": "Pausa",
     "fullscreen": "Pantalla Completa",
     "episodes": "Episodios",
-    "season": "Temporada"
+    "season": "Temporada",
+    "noEpisodes": "No hay episodios disponibles para esta temporada",
+    "playSeason": "Reproducir Temporada"
   },
   "profile": {
     "settings": "Configuracion",

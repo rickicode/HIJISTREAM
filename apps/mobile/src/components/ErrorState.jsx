@@ -2,18 +2,21 @@ import { View, Text, StyleSheet } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
+import { useTranslation } from '../i18n';
 
 export default function ErrorState({ error, onRetry }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       <AlertCircle color={colors.textMuted} size={48} />
-      <Text style={styles.heading}>Something went wrong</Text>
+      <Text style={styles.heading}>{t('common.error')}</Text>
       <Text style={styles.message}>
         {error?.message || 'An unexpected error occurred'}
       </Text>
       {onRetry && (
         <TVFocusable onPress={onRetry} style={styles.button}>
-          <Text style={styles.buttonText}>Try Again</Text>
+          <Text style={styles.buttonText}>{t('common.retry')}</Text>
         </TVFocusable>
       )}
     </View>

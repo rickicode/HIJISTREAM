@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "fix",
   "description": "IMDB Rating cross-platform audit: Verify rating badges display correctly on both mobile and web ContentCard components. Also confirm download removal (already confirmed no download code exists). Also perform full mobile codebase bug audit and fix all issues found.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "RATING AUDIT - Mobile ContentCard (apps/mobile/src/components/ContentCard.jsx): Verify the rating badge logic correctly handles all edge cases. Current logic: shows badge when item.rating exists AND item.rating !== '0' AND item.rating !== '0.0'. This is correct. The badge is positioned absolute top-right (top:6, right:6) which is good. Confirm it does not overlap with the progress bar (progress bar is at bottom: 0). No changes needed if logic is sound.",
     "RATING AUDIT - Web ContentCard (apps/web/src/components/ContentCard.jsx): Verify identical rating badge behavior. Current logic: shows badge when item.poster_url AND item.rating AND item.rating !== '0' AND item.rating !== '0.0'. NOTE: The web version also requires item.poster_url to show the rating badge - this means if poster_url is missing but rating exists, the badge is hidden. This is intentional (badge overlays the poster image). Confirm parity with mobile approach.",

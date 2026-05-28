@@ -77,7 +77,9 @@
     "pause": "一時停止",
     "fullscreen": "フルスクリーン",
     "episodes": "エピソード",
-    "season": "シーズン"
+    "season": "シーズン",
+    "noEpisodes": "このシーズンのエピソードはありません",
+    "playSeason": "シーズンを再生"
   },
   "profile": {
     "settings": "設定",

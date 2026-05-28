@@ -77,7 +77,9 @@
     "pause": "रोकें",
     "fullscreen": "पूर्ण स्क्रीन",
     "episodes": "एपिसोड",
-    "season": "सीज़न"
+    "season": "सीज़न",
+    "noEpisodes": "इस सीज़न के लिए कोई एपिसोड उपलब्ध नहीं है",
+    "playSeason": "सीज़न चलाएं"
   },
   "profile": {
     "settings": "सेटिंग्स",

@@ -77,7 +77,9 @@
     "pause": "Jeda",
     "fullscreen": "Layar Penuh",
     "episodes": "Episode",
-    "season": "Musim"
+    "season": "Musim",
+    "noEpisodes": "Tidak ada episode tersedia untuk musim ini",
+    "playSeason": "Putar Musim"
   },
   "profile": {
     "settings": "Pengaturan",
