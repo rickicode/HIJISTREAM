@@ -78,7 +78,7 @@ jobs:
         working-directory: apps/mobile/android
 
       - name: Build Release APK (${{ matrix.abi }})
-        run: ./gradlew assembleRelease --no-daemon --parallel --max-workers=2 -Dorg.gradle.jvmargs="-Xmx2g"
+        run: ./gradlew assembleRelease --no-daemon --parallel --max-workers=2 -Dorg.gradle.jvmargs="-Xmx2g" --warning-mode=none
         working-directory: apps/mobile/android
 
       - name: Get app version
