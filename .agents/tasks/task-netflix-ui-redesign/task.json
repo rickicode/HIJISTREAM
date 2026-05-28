@@ -1,0 +1,7 @@
+{
+  "task_id": "task-netflix-ui-redesign",
+  "task_description": "Total UI/UX redesign of HIJISTREAM web and mobile apps to feel strongly Netflix-inspired. Establishes a reusable design system with shared tokens, rebuilds all web components using shadcn/ui patterns + Tailwind CSS with Netflix dark cinematic palette, and redesigns the mobile Expo app to match. Preserves all existing TMDB content integration, watch progress tracking, and navigation logic.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

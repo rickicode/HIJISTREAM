@@ -4,26 +4,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0F0F0F',
-        surface: '#1A1A1A',
-        'surface-elevated': '#262626',
-        border: '#2E2E2E',
-        'border-hover': '#404040',
-        'text-primary': '#FFFFFF',
-        'text-secondary': '#A1A1A1',
-        'text-muted': '#6B6B6B',
-        primary: '#6366F1',
-        'primary-hover': '#818CF8',
-        success: '#10B981',
-        warning: '#F59E0B',
-        error: '#EF4444',
-        rating: '#FBBF24',
+        background: {
+          DEFAULT: '#141414',
+          elevated: '#1a1a1a',
+          card: '#181818',
+        },
+        foreground: '#FFFFFF',
+        muted: {
+          DEFAULT: '#808080',
+          foreground: '#b3b3b3',
+        },
+        primary: {
+          DEFAULT: '#E50914',
+          hover: '#F40612',
+        },
+        border: '#333333',
+        ring: '#E50914',
+        rating: '#46d369',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      borderRadius: {
-        card: '12px',
       },
       animation: {
         shimmer: 'shimmer 2s infinite linear',

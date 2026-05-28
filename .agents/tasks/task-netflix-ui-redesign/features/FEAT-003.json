@@ -1,0 +1,48 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Complete Netflix-style mobile app redesign. Rebuild all React Native components and screens to match the web Netflix aesthetic with mobile-native ergonomics. Use the same color tokens (#141414 bg, #E50914 primary red, white text) and design language but adapted for touch interaction, ScrollView-based rails, and native navigation patterns.",
+  "status": "pending",
+  "steps": [
+    "Create `apps/mobile/src/theme.js` - a shared design tokens file exporting colors (background: '#141414', backgroundElevated: '#1a1a1a', card: '#181818', primary: '#E50914', primaryHover: '#F40612', text: '#FFFFFF', textMuted: '#808080', textSecondary: '#b3b3b3', border: '#333333', rating: '#46d369', overlay: 'rgba(0,0,0,0.7)'), spacing, borderRadius, and typography constants. This serves as the single source of truth for all mobile styling.",
+    "Rewrite `apps/mobile/src/app/_layout.jsx` - update Stack screenOptions contentStyle backgroundColor to '#141414', keep existing QueryClient, SafeAreaProvider, font loading, and SplashScreen logic.",
+    "Rewrite `apps/mobile/src/app/(tabs)/_layout.jsx` - Netflix-style bottom tab bar: backgroundColor '#141414', borderTopColor '#333333', activeTintColor '#FFFFFF' (Netflix uses white active), inactiveTintColor '#808080'. Keep same tab screens (home, movies, tv, search).",
+    "Rewrite `apps/mobile/src/components/TVFocusable.jsx` - update focus border color from #2563EB to #E50914 (Netflix red), keep existing focus/scale behavior.",
+    "Rewrite `apps/mobile/src/components/ContentCard.jsx` - Netflix poster card for mobile: just the poster image filling the card (aspect ratio 2:3), rounded corners 4-6px (Netflix uses subtle rounding), no info section below by default (title only shows as a single line below poster in small text). Progress bar if watchProgress exists uses Netflix red. Pressed state dims slightly. Remove genre pills from card (keep it minimal like Netflix mobile).",
+    "Create `apps/mobile/src/components/ContentRail.jsx` - a mobile horizontal rail component: section title (bold white, 16-18px), optional See All button, horizontal ScrollView of ContentCard items (card width ~110px on phone, ~140px on tablet). Items have small gap (8-10px). Import from theme.js for colors.",
+    "Create `apps/mobile/src/components/HeroBanner.jsx` for mobile - a featured content banner: backdrop image filling ~55% of screen height, gradient from transparent to #141414 at bottom, title text large and bold at bottom-left, genre text below title, two buttons (Play: white bg black text, My List: transparent with white border). Random featured item from trending data.",
+    "Rewrite `apps/mobile/src/components/ContentGrid.jsx` - keep FlatList grid layout with numColumns logic but update styling: card background transparent (just posters), gap/padding using theme tokens, container backgroundColor '#141414'.",
+    "Rewrite `apps/mobile/src/components/DetailHero.jsx` - cinematic mobile detail: backdrop image at top ~40% of screen with gradient overlay fading to #141414, poster overlapping at bottom-left of backdrop area, title bold white to the right/below poster, metadata row (year, rating with green #46d369 text, runtime), genre row with small pills, overview text in muted color (up to 4 lines), Play button large and prominent (white bg, black text, full width or near-full width). Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/EpisodeList.jsx` - Netflix mobile episode list: season selector as a pressable dropdown-style button, each episode row shows episode number + title + runtime on one line, overview below in smaller muted text, thumbnail on left if available. Play icon on tap. Dark dividers between episodes. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/TabBar.jsx` - Netflix category tabs for browse pages: horizontal scroll, active tab white text with red underline, inactive gray text. Match web TabNavigation styling philosophy. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/SearchBar.jsx` - dark input field with subtle border (#333), search icon on left, clear X on right, placeholder text in muted gray. Match Netflix search UX. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/LoadingState.jsx` - Netflix-dark skeleton loaders: dark gray animated placeholders matching card/detail dimensions. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/ErrorState.jsx` - centered error with Netflix-red retry button. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/components/VideoPlayer.jsx` - update styling to use dark theme (#141414 background, white text). Keep existing WebView embed functionality intact.",
+    "Rewrite `apps/mobile/src/app/(tabs)/home.jsx` - Netflix mobile home: 1) HeroBanner featuring a trending item at top, 2) ContentRail for 'Continue Watching' (if items exist), 3) ContentRail for 'Trending Movies', 4) ContentRail for 'Trending TV Shows'. Wrapped in a ScrollView/FlatList. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/(tabs)/movies.jsx` - TabBar at top for category filter, ContentGrid below. Keep existing useInfiniteQuery logic. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/(tabs)/tv.jsx` - same pattern as movies.jsx. Keep existing query logic. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/(tabs)/search.jsx` - dark search page with SearchBar and ContentGrid for results. Keep existing query logic. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/movie/[id].jsx` - use new DetailHero, keep existing query logic and play navigation. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/tv/[id].jsx` - use new DetailHero + new EpisodeList, keep existing query and play logic. Use theme.js colors.",
+    "Rewrite `apps/mobile/src/app/player.jsx` - use new VideoPlayer styling, keep all embed URL logic and params handling.",
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/mobile && bun run lint` and fix any lint errors until 0 remain"
+  ],
+  "acceptance_criteria": [
+    "apps/mobile/src/theme.js exists with Netflix color tokens, spacing, and typography constants",
+    "All mobile components import and use colors from theme.js (no more hardcoded blue #2563EB)",
+    "Tab bar uses Netflix palette: #141414 background, white active, gray inactive",
+    "Home screen has a HeroBanner at top followed by horizontal ContentRails",
+    "ContentCard is minimal poster-focused (no genre pills on card, just poster + title)",
+    "DetailHero has cinematic backdrop with gradient overlay and prominent Play button",
+    "Color scheme across all screens: #141414 background, #E50914 primary, #FFFFFF text, #333333 borders",
+    "All TMDB data fetching, watch progress, and navigation logic preserved exactly",
+    "TVFocusable focus color is Netflix red #E50914",
+    "bun run lint passes with 0 errors"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && bun run lint"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
