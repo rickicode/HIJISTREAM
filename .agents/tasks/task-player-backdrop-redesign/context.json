@@ -1,0 +1,27 @@
+{
+  "project_type": "Monorepo with React/Vite/Tailwind web app and Expo/React Native mobile app",
+  "language": "JavaScript (JSX)",
+  "build_system": "bun + vite (web), expo (mobile)",
+  "test_framework": "vitest (web), none observed (mobile)",
+  "build_command": "bun run build (in apps/web)",
+  "test_command": "bun run test (in apps/web)",
+  "verification_instructions": "1. Run `bun run build` in apps/web to verify build passes. 2. Run `bun run lint` in apps/web to verify lint passes. 3. For mobile, run `bunx expo lint` in apps/mobile.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "1. `bun install` in apps/web. 2. `bun install` in apps/mobile.",
+  "environment_constraints": "OPEN_INTERNET - full network access available. No Docker needed for this project.",
+  "contribution_requirements": "Maintain Netflix-style dark theme aesthetic. Keep all existing functionality intact.",
+  "key_patterns": "Web uses Tailwind CSS with custom theme colors (bg-background, text-muted-foreground, etc). Mobile uses React Native StyleSheet with colors from theme.js. Components are in src/components/ directories. Pages are in src/app/ directories. PlayerBox renders VideoPlayer when isPlaying=true. DetailHero shows backdrop_url as full-width background image with gradient overlays.",
+  "relevant_files": [
+    "apps/web/src/components/PlayerBox.jsx",
+    "apps/web/src/components/DetailHero.jsx",
+    "apps/web/src/components/VideoPlayer.jsx",
+    "apps/web/src/app/MovieDetail.jsx",
+    "apps/web/src/app/TVDetail.jsx",
+    "apps/mobile/src/app/player.jsx",
+    "apps/mobile/src/components/DetailHero.jsx",
+    "apps/mobile/src/components/VideoPlayer.jsx",
+    "apps/mobile/src/app/movie/[id].jsx",
+    "apps/mobile/src/app/tv/[id].jsx"
+  ],
+  "directory_structure": "apps/web/src/components/ - reusable UI components, apps/web/src/app/ - page components with routing, apps/mobile/src/components/ - RN UI components, apps/mobile/src/app/ - Expo Router pages"
+}

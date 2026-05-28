@@ -1,0 +1,24 @@
+{
+  "task_id": "task-player-backdrop-redesign",
+  "task_description": "Move the backdrop/cover image from the DetailHero section to become the background of the PlayerBox (embed player area). When not playing, the player area shows the backdrop with a play button overlay. DetailHero becomes a clean info section without the large backdrop. Apply to both web and mobile surfaces.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "skipped",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "Web build (vite) passes cleanly. Web lint (eslint) passes. Mobile lint (expo lint) passes. No test files were modified (no tests exist for these UI components). Docker not applicable."
+  },
+  "review_fixes": {
+    "review_file": "2025-05-28-100000-review.md",
+    "issues_fixed": 4,
+    "details": [
+      "Removed onPlay from DetailHero in movie/[id].jsx and tv/[id].jsx to eliminate duplicate play buttons",
+      "Replaced static Dimensions.get with useWindowDimensions hook in mobile PlayerBox",
+      "Added backdrop_url to player route params and prefer it over poster_url in player screen",
+      "Added poster_url fallback in web PlayerBox for missing backdrop_url"
+    ]
+  }
+}

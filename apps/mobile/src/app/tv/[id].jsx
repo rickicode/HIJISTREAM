@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { colors } from '../../theme';
+import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
 import EpisodeList from '../../components/EpisodeList';
 import ContentRail from '../../components/ContentRail';
@@ -44,6 +45,7 @@ export default function TVDetailScreen() {
         episode: '1',
         title: show.title,
         poster_url: show.poster_url || '',
+        backdrop_url: show.backdrop_url || '',
       },
     });
   };
@@ -58,13 +60,15 @@ export default function TVDetailScreen() {
         episode: String(episode),
         title: show.title,
         poster_url: show.poster_url || '',
+        backdrop_url: show.backdrop_url || '',
       },
     });
   };
 
   return (
     <ScrollView style={styles.container}>
-      <DetailHero item={show} type="tv" onPlay={handlePlay} />
+      <PlayerBox item={show} onPlay={handlePlay} />
+      <DetailHero item={show} type="tv" />
       <EpisodeList
         episodes={show.episodes || []}
         seasons={show.number_of_seasons || 1}

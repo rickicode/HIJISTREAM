@@ -8,21 +8,8 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay = null 
   const cast = item.credits?.slice(0, 5) || [];
 
   return (
-    <div className="relative">
-      <div className="absolute inset-x-0 top-0 h-[450px] overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8">
-        {item.backdrop_url ? (
-          <img
-            src={item.backdrop_url}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-background-elevated" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/60 to-transparent" />
-      </div>
-      <div className="relative pt-[200px] flex flex-col md:flex-row gap-6 md:gap-8">
+    <div className="relative pt-6">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
         <div className="w-[200px] md:w-[250px] shrink-0">
           <div className="relative aspect-[2/3] rounded overflow-hidden shadow-2xl shadow-black/70">
             {item.poster_url ? (
