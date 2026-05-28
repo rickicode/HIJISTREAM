@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Apply the same backdrop-in-player concept to the mobile surface. The mobile DetailHero currently shows the backdrop as a large ImageBackground. Move the backdrop to be behind the player/play-button area. On mobile, the detail screens navigate to a separate player screen, so the backdrop should appear as a preview in the detail page's play area and optionally as a background in the player screen itself.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Create apps/mobile/src/components/PlayerBox.jsx: A new component similar to the web PlayerBox. It renders an ImageBackground with the backdrop_url, dark gradient overlays, and a centered play button. Props: item, onPlay. Uses the same styling approach as the existing mobile DetailHero backdrop (ImageBackground with overlay Views) but in a 16:9 aspect-ratio container.",
     "Modify apps/mobile/src/components/DetailHero.jsx: Remove the large ImageBackground backdrop section (the 350px tall backdrop). Keep the info section (poster, title, metadata, genres, overview). Adjust styling so the info section appears on a clean dark background without the backdrop.",
@@ -21,5 +21,5 @@
     "Run `bunx expo lint` in apps/mobile"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All changes lint cleanly. Created PlayerBox.jsx with 16:9 aspect ratio backdrop and centered play button. Removed ImageBackground backdrop from DetailHero (removed the 350px backdrop and gradient overlays, removed marginTop: -60 from posterRow). Added PlayerBox above DetailHero in both movie/[id].jsx and tv/[id].jsx. Player screen now uses ImageBackground with poster_url as subtle background behind VideoPlayer."
 }
