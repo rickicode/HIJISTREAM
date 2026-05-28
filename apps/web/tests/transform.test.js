@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { filterValidItems } from '../src/utils/api';
 
 // Test the transformation logic directly (no network needed)
 const GENRE_MAP = {
@@ -190,11 +191,6 @@ describe('TMDB Response Transform - Embed URL Format', () => {
 });
 
 describe('TMDB Response Transform - Item Filtering', () => {
-  function filterValidItems(items) {
-    if (!Array.isArray(items)) return [];
-    return items.filter(item => item && item.id && item.title && item.title.trim() !== '');
-  }
-
   it('filters out items with missing id', () => {
     const items = [
       { id: 1, title: 'Good' },

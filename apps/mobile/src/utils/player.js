@@ -7,8 +7,8 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
   const parts = [];
   if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
-  if (options.skin) parts.push(`skin=${options.skin}`);
-  if (options.dsLang) parts.push(`ds_lang=${options.dsLang}`);
+  if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
+  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
   const qs = parts.join('&');
   return `${PLAYER_BASE_URL}/movie/${imdbId}${qs ? '?' + qs : ''}`;
 }
@@ -16,8 +16,8 @@ export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
 export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
   const parts = [];
   if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
-  if (options.skin) parts.push(`skin=${options.skin}`);
-  if (options.dsLang) parts.push(`ds_lang=${options.dsLang}`);
+  if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
+  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
   const qs = parts.join('&');
   return `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}${qs ? '?' + qs : ''}`;
 }

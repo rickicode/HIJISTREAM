@@ -10,16 +10,20 @@ export default function PlayerScreen() {
   const { type, id, season, episode, title, poster_url } = useLocalSearchParams();
   const router = useRouter();
   const [embedUrl, setEmbedUrl] = useState(null);
+  const [dsLang, setDsLangState] = useState(null);
 
   const contentId =
     type === 'tv' ? `${id}_s${season || '1'}e${episode || '1'}` : id;
 
   useEffect(() => {
+    getDsLang().then(setDsLangState);
+  }, []);
+
+  useEffect(() => {
     async function buildUrl() {
       const progress = await loadWatchProgress(contentId);
       const resumeAt = progress?.time || 0;
-      const dsLang = await getDsLang();
-      const options = { skin: 'netflix', dsLang };
+      const options = { skin: 'netflix', dsLang: dsLang };
 
       if (type === 'movie') {
         setEmbedUrl(getMovieEmbedUrl(id, resumeAt, options));
@@ -28,7 +32,7 @@ export default function PlayerScreen() {
       }
     }
     buildUrl();
-  }, [type, id, season, episode, contentId]);
+  }, [type, id, season, episode, contentId, dsLang]);
 
   if (!embedUrl) {
     return <View style={styles.container} />;

@@ -16,6 +16,14 @@ export default function MovieDetail() {
   const autoplay = searchParams.get('autoplay') === 'true';
   const [isPlaying, setIsPlaying] = useState(autoplay);
 
+  const [_langVersion, setLangVersion] = useState(0);
+
+  useEffect(() => {
+    const onLangChange = () => setLangVersion(v => v + 1);
+    window.addEventListener('language-change', onLangChange);
+    return () => window.removeEventListener('language-change', onLangChange);
+  }, []);
+
   const { data: movie, isLoading, error, refetch } = useQuery({
     queryKey: ['movie', id],
     queryFn: () => api.getMovieDetails(id),

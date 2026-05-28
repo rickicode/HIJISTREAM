@@ -21,6 +21,14 @@ export default function TVDetail() {
   const [currentEpisode, setCurrentEpisode] = useState(1);
   const playerRef = useRef(null);
 
+  const [_langVersion, setLangVersion] = useState(0);
+
+  useEffect(() => {
+    const onLangChange = () => setLangVersion(v => v + 1);
+    window.addEventListener('language-change', onLangChange);
+    return () => window.removeEventListener('language-change', onLangChange);
+  }, []);
+
   const { data: show, isLoading, error, refetch } = useQuery({
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),

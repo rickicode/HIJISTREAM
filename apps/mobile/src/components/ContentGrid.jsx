@@ -30,7 +30,7 @@ export default function ContentGrid({
     return <ErrorState error={error} onRetry={onRetry} />;
   }
 
-  const validItems = (items || []).filter(item => item && (item.id || item.tmdb_id));
+  const validItems = (items || []).filter(item => item && item.id && item.title);
 
   return (
     <FlatList

@@ -7,6 +7,8 @@ function filterValidItems(items) {
   return items.filter(item => item && item.id && item.title && item.title.trim() !== '');
 }
 
+export { filterValidItems };
+
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = cacheManager.get(cacheKey);
   if (cached) return cached;

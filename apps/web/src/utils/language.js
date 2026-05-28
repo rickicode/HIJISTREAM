@@ -13,6 +13,7 @@ export function getCurrentLanguage() {
 export function setLanguage(lang) {
   if (SUPPORTED_LANGS.includes(lang)) {
     localStorage.setItem(STORAGE_KEY, lang);
+    window.dispatchEvent(new Event('language-change'));
   }
 }
 
