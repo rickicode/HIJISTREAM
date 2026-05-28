@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "chore",
   "description": "Install dependencies for both mobile and web apps to establish a working baseline before making changes.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Run cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install to install mobile dependencies",
     "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun install to install web dependencies",
@@ -22,5 +22,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/web && npm run build"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "bun is installed at /root/.local/share/mise/installs/bun/1.2.14/bin/bun (needs PATH export). Mobile lint had 2 errors for setTimeout/clearTimeout globals - fixed by adding globals to .eslintrc.js. 6 warnings remain (unused vars) but are non-blocking. Web lint and build pass cleanly."
 }
