@@ -31,13 +31,18 @@ export default function PlayerScreen() {
     return <View style={styles.container} />;
   }
 
+  const backgroundUri = backdrop_url || poster_url;
+
   return (
     <ImageBackground
-      source={{ uri: backdrop_url || poster_url }}
+      source={{ uri: backgroundUri }}
       style={styles.container}
       resizeMode="cover"
     >
-      <View style={styles.overlay}>
+      {/* Dark overlay so player is clearly visible against backdrop */}
+      <View style={styles.outerOverlay} />
+      {/* Player sits in the center, backdrop visible around edges */}
+      <View style={styles.playerWrapper}>
         <VideoPlayer
           embedUrl={embedUrl}
           title={title || ''}
@@ -58,9 +63,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  overlay: {
+  outerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  playerWrapper: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    width: '100%',
+    zIndex: 1,
   },
 });

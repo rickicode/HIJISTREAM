@@ -5,29 +5,38 @@ import TVFocusable from './TVFocusable';
 
 export default function PlayerBox({ item, onPlay }) {
   const { width: screenWidth } = useWindowDimensions();
-  const playerHeight = screenWidth * (9 / 16);
+  // Full width backdrop, taller than the player to show backdrop around it
+  const sectionHeight = screenWidth * (9 / 16) + 48;
+  const playerWidth = screenWidth - 32; // small margin so backdrop peeks around edges
+  const playerHeight = playerWidth * (9 / 16);
   const backdropUri = item.backdrop_url || item.poster_url;
 
   return (
-    <View style={[styles.container, { width: screenWidth, height: playerHeight }]}>
+    <View style={[styles.outerContainer, { width: screenWidth, height: sectionHeight }]}>
+      {/* Full-width backdrop image as background */}
       <ImageBackground
         source={{ uri: backdropUri }}
         style={styles.backdrop}
         resizeMode="cover"
       >
-        <View style={styles.gradientOverlay1} />
-        <View style={styles.gradientOverlay2} />
-        <View style={styles.gradientOverlay3} />
-        <TVFocusable onPress={onPlay} style={styles.playButton}>
-          <Play color="#FFFFFF" size={32} fill="#FFFFFF" />
-        </TVFocusable>
+        {/* Dark overlay */}
+        <View style={styles.darkOverlay} />
+        <View style={styles.topGradient} />
+        <View style={styles.bottomGradient} />
+
+        {/* Player box floating in the center over the backdrop */}
+        <View style={[styles.playerBox, { width: playerWidth, height: playerHeight }]}>
+          <TVFocusable onPress={onPlay} style={styles.playButton}>
+            <Play color="#FFFFFF" size={32} fill="#FFFFFF" />
+          </TVFocusable>
+        </View>
       </ImageBackground>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     backgroundColor: colors.background,
   },
   backdrop: {
@@ -36,33 +45,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gradientOverlay1: {
+  darkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,20,20,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  gradientOverlay2: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 80,
-    backgroundColor: 'rgba(20,20,20,0.7)',
-  },
-  gradientOverlay3: {
+  topGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
-    height: 60,
-    backgroundColor: 'rgba(20,20,20,0.5)',
+    height: 50,
+    backgroundColor: 'rgba(20,20,20,0.6)',
+  },
+  bottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 50,
+    backgroundColor: 'rgba(20,20,20,0.7)',
+  },
+  playerBox: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
   },
   playButton: {
     width: 64,
     height: 64,
-    borderRadius: borderRadius.full,
+    borderRadius: 32,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
   },
 });
