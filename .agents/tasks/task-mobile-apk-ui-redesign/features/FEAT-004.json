@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "fix",
   "description": "Full codebase audit of mobile app: fix bugs, add missing i18n keys for new features (moreLikeThis, viewAll), ensure locale parity, and verify build passes cleanly.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Add any missing translation keys that were introduced by FEAT-001/002/003 to ALL 7 locale files on BOTH platforms. Keys to check: 'common.viewAll', 'common.moreLikeThis', 'nav.myList', 'myList.emptyState'. Ensure all 7 mobile locale files have identical key structures. Ensure all 7 web locale files have identical key structures.",
     "2. Audit apps/mobile/src/app/movie/[id].jsx and apps/mobile/src/app/tv/[id].jsx: Ensure the 'Related Series' / 'More Like This' title strings are using translation keys (t('common.moreLikeThis')) instead of hardcoded English.",
@@ -28,5 +28,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/web && bun run typecheck"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 14 locale files (7 mobile + 7 web) already had identical key structures with no 'downloads' section remaining. Fixed 5 hardcoded English strings: ContentRail mobile ('See All >'), DetailHero mobile ('Play'), MovieDetail web ('More Like This'), TVDetail web ('Related Series'), ContentRail web ('See All'). HeroBanner already used t() correctly. Navigation in ContentCard and genre/[id] verified correct. All 5 verification commands pass with exit 0."
 }
