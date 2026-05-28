@@ -1,17 +1,38 @@
 import { useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { ArrowLeft } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme';
 import { saveWatchProgress } from '../utils/player';
-import TVFocusable from './TVFocusable';
 
-export default function VideoPlayer({ embedUrl, title, contentId, onBack, metadata = {} }) {
+export default function VideoPlayer({ embedUrl, contentId, metadata = {} }) {
   const lastSaveRef = useRef(0);
 
   const injectedJavaScript = useMemo(
     () => `
       (function() {
+        // Block popup ads - override window.open
+        window.open = function() { return null; };
+
+        // Block popup via createElement trick
+        var origCreate = document.createElement.bind(document);
+        document.createElement = function(tag) {
+          if (tag === 'a') {
+            var el = origCreate(tag);
+            el.setAttribute('target', '_self');
+            return el;
+          }
+          return origCreate(tag);
+        };
+
+        // Prevent any click handlers that try to open new windows
+        document.addEventListener('click', function(e) {
+          var target = e.target.closest('a[target="_blank"]');
+          if (target) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }, true);
+
+        // Forward player events to React Native
         var originalPostMessage = window.postMessage;
         window.postMessage = function(data, origin) {
           if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
@@ -32,6 +53,16 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
     `,
     []
   );
+
+  const handleShouldStartLoad = useCallback((request) => {
+    const url = request.url || '';
+    // Only allow vaplayer.ru URLs and about:blank
+    if (url.startsWith('https://vaplayer.ru') || url.startsWith('about:blank') || url === '') {
+      return true;
+    }
+    // Block all other URLs (ad redirects, popups, etc.)
+    return false;
+  }, []);
 
   const handleMessage = useCallback(
     (event) => {
@@ -66,20 +97,15 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TVFocusable onPress={onBack} style={styles.backButton}>
-          <ArrowLeft color={colors.text} size={20} />
-        </TVFocusable>
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-      </View>
       <WebView
         source={{ uri: embedUrl }}
         style={styles.webview}
         javaScriptEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        setSupportMultipleWindows={false}
+        javaScriptCanOpenWindowsAutomatically={false}
+        onShouldStartLoadWithRequest={handleShouldStartLoad}
         injectedJavaScript={injectedJavaScript}
         onMessage={handleMessage}
       />
@@ -90,29 +116,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.backgroundElevated,
-    gap: spacing.sm,
-  },
-  backButton: {
-    minWidth: 40,
-    minHeight: 40,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
+    backgroundColor: '#000000',
   },
   webview: {
     flex: 1,

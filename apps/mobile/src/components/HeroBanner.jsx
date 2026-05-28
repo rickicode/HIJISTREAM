@@ -74,6 +74,8 @@ export default function HeroBanner({ item, type = 'movie' }) {
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.background,
   },
   backdrop: {
     height: 400,
