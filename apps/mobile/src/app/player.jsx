@@ -5,7 +5,6 @@ import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import { getDsLang } from '../utils/language';
-import { colors } from '../theme';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function PlayerScreen() {
