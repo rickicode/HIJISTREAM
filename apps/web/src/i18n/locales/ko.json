@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "home": "홈",
+    "browse": "둘러보기",
+    "downloads": "다운로드",
+    "profile": "프로필",
+    "movies": "영화",
+    "tvShows": "TV 프로그램",
+    "anime": "애니메이션",
+    "search": "검색"
+  },
+  "browse": {
+    "title": "둘러보기",
+    "genreTab": "장르",
+    "countryTab": "국가"
+  },
+  "genres": {
+    "action": "액션",
+    "adventure": "어드벤처",
+    "animation": "애니메이션",
+    "comedy": "코미디",
+    "crime": "범죄",
+    "documentary": "다큐멘터리",
+    "drama": "드라마",
+    "family": "가족",
+    "fantasy": "판타지",
+    "history": "역사",
+    "horror": "공포",
+    "music": "음악",
+    "mystery": "미스터리",
+    "romance": "로맨스",
+    "scienceFiction": "SF",
+    "tvMovie": "TV 영화",
+    "thriller": "스릴러",
+    "war": "전쟁",
+    "western": "서부"
+  },
+  "countries": {
+    "korea": "한국",
+    "japan": "일본",
+    "india": "인도",
+    "usa": "미국",
+    "brazil": "브라질",
+    "mexico": "멕시코",
+    "indonesia": "인도네시아",
+    "uk": "영국",
+    "france": "프랑스",
+    "germany": "독일",
+    "china": "중국",
+    "thailand": "태국",
+    "turkey": "터키",
+    "nigeria": "나이지리아"
+  },
+  "common": {
+    "play": "재생",
+    "myList": "내 목록",
+    "moreInfo": "상세 정보",
+    "seeAll": "모두 보기",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "retry": "다시 시도",
+    "noResults": "결과 없음",
+    "continueWatching": "이어서 보기",
+    "trending": "인기 급상승",
+    "popular": "인기",
+    "topRated": "최고 평점",
+    "upcoming": "개봉 예정",
+    "ongoing": "방영 중"
+  },
+  "player": {
+    "play": "재생",
+    "pause": "일시정지",
+    "fullscreen": "전체 화면",
+    "episodes": "에피소드",
+    "season": "시즌"
+  },
+  "profile": {
+    "settings": "설정",
+    "clearCache": "캐시 삭제",
+    "language": "언어",
+    "selectLanguage": "언어 선택"
+  }
+}

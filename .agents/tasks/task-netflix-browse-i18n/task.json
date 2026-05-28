@@ -1,0 +1,7 @@
+{
+  "task_id": "task-netflix-browse-i18n",
+  "task_description": "Full mobile UI/UX redesign to Netflix-style with dedicated Browse page (Genre/Country tabs replacing Search in bottom nav), multi-language support (7 languages) with auto-detection on mobile and language dropdown in header for both mobile and web apps.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

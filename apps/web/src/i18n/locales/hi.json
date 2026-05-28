@@ -1,0 +1,83 @@
+{
+  "nav": {
+    "home": "होम",
+    "browse": "ब्राउज़",
+    "downloads": "डाउनलोड",
+    "profile": "प्रोफ़ाइल",
+    "movies": "फ़िल्में",
+    "tvShows": "टीवी शो",
+    "anime": "एनीमे",
+    "search": "खोजें"
+  },
+  "browse": {
+    "title": "ब्राउज़",
+    "genreTab": "शैली",
+    "countryTab": "देश"
+  },
+  "genres": {
+    "action": "एक्शन",
+    "adventure": "एडवेंचर",
+    "animation": "एनिमेशन",
+    "comedy": "कॉमेडी",
+    "crime": "अपराध",
+    "documentary": "डॉक्यूमेंट्री",
+    "drama": "ड्रामा",
+    "family": "परिवार",
+    "fantasy": "फ़ैंटेसी",
+    "history": "इतिहास",
+    "horror": "हॉरर",
+    "music": "संगीत",
+    "mystery": "रहस्य",
+    "romance": "रोमांस",
+    "scienceFiction": "साइंस फिक्शन",
+    "tvMovie": "टीवी फ़िल्म",
+    "thriller": "थ्रिलर",
+    "war": "युद्ध",
+    "western": "वेस्टर्न"
+  },
+  "countries": {
+    "korea": "दक्षिण कोरिया",
+    "japan": "जापान",
+    "india": "भारत",
+    "usa": "संयुक्त राज्य",
+    "brazil": "ब्राज़ील",
+    "mexico": "मेक्सिको",
+    "indonesia": "इंडोनेशिया",
+    "uk": "यूनाइटेड किंगडम",
+    "france": "फ़्रांस",
+    "germany": "जर्मनी",
+    "china": "चीन",
+    "thailand": "थाईलैंड",
+    "turkey": "तुर्की",
+    "nigeria": "नाइजीरिया"
+  },
+  "common": {
+    "play": "चलाएं",
+    "myList": "मेरी सूची",
+    "moreInfo": "और जानें",
+    "seeAll": "सभी देखें",
+    "loading": "लोड हो रहा है...",
+    "error": "कुछ गलत हो गया",
+    "retry": "पुनः प्रयास करें",
+    "noResults": "कोई परिणाम नहीं",
+    "continueWatching": "देखना जारी रखें",
+    "trending": "ट्रेंडिंग",
+    "popular": "लोकप्रिय",
+    "topRated": "सर्वश्रेष्ठ रेटेड",
+    "upcoming": "आगामी",
+    "ongoing": "प्रसारण में"
+  },
+  "player": {
+    "play": "चलाएं",
+    "pause": "रोकें",
+    "fullscreen": "पूर्ण स्क्रीन",
+    "episodes": "एपिसोड",
+    "season": "सीज़न"
+  },
+  "profile": {
+    "settings": "सेटिंग्स",
+    "clearCache": "कैश साफ़ करें",
+    "language": "भाषा",
+    "selectLanguage": "भाषा चुनें"
+  }
+}
