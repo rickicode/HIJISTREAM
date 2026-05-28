@@ -110,8 +110,18 @@ export default function SearchModal({ open, onClose }) {
     setDebouncedQuery(term);
   };
 
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && query.trim()) {
+      e.preventDefault();
+      onClose();
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
+  }, [query, onClose, navigate]);
+
+  const inputContainerRef = useRef(null);
+
   const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+    if (inputContainerRef.current && !inputContainerRef.current.contains(e.target)) {
       onClose();
     }
   };
@@ -129,7 +139,7 @@ export default function SearchModal({ open, onClose }) {
       onClick={handleBackdropClick}
     >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-3xl mx-auto mt-20 px-4 flex flex-col max-h-[calc(100vh-6rem)]">
+      <div className="relative z-10 w-full max-w-3xl mx-auto mt-20 px-4 flex flex-col max-h-[calc(100vh-6rem)]" ref={inputContainerRef}>
         <div className="flex items-center gap-3 bg-[#1a1a1a] rounded-lg border border-border p-3">
           <Search size={20} className="text-muted shrink-0" />
           <input
@@ -137,6 +147,7 @@ export default function SearchModal({ open, onClose }) {
             type="text"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={t('common.searchPlaceholder')}
             className="flex-1 bg-transparent text-white text-base placeholder:text-muted outline-none"
           />

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Search as SearchIcon } from 'lucide-react';
 import api from '../utils/api';
 import { useTranslation } from '../i18n';
@@ -7,7 +8,9 @@ import SearchBar from '../components/SearchBar';
 import ContentGrid from '../components/ContentGrid';
 
 export default function Search() {
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const [query, setQuery] = useState(initialQuery);
   const { t, locale } = useTranslation();
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function Search() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
       <div className="mb-8">
-        <SearchBar onSearch={handleSearch} initialQuery={query} />
+        <SearchBar onSearch={handleSearch} initialQuery={initialQuery || query} />
       </div>
 
       {!query && (
