@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -43,13 +43,14 @@ export default function HomeScreen() {
     queryFn: () => api.getAnimeTrending(1),
   });
 
-  const movies = trendingMovies?.items?.slice(0, 10) || [];
+  const movies = useMemo(() => trendingMovies?.items?.slice(0, 10) || [], [trendingMovies]);
   const tvShows = trendingTV?.items?.slice(0, 10) || [];
   const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
   const animeItems = animeTrending?.items?.slice(0, 10) || [];
-  const heroItem = movies.length > 0
-    ? movies[Math.floor(Math.random() * Math.min(movies.length, 5))]
-    : null;
+  const heroItem = useMemo(() => {
+    if (movies.length === 0) return null;
+    return movies[Math.floor(Math.random() * Math.min(movies.length, 5))];
+  }, [movies]);
 
   const sections = [];
 

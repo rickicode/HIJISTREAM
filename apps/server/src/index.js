@@ -302,7 +302,7 @@ const server = Bun.serve({
       // Route: GET /api/anime/ongoing
       else if (pathname === '/api/anime/ongoing') {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, sort_by: 'popularity.desc', page });
+        const data = await fetchTMDB('/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page });
         const items = (data.results || []).map(transformTVListItem);
         result = wrapPaginatedList(data, items);
       }
