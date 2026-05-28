@@ -1,10 +1,10 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import DetailHero from '../components/DetailHero';
 import EpisodeList from '../components/EpisodeList';
-import PlayerBox from '../components/PlayerBox';
+import VideoPlayer from '../components/VideoPlayer';
 import ContentRail from '../components/ContentRail';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
@@ -15,9 +15,10 @@ export default function TVDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === 'true';
   const [selectedSeason, setSelectedSeason] = useState(1);
-  const [isPlaying, setIsPlaying] = useState(autoplay);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(1);
+  const playerRef = useRef(null);
 
   const { data: show, isLoading, error, refetch } = useQuery({
     queryKey: ['tv', id],
@@ -50,6 +51,13 @@ export default function TVDetail() {
     }
   }, [autoplay]);
 
+  // Auto-scroll to player when it becomes visible or episode changes
+  useEffect(() => {
+    if (isPlaying && playerRef.current) {
+      playerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isPlaying, currentSeason, currentEpisode]);
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
@@ -69,16 +77,9 @@ export default function TVDetail() {
   if (!show) return null;
 
   const tvId = show.id || id;
-  const storedProgress = loadWatchProgress(tvId);
+  const storedProgress = loadWatchProgress(`${tvId}_s${currentSeason}e${currentEpisode}`);
   const resumeAt = storedProgress?.time || undefined;
   const embedUrl = getTVEmbedUrl(tvId, currentSeason, currentEpisode, resumeAt);
-
-  const handlePlay = () => {
-    setCurrentSeason(1);
-    setCurrentEpisode(1);
-    setIsPlaying(true);
-    setSearchParams({}, { replace: true });
-  };
 
   const handlePlayEpisode = (season, episodeNumber) => {
     setCurrentSeason(season);
@@ -102,18 +103,18 @@ export default function TVDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-      <PlayerBox
-        item={show}
-        isPlaying={isPlaying}
-        onPlay={handlePlay}
-        onClose={handleClosePlayer}
-        embedUrl={embedUrl}
-        contentId={tvId}
-        metadata={metadata}
-      />
-      <div className="mt-8">
-        <DetailHero item={show} type="tv" />
-      </div>
+      {isPlaying && (
+        <div ref={playerRef} className="mb-6">
+          <VideoPlayer
+            embedUrl={embedUrl}
+            title={`${show.title} - S${currentSeason}E${currentEpisode}`}
+            contentId={`${tvId}_s${currentSeason}e${currentEpisode}`}
+            onBack={handleClosePlayer}
+            metadata={metadata}
+          />
+        </div>
+      )}
+      <DetailHero item={show} type="tv" />
       <EpisodeList
         tvId={id}
         seasons={numberOfSeasons}

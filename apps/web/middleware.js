@@ -182,6 +182,27 @@ export default async function middleware(request) {
       const data = await fetchTMDB(TMDB_API_KEY, '/3/search/multi', { query, page });
       result = transformSearchResults(data);
       cacheControl = 'public, s-maxage=120, stale-while-revalidate=300';
+    } else if (pathname === '/anime/trending') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
+    } else if (pathname === '/anime/ongoing') {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
+    } else if (pathname === '/anime/top-rated') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
+    } else if (pathname === '/tv/on-the-air') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/on_the_air', { page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
+    } else if (pathname.match(/^\/movies\/(\d+)\/recommendations$/)) {
+      const match = pathname.match(/^\/movies\/(\d+)\/recommendations$/);
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${match[1]}/recommendations`, { page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformMovieListItem));
+    } else if (pathname.match(/^\/tv\/(\d+)\/recommendations$/)) {
+      const match = pathname.match(/^\/tv\/(\d+)\/recommendations$/);
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${match[1]}/recommendations`, { page });
+      result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
     } else if (pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/)) {
       const match = pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${match[1]}/season/${match[2]}`);
