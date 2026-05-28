@@ -3,12 +3,21 @@
     "name": "HIJISTREAM",
     "slug": "hijistream",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "default",
+    "icon": "./assets/icon-1024.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#141414"
+    },
     "scheme": "hijistream",
     "platforms": ["android"],
     "android": {
-      "package": "com.hijistream.tv",
-      "isAndroidTV": true,
+      "package": "com.hijistream.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#141414"
+      },
       "minSdkVersion": 24
     },
     "plugins": ["expo-router"],

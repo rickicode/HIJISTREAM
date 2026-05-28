@@ -4,16 +4,16 @@ import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
-export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode }) {
+export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode, onSeasonChange }) {
   const totalSeasons = typeof seasons === 'number' ? seasons : 1;
   const [activeSeason, setActiveSeason] = useState(1);
 
   const hasEpisodeData = Array.isArray(episodes) && episodes.length > 0;
-  const seasonEpisodes = hasEpisodeData
-    ? episodes.filter(
-        (ep) => ep.season === activeSeason || ep.season_number === activeSeason
-      )
-    : [];
+
+  const handleSeasonChange = (season) => {
+    setActiveSeason(season);
+    if (onSeasonChange) onSeasonChange(season);
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -68,7 +68,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           {Array.from({ length: totalSeasons }).map((_, i) => (
             <TVFocusable
               key={i + 1}
-              onPress={() => setActiveSeason(i + 1)}
+              onPress={() => handleSeasonChange(i + 1)}
               style={[
                 styles.seasonButton,
                 activeSeason === i + 1 && styles.seasonButtonActive,
@@ -86,11 +86,11 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           ))}
         </View>
       )}
-      {seasonEpisodes.length === 0 ? (
+      {!hasEpisodeData ? (
         renderEmptyState()
       ) : (
         <FlatList
-          data={seasonEpisodes}
+          data={episodes}
           keyExtractor={(item, index) =>
             String(item.episode_number || item.episode || index)
           }

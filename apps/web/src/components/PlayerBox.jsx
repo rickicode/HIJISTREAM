@@ -2,35 +2,42 @@ import { Play } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
 
 export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, contentId, metadata }) {
-  if (isPlaying) {
-    return (
-      <VideoPlayer
-        embedUrl={embedUrl}
-        title={item.title}
-        contentId={contentId}
-        onBack={onClose}
-        metadata={metadata}
-      />
-    );
-  }
+  const backdropSrc = item.backdrop_url || item.poster_url;
 
   return (
-    <div
-      className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-black"
-      onClick={onPlay}
-    >
-      {(item.backdrop_url || item.poster_url) && (
+    <div className="relative w-full">
+      {backdropSrc && (
         <img
-          src={item.backdrop_url || item.poster_url}
+          src={backdropSrc}
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-20 h-20 rounded-full border-2 border-white/80 bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-          <Play size={40} fill="white" color="white" />
-        </div>
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/30" />
+
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {isPlaying ? (
+          <div className="aspect-video w-full rounded-lg overflow-hidden shadow-2xl shadow-black/70 bg-black">
+            <VideoPlayer
+              embedUrl={embedUrl}
+              title={item.title}
+              contentId={contentId}
+              metadata={metadata}
+            />
+          </div>
+        ) : (
+          <div
+            className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-transparent"
+            onClick={onPlay}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full border-2 border-white/80 bg-black/50 flex items-center justify-center hover:bg-black/70 hover:scale-110 transition-all">
+                <Play size={40} fill="white" color="white" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

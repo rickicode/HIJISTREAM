@@ -5,6 +5,8 @@ import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
 
 function getNumColumns(width) {
+  if (width < 600) return 2;
+  if (width < 900) return 3;
   if (width < 1280) return 4;
   if (width < 1920) return 5;
   return 6;
@@ -37,7 +39,7 @@ export default function ContentGrid({
       data={validItems}
       numColumns={numColumns}
       key={`grid-${numColumns}`}
-      keyExtractor={(item) => String(item.tmdb_id)}
+      keyExtractor={(item) => String(item.id || item.tmdb_id)}
       renderItem={({ item }) => (
         <ContentCard item={item} type={type} watchProgress={item.watchProgress} />
       )}
