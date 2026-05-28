@@ -2,7 +2,7 @@
   "nav": {
     "home": "Home",
     "browse": "Browse",
-    "downloads": "Downloads",
+    "myList": "My List",
     "profile": "Profile",
     "movies": "Movies",
     "tvShows": "TV Shows",
@@ -68,7 +68,9 @@
     "ongoing": "On Air",
     "searchPlaceholder": "Search movies and TV shows...",
     "recentSearches": "Recent Searches",
-    "closeSearch": "Close"
+    "closeSearch": "Close",
+    "viewAll": "View All",
+    "moreLikeThis": "More Like This"
   },
   "player": {
     "play": "Play",
@@ -83,8 +85,8 @@
     "language": "Language",
     "selectLanguage": "Select Language"
   },
-  "downloads": {
-    "emptyState": "Your downloads will appear here"
+  "myList": {
+    "emptyState": "Your saved titles will appear here"
   },
   "filters": {
     "popular": "Popular",

@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-004",
+  "type": "fix",
+  "description": "Full codebase audit of mobile app: fix bugs, add missing i18n keys for new features (moreLikeThis, viewAll), ensure locale parity, and verify build passes cleanly.",
+  "status": "pending",
+  "steps": [
+    "1. Add any missing translation keys that were introduced by FEAT-001/002/003 to ALL 7 locale files on BOTH platforms. Keys to check: 'common.viewAll', 'common.moreLikeThis', 'nav.myList', 'myList.emptyState'. Ensure all 7 mobile locale files have identical key structures. Ensure all 7 web locale files have identical key structures.",
+    "2. Audit apps/mobile/src/app/movie/[id].jsx and apps/mobile/src/app/tv/[id].jsx: Ensure the 'Related Series' / 'More Like This' title strings are using translation keys (t('common.moreLikeThis')) instead of hardcoded English.",
+    "3. Audit apps/mobile/src/components/HeroBanner.jsx: The 'Play' and 'My List' button text should use translation keys t('common.play') and t('common.myList') instead of hardcoded strings.",
+    "4. Check for navigation bugs: (a) In genre/[id].jsx, ensure back navigation works. (b) In ContentCard, verify that items with type='tv' navigate to /tv/[id] correctly. (c) Check that the heroItem random selection does not cause re-renders on every state change (it should be memoized, which it already is via useMemo).",
+    "5. Run final build verification: (a) cd apps/mobile && npx expo export --platform android. (b) cd apps/mobile && npx tsc --noEmit. (c) cd apps/web && bun run build. (d) cd apps/web && bun run lint. (e) cd apps/web && bun run typecheck. Fix any issues that arise."
+  ],
+  "acceptance_criteria": [
+    "All 7 mobile locale files have identical key sets (verified by script or manual comparison)",
+    "All 7 web locale files have identical key sets",
+    "No hardcoded English strings remain in UI components (buttons, section titles)",
+    "npx expo export --platform android passes (exit 0)",
+    "npx tsc --noEmit passes (exit 0) in apps/mobile",
+    "bun run build passes in apps/web",
+    "bun run lint passes with 0 errors and 0 warnings in apps/web",
+    "bun run typecheck passes in apps/web"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android",
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx tsc --noEmit",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

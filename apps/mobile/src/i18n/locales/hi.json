@@ -2,7 +2,7 @@
   "nav": {
     "home": "होम",
     "browse": "ब्राउज़",
-    "downloads": "डाउनलोड",
+    "myList": "मेरी सूची",
     "profile": "प्रोफ़ाइल",
     "movies": "फ़िल्में",
     "tvShows": "टीवी शो",
@@ -68,7 +68,9 @@
     "ongoing": "प्रसारण में",
     "searchPlaceholder": "फिल्में और टीवी शो खोजें...",
     "recentSearches": "हाल की खोजें",
-    "closeSearch": "बंद करें"
+    "closeSearch": "बंद करें",
+    "viewAll": "सभी देखें",
+    "moreLikeThis": "इसी तरह"
   },
   "player": {
     "play": "चलाएं",
@@ -83,8 +85,8 @@
     "language": "भाषा",
     "selectLanguage": "भाषा चुनें"
   },
-  "downloads": {
-    "emptyState": "आपके डाउनलोड यहां दिखाई देंगे"
+  "myList": {
+    "emptyState": "आपके सहेजे गए शीर्षक यहां दिखाई देंगे"
   },
   "filters": {
     "popular": "लोकप्रिय",

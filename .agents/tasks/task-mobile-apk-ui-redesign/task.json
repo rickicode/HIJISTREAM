@@ -1,0 +1,7 @@
+{
+  "task_id": "task-mobile-apk-ui-redesign",
+  "task_description": "Complete mobile APK UI redesign: remove Downloads tab (replace with My List), redesign Home hero section, add View All buttons to content rails, redesign genre detail page, redesign bottom nav, add IMDB rating badges on both platforms, make genre tags clickable, convert More Like This to vertical grid, and full codebase audit.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

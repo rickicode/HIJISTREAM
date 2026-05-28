@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Replace Downloads tab with My List (Favorites) tab, redesign bottom navigation bar with modern styling, and update all 7 locale files on both mobile and web platforms",
+  "status": "in_progress",
+  "steps": [
+    "1. Rename apps/mobile/src/app/(tabs)/downloads.jsx to apps/mobile/src/app/(tabs)/mylist.jsx. Rewrite the screen to show a 'My List' placeholder UI (Heart icon from lucide-react-native, message about saved favorites). Use the useTranslation hook with a new key 'nav.myList' and 'myList.emptyState'.",
+    "2. In apps/mobile/src/app/(tabs)/_layout.jsx: (a) Replace the 'downloads' tab with 'mylist', using Heart icon from lucide-react-native instead of Download, and t('nav.myList') for the title. (b) Redesign the tabBarStyle to be more modern: increase height to 70, add a subtle top border with rgba(255,255,255,0.08) instead of hard colors.border, use elevation/shadow, slightly rounded top corners (overflow hidden wrapper or borderTopLeftRadius/borderTopRightRadius on the tab bar view). (c) Increase tabBarLabelStyle fontSize to 11 and fontWeight to '600'. (d) Use a more gradient-like background for tab bar: backgroundColor '#1a1a1a' instead of pure background color. (e) Add tabBarItemStyle for better spacing.",
+    "3. Update all 7 mobile locale files (en, id, es, pt, hi, ja, ko) in apps/mobile/src/i18n/locales/: (a) Change 'nav.downloads' key to 'nav.myList' with appropriate translations (My List, Daftar Saya, Mi Lista, Minha Lista, etc.). (b) Rename 'downloads' section to 'myList' with key 'emptyState' having appropriate translations about saved favorites. (c) Add new key 'common.viewAll' with translations for 'View All'.",
+    "4. Update all 7 web locale files in apps/web/src/i18n/locales/: apply the same key changes (nav.myList replacing nav.downloads, myList section replacing downloads section, add common.viewAll) to maintain key parity between platforms."
+  ],
+  "acceptance_criteria": [
+    "Bottom nav shows Home, Browse, My List, Profile tabs (no Downloads)",
+    "Tab bar has a more modern look with subtle border, better spacing, slightly elevated appearance",
+    "My List screen displays with a Heart icon and appropriate empty state text",
+    "All 7 mobile locale files have identical key sets",
+    "All 7 web locale files have identical key sets",
+    "npx tsc --noEmit passes in apps/mobile",
+    "bun run build passes in apps/web"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx tsc --noEmit",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint",
+    "Compare key sets across all locale files to ensure parity"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

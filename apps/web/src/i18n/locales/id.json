@@ -2,7 +2,7 @@
   "nav": {
     "home": "Beranda",
     "browse": "Jelajahi",
-    "downloads": "Unduhan",
+    "myList": "Daftar Saya",
     "profile": "Profil",
     "movies": "Film",
     "tvShows": "Serial TV",
@@ -68,7 +68,9 @@
     "ongoing": "Sedang Tayang",
     "searchPlaceholder": "Cari film dan serial TV...",
     "recentSearches": "Pencarian Terakhir",
-    "closeSearch": "Tutup"
+    "closeSearch": "Tutup",
+    "viewAll": "Lihat Semua",
+    "moreLikeThis": "Serupa"
   },
   "player": {
     "play": "Putar",
@@ -83,8 +85,8 @@
     "language": "Bahasa",
     "selectLanguage": "Pilih Bahasa"
   },
-  "downloads": {
-    "emptyState": "Unduhan Anda akan muncul di sini"
+  "myList": {
+    "emptyState": "Judul yang disimpan akan muncul di sini"
   },
   "filters": {
     "popular": "Populer",

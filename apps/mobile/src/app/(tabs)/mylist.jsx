@@ -1,17 +1,17 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Download } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
 import { useTranslation } from '../../i18n';
 import { colors, spacing, typography } from '../../theme';
 
-export default function DownloadsScreen() {
+export default function MyListScreen() {
   const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
-      <Download color={colors.textMuted} size={64} />
-      <Text style={styles.title}>{t('nav.downloads')}</Text>
+      <Heart color={colors.textMuted} size={64} />
+      <Text style={styles.title}>{t('nav.myList')}</Text>
       <Text style={styles.subtitle}>
-        {t('downloads.emptyState')}
+        {t('myList.emptyState')}
       </Text>
     </View>
   );
