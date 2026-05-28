@@ -43,7 +43,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
   }, [handleMessage]);
 
   return (
-    <div className="bg-black min-h-screen">
+    <div className="bg-black rounded-lg overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3 bg-black/80">
         <button
           onClick={onBack}

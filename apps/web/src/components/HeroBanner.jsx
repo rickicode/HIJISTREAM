@@ -7,8 +7,9 @@ export default function HeroBanner({ item, type = 'movie' }) {
 
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()).slice(0, 3) : [];
   const itemId = item.id || item.tmdb_id;
-  const playHref = `/player/${type}/${itemId}`;
-  const infoHref = type === 'movie' ? `/movies/${itemId}` : `/tv/${itemId}`;
+  const detailHref = type === 'movie' ? `/movies/${itemId}` : `/tv/${itemId}`;
+  const playHref = `${detailHref}?autoplay=true`;
+  const infoHref = detailHref;
 
   return (
     <div className="relative w-full h-[350px] sm:h-[450px] md:h-[500px]">
