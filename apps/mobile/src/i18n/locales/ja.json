@@ -79,5 +79,8 @@
     "clearCache": "キャッシュ削除",
     "language": "言語",
     "selectLanguage": "言語を選択"
+  },
+  "downloads": {
+    "emptyState": "ダウンロードはここに表示されます"
   }
 }

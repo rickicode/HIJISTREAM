@@ -79,5 +79,8 @@
     "clearCache": "Clear Cache",
     "language": "Language",
     "selectLanguage": "Select Language"
+  },
+  "downloads": {
+    "emptyState": "Your downloads will appear here"
   }
 }

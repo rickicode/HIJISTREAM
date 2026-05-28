@@ -11,7 +11,7 @@ export default function DownloadsScreen() {
       <Download color={colors.textMuted} size={64} />
       <Text style={styles.title}>{t('nav.downloads')}</Text>
       <Text style={styles.subtitle}>
-        Your downloads will appear here
+        {t('downloads.emptyState')}
       </Text>
     </View>
   );

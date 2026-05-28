@@ -79,5 +79,8 @@
     "clearCache": "캐시 삭제",
     "language": "언어",
     "selectLanguage": "언어 선택"
+  },
+  "downloads": {
+    "emptyState": "다운로드한 항목이 여기에 표시됩니다"
   }
 }

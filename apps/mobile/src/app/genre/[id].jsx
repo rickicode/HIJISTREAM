@@ -28,7 +28,7 @@ export default function GenreDetailScreen() {
   } = useInfiniteQuery({
     queryKey: ['genre-detail', id, language],
     queryFn: ({ pageParam }) =>
-      api.getDiscoverByCountry('movie', null, language, pageParam),
+      api.getDiscoverByGenre('movie', id, language, pageParam),
     getNextPageParam: (lastPage) =>
       lastPage?.items?.length && lastPage.page < lastPage.total_pages
         ? lastPage.page + 1

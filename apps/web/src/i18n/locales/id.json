@@ -79,5 +79,8 @@
     "clearCache": "Hapus Cache",
     "language": "Bahasa",
     "selectLanguage": "Pilih Bahasa"
+  },
+  "downloads": {
+    "emptyState": "Unduhan Anda akan muncul di sini"
   }
 }

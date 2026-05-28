@@ -120,6 +120,15 @@ const api = {
       TTL.CONTENT_LIST
     );
   },
+  async getDiscoverByGenre(type = 'movie', genreId, language, page = 1) {
+    const lang = language || await getCurrentLanguage();
+    const apiLang = getApiLanguageParam(lang);
+    return fetchWithCache(
+      `/discover/${type}?with_genres=${genreId}&language=${apiLang}&page=${page}`,
+      `discover_genre_${type}_${genreId}_${page}`,
+      TTL.CONTENT_LIST
+    );
+  },
 };
 
 export default api;

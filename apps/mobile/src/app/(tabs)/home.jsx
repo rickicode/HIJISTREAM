@@ -11,7 +11,7 @@ import ContentRail from '../../components/ContentRail';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [watchProgress, setWatchProgress] = useState([]);
 
   const loadProgress = useCallback(async () => {
@@ -24,22 +24,22 @@ export default function HomeScreen() {
   }, [loadProgress]);
 
   const { data: trendingMovies, isLoading: moviesLoading } = useQuery({
-    queryKey: ['trending-movies-home'],
+    queryKey: ['trending-movies-home', locale],
     queryFn: () => api.getTrendingMovies(1),
   });
 
   const { data: trendingTV, isLoading: tvLoading } = useQuery({
-    queryKey: ['trending-tv-home'],
+    queryKey: ['trending-tv-home', locale],
     queryFn: () => api.getTrendingTV(1),
   });
 
   const { data: tvOnTheAir, isLoading: onTheAirLoading } = useQuery({
-    queryKey: ['tv-on-the-air-home'],
+    queryKey: ['tv-on-the-air-home', locale],
     queryFn: () => api.getTVOnTheAir(1),
   });
 
   const { data: animeTrending, isLoading: animeLoading } = useQuery({
-    queryKey: ['anime-trending-home'],
+    queryKey: ['anime-trending-home', locale],
     queryFn: () => api.getAnimeTrending(1),
   });
 
@@ -83,7 +83,7 @@ export default function HomeScreen() {
     if (section.type === 'movies') {
       return (
         <ContentRail
-          title={`${t('common.trending')} Movies`}
+          title={`${t('common.trending')} ${t('nav.movies')}`}
           items={movies}
           type="movie"
           isLoading={moviesLoading}
@@ -94,7 +94,7 @@ export default function HomeScreen() {
     if (section.type === 'tv') {
       return (
         <ContentRail
-          title={`${t('common.trending')} TV`}
+          title={`${t('common.trending')} ${t('nav.tvShows')}`}
           items={tvShows}
           type="tv"
           isLoading={tvLoading}
@@ -116,7 +116,7 @@ export default function HomeScreen() {
     if (section.type === 'trending-anime') {
       return (
         <ContentRail
-          title={`${t('common.trending')} Anime`}
+          title={`${t('common.trending')} ${t('nav.anime')}`}
           items={animeItems}
           type="tv"
           isLoading={animeLoading}
