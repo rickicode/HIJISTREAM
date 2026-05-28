@@ -153,88 +153,128 @@ export async function onRequest(context) {
 
   try {
     const page = url.searchParams.get('page') || '1';
+    const language = url.searchParams.get('language') || '';
+    const langParam = language ? { language } : {};
     let result;
     let cacheControl = 'public, s-maxage=300, stale-while-revalidate=600';
 
     // Route: /movies/popular
     if (pathname === '/movies/popular') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/popular', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/popular', { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /movies/trending
     else if (pathname === '/movies/trending') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/trending/movie/week', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/trending/movie/week', { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /movies/top-rated
     else if (pathname === '/movies/top-rated') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/top_rated', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/top_rated', { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /movies/upcoming
     else if (pathname === '/movies/upcoming') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/upcoming', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/movie/upcoming', { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/popular
     else if (pathname === '/tv/popular') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/popular', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/popular', { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/trending
     else if (pathname === '/tv/trending') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/trending/tv/week', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/trending/tv/week', { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/top-rated
     else if (pathname === '/tv/top-rated') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/top_rated', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/top_rated', { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /search
     else if (pathname === '/search') {
       const query = url.searchParams.get('query') || '';
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/search/multi', { query, page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/search/multi', { query, page, ...langParam });
       result = transformSearchResults(data);
       cacheControl = 'public, s-maxage=120, stale-while-revalidate=300';
     }
     // Route: /anime/trending
     else if (pathname === '/anime/trending') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /anime/ongoing
     else if (pathname === '/anime/ongoing') {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /anime/top-rated
     else if (pathname === '/anime/top-rated') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/on-the-air
     else if (pathname === '/tv/on-the-air') {
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/on_the_air', { page });
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/on_the_air', { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
+    }
+    // Route: /discover/movie
+    else if (pathname === '/discover/movie') {
+      const with_genres = url.searchParams.get('with_genres') || '';
+      const with_origin_country = url.searchParams.get('with_origin_country') || '';
+      const sort_by = url.searchParams.get('sort_by') || 'popularity.desc';
+      const vote_count_gte = url.searchParams.get('vote_count.gte') || '';
+      const params = { sort_by, page, ...langParam };
+      if (with_genres) params.with_genres = with_genres;
+      if (with_origin_country) params.with_origin_country = with_origin_country;
+      if (vote_count_gte) params['vote_count.gte'] = vote_count_gte;
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/movie', params);
+      const items = (data.results || []).map(transformMovieListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /discover/tv
+    else if (pathname === '/discover/tv') {
+      const with_genres = url.searchParams.get('with_genres') || '';
+      const with_origin_country = url.searchParams.get('with_origin_country') || '';
+      const sort_by = url.searchParams.get('sort_by') || 'popularity.desc';
+      const vote_count_gte = url.searchParams.get('vote_count.gte') || '';
+      const params = { sort_by, page, ...langParam };
+      if (with_genres) params.with_genres = with_genres;
+      if (with_origin_country) params.with_origin_country = with_origin_country;
+      if (vote_count_gte) params['vote_count.gte'] = vote_count_gte;
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', params);
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /genres/movie
+    else if (pathname === '/genres/movie') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/genre/movie/list', { ...langParam });
+      result = { genres: data.genres || [] };
+    }
+    // Route: /genres/tv
+    else if (pathname === '/genres/tv') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/genre/tv/list', { ...langParam });
+      result = { genres: data.genres || [] };
     }
     // Route: /movies/:id/recommendations
     else if (pathname.match(/^\/movies\/(\d+)\/recommendations$/)) {
       const match = pathname.match(/^\/movies\/(\d+)\/recommendations$/);
       const movieId = match[1];
-      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}/recommendations`, { page });
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
@@ -242,7 +282,7 @@ export async function onRequest(context) {
     else if (pathname.match(/^\/tv\/(\d+)\/recommendations$/)) {
       const match = pathname.match(/^\/tv\/(\d+)\/recommendations$/);
       const tvId = match[1];
-      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}/recommendations`, { page });
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
@@ -251,7 +291,7 @@ export async function onRequest(context) {
       const match = pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/);
       const tmdbId = match[1];
       const seasonNum = match[2];
-      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tmdbId}/season/${seasonNum}`);
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
       result = transformSeason(data, tmdbId);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
@@ -259,7 +299,12 @@ export async function onRequest(context) {
     else if (pathname.match(/^\/movie\/(\d+)$/)) {
       const match = pathname.match(/^\/movie\/(\d+)$/);
       const movieId = match[1];
-      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { append_to_response: 'credits,external_ids' });
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
+      // Fallback to English if overview is missing in selected language
+      if (!data.overview && language && language !== 'en-US') {
+        const enData = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { language: 'en-US' });
+        if (enData.overview) data.overview = enData.overview;
+      }
       result = transformMovieDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
@@ -267,7 +312,12 @@ export async function onRequest(context) {
     else if (pathname.match(/^\/tv\/(\d+)$/)) {
       const match = pathname.match(/^\/tv\/(\d+)$/);
       const tvId = match[1];
-      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { append_to_response: 'credits,external_ids' });
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
+      // Fallback to English if overview is missing in selected language
+      if (!data.overview && language && language !== 'en-US') {
+        const enData = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { language: 'en-US' });
+        if (enData.overview) data.overview = enData.overview;
+      }
       result = transformTVDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }

@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Home",
+    "browse": "Browse",
+    "downloads": "Downloads",
+    "profile": "Profile",
+    "movies": "Movies",
+    "tvShows": "TV Shows",
+    "anime": "Anime",
+    "search": "Search"
+  },
+  "browse": {
+    "title": "Browse",
+    "genreTab": "Genre",
+    "countryTab": "Country"
+  },
+  "genres": {
+    "action": "Action",
+    "adventure": "Adventure",
+    "animation": "Animation",
+    "comedy": "Comedy",
+    "crime": "Crime",
+    "documentary": "Documentary",
+    "drama": "Drama",
+    "family": "Family",
+    "fantasy": "Fantasy",
+    "history": "History",
+    "horror": "Horror",
+    "music": "Music",
+    "mystery": "Mystery",
+    "romance": "Romance",
+    "scienceFiction": "Science Fiction",
+    "tvMovie": "TV Movie",
+    "thriller": "Thriller",
+    "war": "War",
+    "western": "Western"
+  },
+  "countries": {
+    "korea": "South Korea",
+    "japan": "Japan",
+    "india": "India",
+    "usa": "United States",
+    "brazil": "Brazil",
+    "mexico": "Mexico",
+    "indonesia": "Indonesia",
+    "uk": "United Kingdom",
+    "france": "France",
+    "germany": "Germany",
+    "china": "China",
+    "thailand": "Thailand",
+    "turkey": "Turkey",
+    "nigeria": "Nigeria"
+  },
+  "common": {
+    "play": "Play",
+    "myList": "My List",
+    "moreInfo": "More Info",
+    "seeAll": "See All",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "noResults": "No results found",
+    "continueWatching": "Continue Watching",
+    "trending": "Trending",
+    "popular": "Popular",
+    "topRated": "Top Rated",
+    "upcoming": "Upcoming",
+    "ongoing": "On Air",
+    "searchPlaceholder": "Search movies and TV shows...",
+    "recentSearches": "Recent Searches",
+    "closeSearch": "Close"
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "fullscreen": "Fullscreen",
+    "episodes": "Episodes",
+    "season": "Season"
+  },
+  "profile": {
+    "settings": "Settings",
+    "clearCache": "Clear Cache",
+    "language": "Language",
+    "selectLanguage": "Select Language"
+  },
+  "downloads": {
+    "emptyState": "Your downloads will appear here"
+  },
+  "filters": {
+    "popular": "Popular",
+    "topRated": "Top Rated",
+    "newest": "Newest",
+    "revenue": "Revenue"
+  }
+}

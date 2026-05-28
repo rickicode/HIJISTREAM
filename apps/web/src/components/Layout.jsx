@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Search, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Search, Menu, X, ChevronDown, Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import Logo from './Logo';
-import { getCurrentLanguage, setLanguage } from '../utils/language';
+import SearchModal from './SearchModal';
+import { useTranslation } from '../i18n';
+import { SUPPORTED_LOCALES } from '../i18n/locales';
 
 function NavLink({ to, children }) {
   const { pathname } = useLocation();
@@ -25,13 +27,15 @@ function NavLink({ to, children }) {
 }
 
 export default function Layout() {
-  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [lang, setLang] = useState(getCurrentLanguage);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const { t, locale, setLocale } = useTranslation();
   const queryClient = useQueryClient();
+  const dropdownRef = useRef(null);
 
-  useKeyboardShortcuts();
+  useKeyboardShortcuts({ onSearchOpen: () => setSearchModalOpen(true) });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,6 +44,18 @@ export default function Layout() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const currentLocale = SUPPORTED_LOCALES.find((l) => l.code === locale) || SUPPORTED_LOCALES[0];
 
   return (
     <div className="min-h-screen bg-background font-sans overflow-x-hidden">
@@ -54,39 +70,49 @@ export default function Layout() {
             <div className="flex items-center gap-8">
               <Logo />
               <nav className="hidden sm:flex items-center gap-6">
-                <NavLink to="/">Home</NavLink>
-                <NavLink to="/movies">Movies</NavLink>
-                <NavLink to="/tv">TV Shows</NavLink>
-                <NavLink to="/anime">Anime</NavLink>
+                <NavLink to="/">{t('nav.home')}</NavLink>
+                <NavLink to="/movies">{t('nav.movies')}</NavLink>
+                <NavLink to="/tv">{t('nav.tvShows')}</NavLink>
+                <NavLink to="/anime">{t('nav.anime')}</NavLink>
               </nav>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate('/search')}
+                onClick={() => setSearchModalOpen(true)}
                 className="p-2 rounded text-muted-foreground hover:text-white transition-colors"
                 aria-label="Search"
               >
                 <Search size={20} />
               </button>
-              <div className="flex items-center gap-1 text-xs font-medium">
+              <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => { setLanguage('en'); setLang('en'); }}
-                  className={cn(
-                    'px-1.5 py-0.5 rounded transition-colors',
-                    lang === 'en' ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white'
-                  )}
+                  onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+                  className="flex items-center gap-1 px-2 py-1.5 rounded text-sm font-medium text-muted-foreground hover:text-white transition-colors"
                 >
-                  EN
+                  <span>{currentLocale.flag}</span>
+                  <span className="hidden sm:inline">{currentLocale.code.toUpperCase()}</span>
+                  <ChevronDown size={14} />
                 </button>
-                <button
-                  onClick={() => { setLanguage('id'); setLang('id'); }}
-                  className={cn(
-                    'px-1.5 py-0.5 rounded transition-colors',
-                    lang === 'id' ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white'
-                  )}
-                >
-                  ID
-                </button>
+                {langDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 bg-[#1a1a1a] rounded-lg shadow-xl border border-border py-2 min-w-[200px] z-50">
+                    {SUPPORTED_LOCALES.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLocale(lang.code);
+                          setLangDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-2 hover:bg-white/10 flex items-center gap-3 text-left transition-colors"
+                      >
+                        <span>{lang.flag}</span>
+                        <span className="text-white text-sm">{lang.nativeName}</span>
+                        {locale === lang.code && (
+                          <Check size={14} className="ml-auto text-primary" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -106,28 +132,28 @@ export default function Layout() {
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
-                Home
+                {t('nav.home')}
               </Link>
               <Link
                 to="/movies"
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
-                Movies
+                {t('nav.movies')}
               </Link>
               <Link
                 to="/tv"
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
-                TV Shows
+                {t('nav.tvShows')}
               </Link>
               <Link
                 to="/anime"
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
-                Anime
+                {t('nav.anime')}
               </Link>
             </nav>
           </div>
@@ -149,6 +175,7 @@ export default function Layout() {
           </div>
         </div>
       </footer>
+      <SearchModal open={searchModalOpen} onClose={() => setSearchModalOpen(false)} />
     </div>
   );
 }

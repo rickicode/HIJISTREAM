@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "browse": "Explorar",
+    "downloads": "Downloads",
+    "profile": "Perfil",
+    "movies": "Filmes",
+    "tvShows": "Series de TV",
+    "anime": "Anime",
+    "search": "Buscar"
+  },
+  "browse": {
+    "title": "Explorar",
+    "genreTab": "Genero",
+    "countryTab": "Pais"
+  },
+  "genres": {
+    "action": "Acao",
+    "adventure": "Aventura",
+    "animation": "Animacao",
+    "comedy": "Comedia",
+    "crime": "Crime",
+    "documentary": "Documentario",
+    "drama": "Drama",
+    "family": "Familia",
+    "fantasy": "Fantasia",
+    "history": "Historia",
+    "horror": "Terror",
+    "music": "Musica",
+    "mystery": "Misterio",
+    "romance": "Romance",
+    "scienceFiction": "Ficcao Cientifica",
+    "tvMovie": "Filme de TV",
+    "thriller": "Suspense",
+    "war": "Guerra",
+    "western": "Faroeste"
+  },
+  "countries": {
+    "korea": "Coreia do Sul",
+    "japan": "Japao",
+    "india": "India",
+    "usa": "Estados Unidos",
+    "brazil": "Brasil",
+    "mexico": "Mexico",
+    "indonesia": "Indonesia",
+    "uk": "Reino Unido",
+    "france": "Franca",
+    "germany": "Alemanha",
+    "china": "China",
+    "thailand": "Tailandia",
+    "turkey": "Turquia",
+    "nigeria": "Nigeria"
+  },
+  "common": {
+    "play": "Reproduzir",
+    "myList": "Minha Lista",
+    "moreInfo": "Mais Info",
+    "seeAll": "Ver Tudo",
+    "loading": "Carregando...",
+    "error": "Algo deu errado",
+    "retry": "Tentar Novamente",
+    "noResults": "Nenhum resultado",
+    "continueWatching": "Continuar Assistindo",
+    "trending": "Em Alta",
+    "popular": "Popular",
+    "topRated": "Mais Bem Avaliados",
+    "upcoming": "Em Breve",
+    "ongoing": "No Ar",
+    "searchPlaceholder": "Buscar filmes e series...",
+    "recentSearches": "Buscas Recentes",
+    "closeSearch": "Fechar"
+  },
+  "player": {
+    "play": "Reproduzir",
+    "pause": "Pausar",
+    "fullscreen": "Tela Cheia",
+    "episodes": "Episodios",
+    "season": "Temporada"
+  },
+  "profile": {
+    "settings": "Configuracoes",
+    "clearCache": "Limpar Cache",
+    "language": "Idioma",
+    "selectLanguage": "Selecionar Idioma"
+  },
+  "downloads": {
+    "emptyState": "Seus downloads aparecerao aqui"
+  },
+  "filters": {
+    "popular": "Popular",
+    "topRated": "Melhor Avaliado",
+    "newest": "Mais Recente",
+    "revenue": "Receita"
+  }
+}

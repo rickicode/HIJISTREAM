@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Beranda",
+    "browse": "Jelajahi",
+    "downloads": "Unduhan",
+    "profile": "Profil",
+    "movies": "Film",
+    "tvShows": "Serial TV",
+    "anime": "Anime",
+    "search": "Cari"
+  },
+  "browse": {
+    "title": "Jelajahi",
+    "genreTab": "Genre",
+    "countryTab": "Negara"
+  },
+  "genres": {
+    "action": "Aksi",
+    "adventure": "Petualangan",
+    "animation": "Animasi",
+    "comedy": "Komedi",
+    "crime": "Kriminal",
+    "documentary": "Dokumenter",
+    "drama": "Drama",
+    "family": "Keluarga",
+    "fantasy": "Fantasi",
+    "history": "Sejarah",
+    "horror": "Horor",
+    "music": "Musik",
+    "mystery": "Misteri",
+    "romance": "Romansa",
+    "scienceFiction": "Fiksi Ilmiah",
+    "tvMovie": "Film TV",
+    "thriller": "Thriller",
+    "war": "Perang",
+    "western": "Barat"
+  },
+  "countries": {
+    "korea": "Korea",
+    "japan": "Jepang",
+    "india": "India",
+    "usa": "Amerika Serikat",
+    "brazil": "Brasil",
+    "mexico": "Meksiko",
+    "indonesia": "Indonesia",
+    "uk": "Inggris",
+    "france": "Prancis",
+    "germany": "Jerman",
+    "china": "Tiongkok",
+    "thailand": "Thailand",
+    "turkey": "Turki",
+    "nigeria": "Nigeria"
+  },
+  "common": {
+    "play": "Putar",
+    "myList": "Daftar Saya",
+    "moreInfo": "Info Lainnya",
+    "seeAll": "Lihat Semua",
+    "loading": "Memuat...",
+    "error": "Terjadi kesalahan",
+    "retry": "Coba Lagi",
+    "noResults": "Tidak ada hasil",
+    "continueWatching": "Lanjutkan Menonton",
+    "trending": "Sedang Tren",
+    "popular": "Populer",
+    "topRated": "Rating Tertinggi",
+    "upcoming": "Akan Datang",
+    "ongoing": "Sedang Tayang",
+    "searchPlaceholder": "Cari film dan serial TV...",
+    "recentSearches": "Pencarian Terakhir",
+    "closeSearch": "Tutup"
+  },
+  "player": {
+    "play": "Putar",
+    "pause": "Jeda",
+    "fullscreen": "Layar Penuh",
+    "episodes": "Episode",
+    "season": "Musim"
+  },
+  "profile": {
+    "settings": "Pengaturan",
+    "clearCache": "Hapus Cache",
+    "language": "Bahasa",
+    "selectLanguage": "Pilih Bahasa"
+  },
+  "downloads": {
+    "emptyState": "Unduhan Anda akan muncul di sini"
+  },
+  "filters": {
+    "popular": "Populer",
+    "topRated": "Rating Tertinggi",
+    "newest": "Terbaru",
+    "revenue": "Pendapatan"
+  }
+}

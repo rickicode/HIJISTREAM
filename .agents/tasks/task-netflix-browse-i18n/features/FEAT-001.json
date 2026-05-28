@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Multi-language i18n system for both mobile and web apps with 7 languages (id-ID primary, en-US, es-ES, pt-BR, hi-IN, ja-JP, ko-KR), auto-detection on mobile, and language-aware TMDB API calls.",
+  "status": "completed",
+  "steps": [
+    "Step 1: Install expo-localization in mobile app (cd apps/mobile && bun add expo-localization). Install i18next and react-i18next in both apps if needed, or create a lightweight custom i18n context (preferred to keep bundle small and match existing pattern).",
+    "Step 2: Create shared translation files. Create apps/mobile/src/i18n/locales/ directory with 7 JSON files: id.json, en.json, es.json, pt.json, hi.json, ja.json, ko.json. Each file must have identical key sets covering: nav (home, browse, downloads, profile, movies, tvShows, anime, search), browse (title, genreTab, countryTab), genres (action, adventure, animation, comedy, crime, documentary, drama, family, fantasy, history, horror, music, mystery, romance, scienceFiction, tvMovie, thriller, war, western), countries (korea, japan, india, usa, brazil, mexico, indonesia, uk, france, germany, china, thailand, turkey, nigeria), common (play, myList, moreInfo, seeAll, loading, error, retry, noResults, continueWatching, trending, popular, topRated, upcoming, ongoing), player (play, pause, fullscreen, episodes, season), profile (settings, clearCache, language, selectLanguage). Indonesian (id.json) is the primary default.",
+    "Step 3: Create apps/mobile/src/i18n/index.js - the i18n provider/context. Export a LanguageProvider component (React Context), a useTranslation() hook that returns { t, locale, setLocale, locales }. On mount, detect device language using expo-localization getLocales()[0].languageTag, match to supported locales (fallback id-ID). Persist selection to AsyncStorage using existing storage utility. Language change triggers re-render via context state update. Export SUPPORTED_LOCALES array with { code, name, nativeName, flag } for all 7 languages.",
+    "Step 4: Create equivalent web translation system. Create apps/web/src/i18n/locales/ with same 7 JSON files (identical keys to mobile). Create apps/web/src/i18n/index.jsx with LanguageProvider context, useTranslation() hook. Default to id-ID. Persist to localStorage. On language change, dispatch custom event 'language-change' (already used in existing code). Export same SUPPORTED_LOCALES array.",
+    "Step 5: Rewrite apps/mobile/src/utils/language.js to use the new i18n system. Update SUPPORTED_LANGS to all 7 locales. Keep backward compatibility with getCurrentLanguage/setLanguage exports but delegate to new i18n context internally.",
+    "Step 6: Rewrite apps/web/src/utils/language.js similarly - expand SUPPORTED_LANGS to 7, default to 'id' instead of 'en'.",
+    "Step 7: Update apps/mobile/src/utils/api.js - modify fetchWithCache to accept an optional language parameter. Add new API methods: getGenres(type, language) that calls TMDB genre endpoint, getDiscoverByCountry(type, countryCode, language, page) that calls TMDB discover endpoint with with_origin_country filter. Update cache keys to include language code. Add TMDB_COUNTRIES constant array with { code, iso } mappings for KR, JP, IN, US, BR, MX, ID, GB, FR, DE, CN, TH, TR, NG.",
+    "Step 8: Update apps/web/src/utils/api.js similarly - add language parameter support, genre list endpoint, discover by country endpoint, language-inclusive cache keys.",
+    "Step 9: Wrap the mobile app root with LanguageProvider. In apps/mobile/src/app/_layout.jsx, import LanguageProvider from '../i18n' and wrap the QueryClientProvider children with it.",
+    "Step 10: Wrap the web app root with LanguageProvider. In apps/web/src/App.jsx (or main.jsx), import LanguageProvider from './i18n' and wrap the QueryClientProvider children with it.",
+    "Step 11: Verify all 7 locale files have identical key sets by checking the JSON structure. Create a simple validation - keys in id.json must match keys in all other locale files."
+  ],
+  "acceptance_criteria": [
+    "7 translation files exist for mobile (apps/mobile/src/i18n/locales/*.json) with identical key structures",
+    "7 translation files exist for web (apps/web/src/i18n/locales/*.json) with identical key structures",
+    "useTranslation() hook available in both apps returning t function, locale, and setLocale",
+    "Mobile auto-detects device language on first launch (expo-localization)",
+    "Web defaults to id-ID on first visit",
+    "Language persists across restarts (AsyncStorage for mobile, localStorage for web)",
+    "API utility includes getGenres() and getDiscoverByCountry() methods with language parameter",
+    "Cache keys include language code to prevent stale cross-language data",
+    "LanguageProvider wraps both app roots"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install && npx expo export --platform android",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun install && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Had to maintain getDsLang export for backward compatibility since MovieDetail.jsx, TVDetail.jsx (web) and player.jsx (mobile) import it. Node 22 installed via mise with MISE_NODE_VERIFY=false due to gpg-agent unavailability. The mise.toml was generated but not committed (local tool only). Web lint passes with only react-refresh warnings (not errors) about exporting constants alongside components from i18n/index.jsx."
+}

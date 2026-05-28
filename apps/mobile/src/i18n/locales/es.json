@@ -1,0 +1,95 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "browse": "Explorar",
+    "downloads": "Descargas",
+    "profile": "Perfil",
+    "movies": "Peliculas",
+    "tvShows": "Series de TV",
+    "anime": "Anime",
+    "search": "Buscar"
+  },
+  "browse": {
+    "title": "Explorar",
+    "genreTab": "Genero",
+    "countryTab": "Pais"
+  },
+  "genres": {
+    "action": "Accion",
+    "adventure": "Aventura",
+    "animation": "Animacion",
+    "comedy": "Comedia",
+    "crime": "Crimen",
+    "documentary": "Documental",
+    "drama": "Drama",
+    "family": "Familia",
+    "fantasy": "Fantasia",
+    "history": "Historia",
+    "horror": "Terror",
+    "music": "Musica",
+    "mystery": "Misterio",
+    "romance": "Romance",
+    "scienceFiction": "Ciencia Ficcion",
+    "tvMovie": "Pelicula de TV",
+    "thriller": "Suspenso",
+    "war": "Guerra",
+    "western": "Western"
+  },
+  "countries": {
+    "korea": "Corea del Sur",
+    "japan": "Japon",
+    "india": "India",
+    "usa": "Estados Unidos",
+    "brazil": "Brasil",
+    "mexico": "Mexico",
+    "indonesia": "Indonesia",
+    "uk": "Reino Unido",
+    "france": "Francia",
+    "germany": "Alemania",
+    "china": "China",
+    "thailand": "Tailandia",
+    "turkey": "Turquia",
+    "nigeria": "Nigeria"
+  },
+  "common": {
+    "play": "Reproducir",
+    "myList": "Mi Lista",
+    "moreInfo": "Mas Info",
+    "seeAll": "Ver Todo",
+    "loading": "Cargando...",
+    "error": "Algo salio mal",
+    "retry": "Reintentar",
+    "noResults": "Sin resultados",
+    "continueWatching": "Seguir Viendo",
+    "trending": "Tendencias",
+    "popular": "Popular",
+    "topRated": "Mejor Valoradas",
+    "upcoming": "Proximamente",
+    "ongoing": "En Emision",
+    "searchPlaceholder": "Buscar peliculas y series...",
+    "recentSearches": "Busquedas Recientes",
+    "closeSearch": "Cerrar"
+  },
+  "player": {
+    "play": "Reproducir",
+    "pause": "Pausa",
+    "fullscreen": "Pantalla Completa",
+    "episodes": "Episodios",
+    "season": "Temporada"
+  },
+  "profile": {
+    "settings": "Configuracion",
+    "clearCache": "Borrar Cache",
+    "language": "Idioma",
+    "selectLanguage": "Seleccionar Idioma"
+  },
+  "downloads": {
+    "emptyState": "Tus descargas apareceran aqui"
+  },
+  "filters": {
+    "popular": "Popular",
+    "topRated": "Mejor Valorado",
+    "newest": "Mas Reciente",
+    "revenue": "Recaudacion"
+  }
+}
