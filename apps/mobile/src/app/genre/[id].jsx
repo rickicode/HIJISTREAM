@@ -11,13 +11,12 @@ import ContentGrid from '../../components/ContentGrid';
 export default function GenreDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { t, getApiLocale } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const genreKey = Object.keys(GENRE_IDS).find(
     (key) => String(GENRE_IDS[key]) === String(id)
   );
   const genreName = genreKey ? t(`genres.${genreKey}`) : '';
-  const language = getApiLocale();
 
   const {
     data,
@@ -26,9 +25,9 @@ export default function GenreDetailScreen() {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['genre-detail', id, language],
+    queryKey: ['genre-detail', id, locale],
     queryFn: ({ pageParam }) =>
-      api.getDiscoverByGenre('movie', id, language, pageParam),
+      api.getDiscoverByGenre('movie', id, pageParam),
     getNextPageParam: (lastPage) =>
       lastPage?.items?.length && lastPage.page < lastPage.total_pages
         ? lastPage.page + 1

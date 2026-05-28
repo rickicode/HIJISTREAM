@@ -11,12 +11,11 @@ import ContentGrid from '../../components/ContentGrid';
 export default function CountryDetailScreen() {
   const { code } = useLocalSearchParams();
   const router = useRouter();
-  const { t, getApiLocale } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const country = TMDB_COUNTRIES.find((c) => c.iso === code);
   const countryName = country ? t(`countries.${country.code}`) : code;
   const flag = country ? country.flag : '';
-  const language = getApiLocale();
 
   const {
     data,
@@ -25,9 +24,9 @@ export default function CountryDetailScreen() {
     fetchNextPage,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['country-detail', code, language],
+    queryKey: ['country-detail', code, locale],
     queryFn: ({ pageParam }) =>
-      api.getDiscoverByCountry('movie', code, language, pageParam),
+      api.getDiscoverByCountry('movie', code, pageParam),
     getNextPageParam: (lastPage) =>
       lastPage?.items?.length && lastPage.page < lastPage.total_pages
         ? lastPage.page + 1

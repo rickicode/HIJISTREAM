@@ -110,21 +110,19 @@ const api = {
   search(query, page = 1) {
     return fetchWithCache(`/search?query=${encodeURIComponent(query)}&page=${page}`, `search_${query}_${page}`, TTL.SEARCH);
   },
-  getGenres(type = 'movie', language = 'id-ID') {
-    return fetchWithCache(`/genres/${type}?language=${language}`, `genres_${type}_${language}`, TTL.CONTENT_LIST);
+  getGenres(type = 'movie') {
+    return fetchWithCache(`/genres/${type}`, `genres_${type}`, TTL.CONTENT_LIST);
   },
-  getDiscoverByCountry(type = 'movie', countryCode, language = 'id-ID', page = 1) {
+  getDiscoverByCountry(type = 'movie', countryCode, page = 1) {
     return fetchWithCache(
-      `/discover/${type}?with_origin_country=${countryCode}&language=${language}&page=${page}`,
-      `discover_${type}_${countryCode}_${page}`,
+      `/discover/${type}?with_origin_country=${countryCode}&page=${page}`,
+      `discover_country_${type}_${countryCode}_${page}`,
       TTL.CONTENT_LIST
     );
   },
-  async getDiscoverByGenre(type = 'movie', genreId, language, page = 1) {
-    const lang = language || await getCurrentLanguage();
-    const apiLang = getApiLanguageParam(lang);
+  getDiscoverByGenre(type = 'movie', genreId, page = 1) {
     return fetchWithCache(
-      `/discover/${type}?with_genres=${genreId}&language=${apiLang}&page=${page}`,
+      `/discover/${type}?with_genres=${genreId}&page=${page}`,
       `discover_genre_${type}_${genreId}_${page}`,
       TTL.CONTENT_LIST
     );
