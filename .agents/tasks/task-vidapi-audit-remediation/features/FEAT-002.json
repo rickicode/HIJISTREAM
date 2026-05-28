@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "Mobile surface: Fix VidAPI embed URL compliance, add netflix skin parameter, add ds_lang parameter support, add language selection capability, and implement invalid movie filtering",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. Fix apps/mobile/src/utils/player.js - Change `?t=` to `?resumeAt=` in both getMovieEmbedUrl and getTVEmbedUrl to match VidAPI documentation.",
     "2. Add skin and dsLang parameters to apps/mobile/src/utils/player.js - Modify getMovieEmbedUrl and getTVEmbedUrl to accept an options object { skin, dsLang } and append these as query params. Default skin to 'netflix'. Example output: https://vaplayer.ru/embed/movie/12345?resumeAt=300&skin=netflix&ds_lang=id",
@@ -27,5 +27,5 @@
     "cd apps/mobile && bun run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All verification steps passed: TypeScript check (0 errors via bunx tsc --noEmit), ESLint lint (0 errors via bun run lint). Used manual query string building instead of URLSearchParams to avoid no-undef lint error (expo eslint config does not include URLSearchParams as a global). Git pull failed due to sandbox auth token issue but proceeded with existing codebase state."
 }
