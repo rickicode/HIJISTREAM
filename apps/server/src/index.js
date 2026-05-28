@@ -383,6 +383,11 @@ const server = Bun.serve({
         const match = pathname.match(/^\/api\/movie\/(\d+)$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
+        // Fallback to English if overview is missing in selected language
+        if (!data.overview && language && language !== 'en-US') {
+          const enData = await fetchTMDB(`/3/movie/${movieId}`, { language: 'en-US' });
+          if (enData.overview) data.overview = enData.overview;
+        }
         result = transformMovieDetail(data);
         ttl = TTL.DETAIL;
       }
@@ -391,6 +396,11 @@ const server = Bun.serve({
         const match = pathname.match(/^\/api\/tv\/(\d+)$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
+        // Fallback to English if overview is missing in selected language
+        if (!data.overview && language && language !== 'en-US') {
+          const enData = await fetchTMDB(`/3/tv/${tvId}`, { language: 'en-US' });
+          if (enData.overview) data.overview = enData.overview;
+        }
         result = transformTVDetail(data);
         ttl = TTL.DETAIL;
       }

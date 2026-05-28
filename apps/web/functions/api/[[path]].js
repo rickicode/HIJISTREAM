@@ -294,6 +294,11 @@ export async function onRequest(context) {
       const match = pathname.match(/^\/movie\/(\d+)$/);
       const movieId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
+      // Fallback to English if overview is missing in selected language
+      if (!data.overview && language && language !== 'en-US') {
+        const enData = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { language: 'en-US' });
+        if (enData.overview) data.overview = enData.overview;
+      }
       result = transformMovieDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
@@ -302,6 +307,11 @@ export async function onRequest(context) {
       const match = pathname.match(/^\/tv\/(\d+)$/);
       const tvId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
+      // Fallback to English if overview is missing in selected language
+      if (!data.overview && language && language !== 'en-US') {
+        const enData = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { language: 'en-US' });
+        if (enData.overview) data.overview = enData.overview;
+      }
       result = transformTVDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
