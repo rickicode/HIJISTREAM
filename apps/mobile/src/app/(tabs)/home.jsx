@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Film } from 'lucide-react-native';
 import api from '../../utils/api';
 import { getAllWatchProgress } from '../../utils/player';
-import { colors, spacing, typography, borderRadius } from '../../theme';
+import { useTranslation } from '../../i18n';
+import { colors, spacing, typography } from '../../theme';
 import HeroBanner from '../../components/HeroBanner';
 import ContentRail from '../../components/ContentRail';
-import TVFocusable from '../../components/TVFocusable';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [watchProgress, setWatchProgress] = useState([]);
 
   const loadProgress = useCallback(async () => {
@@ -58,8 +58,6 @@ export default function HomeScreen() {
 
   if (watchProgress.length > 0) {
     sections.push({ key: 'continue-watching', type: 'progress' });
-  } else if (movies.length === 0 && tvShows.length === 0 && !moviesLoading && !tvLoading) {
-    sections.push({ key: 'empty-state', type: 'empty' });
   }
 
   sections.push({ key: 'trending-movies', type: 'movies' });
@@ -72,28 +70,10 @@ export default function HomeScreen() {
       return <HeroBanner item={heroItem} type="movie" />;
     }
 
-    if (section.type === 'empty') {
-      return (
-        <View style={styles.emptyState}>
-          <Film color={colors.textMuted} size={48} />
-          <Text style={styles.emptyTitle}>Welcome to HIJISTREAM</Text>
-          <Text style={styles.emptySubtitle}>
-            Start watching movies and TV shows
-          </Text>
-          <TVFocusable
-            onPress={() => router.push('/(tabs)/movies')}
-            style={styles.browseButton}
-          >
-            <Text style={styles.browseButtonText}>Browse Movies</Text>
-          </TVFocusable>
-        </View>
-      );
-    }
-
     if (section.type === 'progress') {
       return (
         <ContentRail
-          title="Continue Watching"
+          title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
         />
@@ -103,11 +83,10 @@ export default function HomeScreen() {
     if (section.type === 'movies') {
       return (
         <ContentRail
-          title="Trending Movies"
+          title={`${t('common.trending')} Movies`}
           items={movies}
           type="movie"
           isLoading={moviesLoading}
-          onSeeAll={() => router.push('/(tabs)/movies')}
         />
       );
     }
@@ -115,11 +94,10 @@ export default function HomeScreen() {
     if (section.type === 'tv') {
       return (
         <ContentRail
-          title="Trending TV Shows"
+          title={`${t('common.trending')} TV`}
           items={tvShows}
           type="tv"
           isLoading={tvLoading}
-          onSeeAll={() => router.push('/(tabs)/tv')}
         />
       );
     }
@@ -127,11 +105,10 @@ export default function HomeScreen() {
     if (section.type === 'ongoing-series') {
       return (
         <ContentRail
-          title="Ongoing Series"
+          title={t('common.ongoing')}
           items={onTheAirItems}
           type="tv"
           isLoading={onTheAirLoading}
-          onSeeAll={() => router.push('/(tabs)/tv')}
         />
       );
     }
@@ -139,11 +116,10 @@ export default function HomeScreen() {
     if (section.type === 'trending-anime') {
       return (
         <ContentRail
-          title="Trending Anime"
+          title={`${t('common.trending')} Anime`}
           items={animeItems}
           type="tv"
           isLoading={animeLoading}
-          onSeeAll={() => router.push('/(tabs)/anime')}
         />
       );
     }
@@ -165,35 +141,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-    gap: spacing.sm,
-  },
-  emptyTitle: {
-    color: colors.text,
-    ...typography.title,
-    marginTop: spacing.sm,
-  },
-  emptySubtitle: {
-    color: colors.textMuted,
-    ...typography.body,
-  },
-  browseButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.md,
-    minWidth: 140,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  browseButtonText: {
-    color: colors.text,
-    ...typography.subtitle,
   },
 });
