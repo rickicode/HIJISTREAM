@@ -66,15 +66,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(20,20,20,0.7)',
   },
   playerBox: {
-    backgroundColor: '#000000',  // SOLID BLACK - no backdrop visible inside
+    backgroundColor: 'transparent',  // Transparent so backdrop shows through
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
   },
   playButton: {
     width: 64,

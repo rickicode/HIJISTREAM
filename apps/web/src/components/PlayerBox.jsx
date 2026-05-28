@@ -32,7 +32,7 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
           </div>
         ) : (
           <div
-            className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-black shadow-2xl shadow-black/70 hover:shadow-black transition-shadow"
+            className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-transparent"
             onClick={onPlay}
           >
             <div className="absolute inset-0 flex items-center justify-center">
