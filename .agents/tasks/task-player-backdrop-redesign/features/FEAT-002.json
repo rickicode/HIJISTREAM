@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Apply the same backdrop-in-player concept to the mobile surface. The mobile DetailHero currently shows the backdrop as a large ImageBackground. Move the backdrop to be behind the player/play-button area. On mobile, the detail screens navigate to a separate player screen, so the backdrop should appear as a preview in the detail page's play area and optionally as a background in the player screen itself.",
+  "status": "pending",
+  "steps": [
+    "Create apps/mobile/src/components/PlayerBox.jsx: A new component similar to the web PlayerBox. It renders an ImageBackground with the backdrop_url, dark gradient overlays, and a centered play button. Props: item, onPlay. Uses the same styling approach as the existing mobile DetailHero backdrop (ImageBackground with overlay Views) but in a 16:9 aspect-ratio container.",
+    "Modify apps/mobile/src/components/DetailHero.jsx: Remove the large ImageBackground backdrop section (the 350px tall backdrop). Keep the info section (poster, title, metadata, genres, overview). Adjust styling so the info section appears on a clean dark background without the backdrop.",
+    "Modify apps/mobile/src/app/movie/[id].jsx: Import and render the new PlayerBox component above the DetailHero, passing `movie` as item and `handlePlay` as onPlay.",
+    "Modify apps/mobile/src/app/tv/[id].jsx: Import and render the new PlayerBox component above the DetailHero, passing `show` as item and `handlePlay` as onPlay.",
+    "Optionally modify apps/mobile/src/app/player.jsx: Add the backdrop_url as a subtle background behind the WebView (using ImageBackground wrapping the VideoPlayer container) for visual continuity.",
+    "Verify: Run `bunx expo lint` in apps/mobile to check for errors."
+  ],
+  "acceptance_criteria": [
+    "A new PlayerBox component exists in apps/mobile/src/components/PlayerBox.jsx that shows backdrop with play button",
+    "Mobile DetailHero no longer shows the large backdrop image - only info on dark background",
+    "Movie and TV detail screens show PlayerBox with backdrop above the info section",
+    "Mobile lint passes without errors"
+  ],
+  "verification": [
+    "Run `bunx expo lint` in apps/mobile"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-player-backdrop-redesign",
+  "task_description": "Move the backdrop/cover image from the DetailHero section to become the background of the PlayerBox (embed player area). When not playing, the player area shows the backdrop with a play button overlay. DetailHero becomes a clean info section without the large backdrop. Apply to both web and mobile surfaces.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
