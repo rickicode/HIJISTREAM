@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Mobile UI redesign: Netflix-style bottom nav (4 tabs: Home, Browse, Downloads, Profile replacing current 5 tabs), dedicated Browse screen with Genre/Country tabs, Home screen cleanup (hero banner + content rows only, no tab switcher), and language dropdown in header as bottom sheet modal.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Redesign bottom tab navigation in apps/mobile/src/app/(tabs)/_layout.jsx. Change from 5 tabs (Home, Movies, TV, Anime, Search) to 4 tabs (Home, Browse, Downloads, Profile). Active tab color: #e50914 (colors.primary). Inactive: #b3b3b3. Remove the existing LanguageSelector from headerRight (will be replaced with globe icon that opens modal). Add a globe icon button in headerRight that opens a language selector modal/bottom sheet. Tab icons: Home (Home icon), Browse (Compass/Grid icon from lucide-react-native), Downloads (Download icon), Profile (User icon).",
     "Step 2: Create the Browse screen at apps/mobile/src/app/(tabs)/browse.jsx. This NEW screen replaces the search tab. Layout: header area with title (localized 'Browse'/'Jelajahi' etc using useTranslation), tab switcher with 'Genre' and 'Country' tabs using the existing TabBar component pattern. Genre tab: scrollable 2-column grid of genre cards. Each card has genre name (localized), dark background (#1a1a1a), rounded corners, tappable. Use FlatList with numColumns=2. Country tab: same 2-column grid with flag emoji + localized country name. Countries: Korea, Japan, India, USA, Brazil, Mexico, Indonesia, UK, France, Germany, China, Thailand, Turkey, Nigeria. Tap on genre card navigates to a filtered content list (can navigate to movies tab with filter param or a new genre detail route). Tap on country card navigates to filtered content list by country.",
@@ -33,5 +33,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install && npx expo export --platform android"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Removed old tab files (movies, tv, anime, search) entirely from (tabs)/ directory since Expo Router auto-creates tabs from any file in that folder. The genre detail screen uses getDiscoverByCountry with null country (since there is no dedicated genre-filter endpoint available in the API), which will return general discover results. The profile screen imports cacheManager directly for the clear cache functionality. Build passes cleanly with `npx expo export --platform android`."
 }
