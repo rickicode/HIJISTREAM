@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Multi-language i18n system for both mobile and web apps with 7 languages (id-ID primary, en-US, es-ES, pt-BR, hi-IN, ja-JP, ko-KR), auto-detection on mobile, and language-aware TMDB API calls.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Install expo-localization in mobile app (cd apps/mobile && bun add expo-localization). Install i18next and react-i18next in both apps if needed, or create a lightweight custom i18n context (preferred to keep bundle small and match existing pattern).",
     "Step 2: Create shared translation files. Create apps/mobile/src/i18n/locales/ directory with 7 JSON files: id.json, en.json, es.json, pt.json, hi.json, ja.json, ko.json. Each file must have identical key sets covering: nav (home, browse, downloads, profile, movies, tvShows, anime, search), browse (title, genreTab, countryTab), genres (action, adventure, animation, comedy, crime, documentary, drama, family, fantasy, history, horror, music, mystery, romance, scienceFiction, tvMovie, thriller, war, western), countries (korea, japan, india, usa, brazil, mexico, indonesia, uk, france, germany, china, thailand, turkey, nigeria), common (play, myList, moreInfo, seeAll, loading, error, retry, noResults, continueWatching, trending, popular, topRated, upcoming, ongoing), player (play, pause, fullscreen, episodes, season), profile (settings, clearCache, language, selectLanguage). Indonesian (id.json) is the primary default.",
@@ -33,5 +33,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Had to maintain getDsLang export for backward compatibility since MovieDetail.jsx, TVDetail.jsx (web) and player.jsx (mobile) import it. Node 22 installed via mise with MISE_NODE_VERIFY=false due to gpg-agent unavailability. The mise.toml was generated but not committed (local tool only). Web lint passes with only react-refresh warnings (not errors) about exporting constants alongside components from i18n/index.jsx."
 }
