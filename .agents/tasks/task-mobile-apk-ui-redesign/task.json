@@ -9,6 +9,6 @@
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "All verification commands pass: npx expo export --platform android (exit 0), npx tsc --noEmit (exit 0), bun run build (exit 0), bun run lint (0 errors/warnings), bun run typecheck (exit 0). All 7 locale files on both platforms have identical key sets. No downloads keys remain."
+    "summary": "All verification commands pass: npx expo export --platform android (exit 0), npx tsc --noEmit (exit 0), bun run build (exit 0), bun run lint (0 errors/warnings), bun run typecheck (exit 0). All 14 locale files have identical key sets. Semantic review v2 APPROVED."
   }
 }
