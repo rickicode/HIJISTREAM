@@ -1,7 +1,7 @@
 {
   "task_id": "task-netflix-browse-i18n",
   "task_description": "Full mobile UI/UX redesign to Netflix-style with dedicated Browse page (Genre/Country tabs replacing Search in bottom nav), multi-language support (7 languages) with auto-detection on mobile and language dropdown in header for both mobile and web apps.",
-  "status": "in_progress",
+  "status": "completed",
   "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
   "blocked_reason": null,
   "verification": {
@@ -9,6 +9,6 @@
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "Web build (bun run build) passes. Web lint passes (0 errors, 2 warnings for react-refresh in i18n context - expected). Mobile export (npx expo export --platform android) passes. Review v2 fixes applied: removed duplicate language= params from getGenres/getDiscoverByGenre/getDiscoverByCountry endpoint URLs in both web and mobile api.js, letting fetchWithCache handle language injection centrally. Updated all callers to drop language argument. Fixed mobile getApiLocale mismatch bug. Fixed cache key doubling."
+    "summary": "Web build passes (bun run build, exit 0). Web lint passes (0 errors, 2 warnings for react-refresh in i18n context). Mobile export passes (npx expo export --platform android, exit 0). All 7 locale files across mobile and web have identical key structures (67+ keys each). Review v2 issues resolved - no duplicate language params, correct language routing."
   }
 }
