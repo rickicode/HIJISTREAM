@@ -4,6 +4,12 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (e.g. 1.2.0). Leave empty to use version from app.json'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write
@@ -89,7 +95,12 @@ jobs:
       - name: Get app version
         id: version
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('apps/mobile/app.json'))['expo']['version'])")
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION=$(python3 -c "import json; print(json.load(open('apps/mobile/app.json'))['expo']['version'])")
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
