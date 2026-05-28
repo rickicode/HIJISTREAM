@@ -2,6 +2,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
 
 function findGenreId(genreName) {
@@ -17,6 +18,7 @@ function findGenreId(genreName) {
 
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
 
   const handleGenrePress = (genreName) => {
@@ -71,7 +73,7 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
         {onPlay && (
           <TVFocusable onPress={onPlay} style={styles.playButton}>
             <Play color="#000000" size={20} fill="#000000" />
-            <Text style={styles.playText}>Play</Text>
+            <Text style={styles.playText}>{t('common.play')}</Text>
           </TVFocusable>
         )}
       </View>

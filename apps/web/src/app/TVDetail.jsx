@@ -2,6 +2,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
+import { useTranslation } from '../i18n';
 import DetailHero from '../components/DetailHero';
 import EpisodeList from '../components/EpisodeList';
 import PlayerBox from '../components/PlayerBox';
@@ -19,6 +20,7 @@ export default function TVDetail() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(1);
   const [currentEpisode, setCurrentEpisode] = useState(1);
+  const { t } = useTranslation();
 
   const [_langVersion, setLangVersion] = useState(0);
 
@@ -140,7 +142,7 @@ export default function TVDetail() {
         {recommendedItems.length > 0 && (
           <div className="mt-10">
             <ContentRail
-              title="Related Series"
+              title={t('common.moreLikeThis')}
               items={recommendedItems}
               type="tv"
             />

@@ -2,6 +2,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import api from '../utils/api';
+import { useTranslation } from '../i18n';
 import DetailHero from '../components/DetailHero';
 import PlayerBox from '../components/PlayerBox';
 import ContentRail from '../components/ContentRail';
@@ -15,6 +16,7 @@ export default function MovieDetail() {
   const [searchParams, setSearchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === 'true';
   const [isPlaying, setIsPlaying] = useState(autoplay);
+  const { t } = useTranslation();
 
   const [_langVersion, setLangVersion] = useState(0);
 
@@ -106,7 +108,7 @@ export default function MovieDetail() {
         {recommendedItems.length > 0 && (
           <div className="mt-10">
             <ContentRail
-              title="More Like This"
+              title={t('common.moreLikeThis')}
               items={recommendedItems}
               type="movie"
             />

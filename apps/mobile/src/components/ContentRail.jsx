@@ -1,17 +1,20 @@
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
+import { useTranslation } from '../i18n';
 import ContentCard from './ContentCard';
 import TVFocusable from './TVFocusable';
 import LoadingState from './LoadingState';
 
 export default function ContentRail({ title, items, type = 'movie', isLoading = false, onSeeAll }) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         {onSeeAll && (
           <TVFocusable onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={styles.seeAllText}>See All &gt;</Text>
+            <Text style={styles.seeAllText}>{t('common.viewAll')} &gt;</Text>
           </TVFocusable>
         )}
       </View>

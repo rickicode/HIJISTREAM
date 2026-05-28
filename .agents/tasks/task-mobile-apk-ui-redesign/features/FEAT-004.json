@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "fix",
   "description": "Full codebase audit of mobile app: fix bugs, add missing i18n keys for new features (moreLikeThis, viewAll), ensure locale parity, and verify build passes cleanly.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "1. Add any missing translation keys that were introduced by FEAT-001/002/003 to ALL 7 locale files on BOTH platforms. Keys to check: 'common.viewAll', 'common.moreLikeThis', 'nav.myList', 'myList.emptyState'. Ensure all 7 mobile locale files have identical key structures. Ensure all 7 web locale files have identical key structures.",
     "2. Audit apps/mobile/src/app/movie/[id].jsx and apps/mobile/src/app/tv/[id].jsx: Ensure the 'Related Series' / 'More Like This' title strings are using translation keys (t('common.moreLikeThis')) instead of hardcoded English.",
