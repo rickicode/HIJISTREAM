@@ -22,11 +22,7 @@ export default function Search() {
     setQuery(value);
   }, []);
 
-  const items = data?.items || (Array.isArray(data) ? data : []);
-  const typedItems = items.map(item => ({
-    ...item,
-    _detectedType: (item.media_type === 'tv' || item.number_of_seasons || item.seasons) ? 'tv' : 'movie',
-  }));
+  const items = data?.items || [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -43,7 +39,7 @@ export default function Search() {
         </div>
       )}
 
-      {query && !isLoading && typedItems.length === 0 && !error && (
+      {query && !isLoading && items.length === 0 && !error && (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
           <p className="text-[#A1A1A1] text-sm">
             No results found for &apos;{query}&apos;
@@ -53,8 +49,8 @@ export default function Search() {
 
       {query && (
         <ContentGrid
-          items={typedItems}
-          type="movie"
+          items={items}
+          type="mixed"
           isLoading={isLoading}
           error={error}
           onRetry={refetch}

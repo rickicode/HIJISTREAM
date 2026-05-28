@@ -111,8 +111,8 @@ export default function HomeScreen() {
               contentContainerStyle={styles.horizontalList}
             >
               {movies.map((item) => (
-                <View key={String(item.tmdb_id)} style={styles.cardWrapper}>
-                  <ContentCard item={item} type={item._detectedType || 'movie'} />
+                <View key={String(item.id || item.tmdb_id)} style={styles.cardWrapper}>
+                  <ContentCard item={item} type={item.type || 'movie'} />
                 </View>
               ))}
             </ScrollView>
@@ -142,7 +142,7 @@ export default function HomeScreen() {
               contentContainerStyle={styles.horizontalList}
             >
               {tvShows.map((item) => (
-                <View key={String(item.tmdb_id)} style={styles.cardWrapper}>
+                <View key={String(item.id || item.tmdb_id)} style={styles.cardWrapper}>
                   <ContentCard item={item} type="tv" />
                 </View>
               ))}

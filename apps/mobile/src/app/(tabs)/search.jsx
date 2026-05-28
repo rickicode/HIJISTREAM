@@ -21,9 +21,9 @@ export default function SearchScreen() {
 
   const items = data?.items
     ? data.items.map((item) => {
-        const isTV =
-          item.number_of_seasons != null || item.media_type === 'tv';
-        return { ...item, _detectedType: isTV ? 'tv' : 'movie' };
+        const itemType =
+          item.type || (item.number_of_seasons != null || item.media_type === 'tv' ? 'tv' : 'movie');
+        return { ...item, _detectedType: itemType };
       })
     : [];
 

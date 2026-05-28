@@ -1,6 +1,6 @@
 import cacheManager, { TTL } from './cache';
 
-const BASE_URL = 'https://vidapi.ru';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://hijistream-web.vercel.app/api';
 
 async function fetchWithCache(endpoint, cacheKey, ttl) {
   const cached = await cacheManager.get(cacheKey);
@@ -17,93 +17,38 @@ async function fetchWithCache(endpoint, cacheKey, ttl) {
 }
 
 const api = {
-  getLatestMovies(page = 1) {
-    return fetchWithCache(
-      `/movies/latest/page-${page}.json`,
-      `movies_latest_${page}`,
-      TTL.CONTENT_LIST
-    );
+  getPopularMovies(page = 1) {
+    return fetchWithCache(`/movies/popular?page=${page}`, `movies_popular_${page}`, TTL.CONTENT_LIST);
   },
-
   getTrendingMovies(page = 1) {
-    return fetchWithCache(
-      `/movies/trending/page-${page}.json`,
-      `movies_trending_${page}`,
-      TTL.CONTENT_LIST
-    );
+    return fetchWithCache(`/movies/trending?page=${page}`, `movies_trending_${page}`, TTL.CONTENT_LIST);
   },
-
   getTopRatedMovies(page = 1) {
-    return fetchWithCache(
-      `/movies/top-rated/page-${page}.json`,
-      `movies_top_rated_${page}`,
-      TTL.CONTENT_LIST
-    );
+    return fetchWithCache(`/movies/top-rated?page=${page}`, `movies_toprated_${page}`, TTL.CONTENT_LIST);
   },
-
   getUpcomingMovies(page = 1) {
-    return fetchWithCache(
-      `/movies/upcoming/page-${page}.json`,
-      `movies_upcoming_${page}`,
-      TTL.CONTENT_LIST
-    );
+    return fetchWithCache(`/movies/upcoming?page=${page}`, `movies_upcoming_${page}`, TTL.CONTENT_LIST);
   },
-
-  getLatestTV(page = 1) {
-    return fetchWithCache(
-      `/tv/latest/page-${page}.json`,
-      `tv_latest_${page}`,
-      TTL.CONTENT_LIST
-    );
+  getPopularTV(page = 1) {
+    return fetchWithCache(`/tv/popular?page=${page}`, `tv_popular_${page}`, TTL.CONTENT_LIST);
   },
-
   getTrendingTV(page = 1) {
-    return fetchWithCache(
-      `/tv/trending/page-${page}.json`,
-      `tv_trending_${page}`,
-      TTL.CONTENT_LIST
-    );
+    return fetchWithCache(`/tv/trending?page=${page}`, `tv_trending_${page}`, TTL.CONTENT_LIST);
   },
-
   getTopRatedTV(page = 1) {
-    return fetchWithCache(
-      `/tv/top-rated/page-${page}.json`,
-      `tv_top_rated_${page}`,
-      TTL.CONTENT_LIST
-    );
+    return fetchWithCache(`/tv/top-rated?page=${page}`, `tv_toprated_${page}`, TTL.CONTENT_LIST);
   },
-
   getMovieDetails(id) {
-    return fetchWithCache(
-      `/movie/${id}.json`,
-      `movie_detail_${id}`,
-      TTL.CONTENT_DETAIL
-    );
+    return fetchWithCache(`/movie/${id}`, `movie_detail_${id}`, TTL.CONTENT_DETAIL);
   },
-
   getTVDetails(id) {
-    return fetchWithCache(
-      `/tv/${id}.json`,
-      `tv_detail_${id}`,
-      TTL.CONTENT_DETAIL
-    );
+    return fetchWithCache(`/tv/${id}`, `tv_detail_${id}`, TTL.CONTENT_DETAIL);
   },
-
-  async search(query) {
-    const cacheKey = `search_${query}`;
-    const cached = await cacheManager.get(cacheKey);
-    if (cached) return cached;
-
-    const response = await fetch(
-      `${BASE_URL}/search?query=${encodeURIComponent(query)}`
-    );
-    if (!response.ok) {
-      throw new Error(`Search Error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    await cacheManager.set(cacheKey, data, TTL.SEARCH);
-    return data;
+  getTVSeason(id, season) {
+    return fetchWithCache(`/tv/${id}/season/${season}`, `tv_season_${id}_${season}`, TTL.CONTENT_DETAIL);
+  },
+  search(query, page = 1) {
+    return fetchWithCache(`/search?query=${encodeURIComponent(query)}&page=${page}`, `search_${query}_${page}`, TTL.SEARCH);
   },
 };
 

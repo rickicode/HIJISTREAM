@@ -2,7 +2,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import api from '../utils/api';
-import { loadWatchProgress } from '../utils/player';
 import DetailHero from '../components/DetailHero';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
@@ -40,10 +39,8 @@ export default function MovieDetail() {
 
   if (!movie) return null;
 
-  const _progress = loadWatchProgress(movie.imdb_id || id);
-
   const handlePlay = () => {
-    const playId = movie.imdb_id || id;
+    const playId = movie.id || id;
     navigate(`/player/movie/${playId}`);
   };
 

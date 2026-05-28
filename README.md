@@ -1,6 +1,45 @@
 # HIJISTREAM
 
-A streaming platform for movies and TV shows built with React, Vite, and Tailwind CSS. Browse 89,155+ movies and 19,012+ TV shows with a responsive, modern interface.
+A streaming platform for movies and TV shows built with React, Vite, and Tailwind CSS. Powered by TMDB for catalog data and VidAPI (vaplayer.ru) for video player embeds.
+
+## Architecture
+
+HIJISTREAM uses a two-API architecture:
+
+- **TMDB API** - Provides all catalog data: movie/TV listings, details, search, credits, seasons/episodes, poster images, and ratings. The TMDB API key is kept server-side only (backend server, Vercel Edge Function, or Cloudflare Function).
+- **VidAPI (vaplayer.ru)** - Provides video player embed URLs only. Embed URLs are constructed from TMDB IDs in the format `https://vaplayer.ru/embed/movie/{tmdb_id}` for movies and `https://vaplayer.ru/embed/tv/{tmdb_id}/{season}/{episode}` for TV episodes.
+
+The frontend never directly calls TMDB. All requests go through `/api/*` which is handled by:
+- **Vercel**: Edge Function at `apps/web/api/[...path].js`
+- **Cloudflare Pages**: Function at `apps/web/functions/api/[[path]].js`
+- **Self-hosted**: Bun server at `apps/server/src/index.js`
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `TMDB_API_KEY` | Yes | Free API key from [TMDB](https://www.themoviedb.org/settings/api) |
+| `PORT` | No | Server port (default: 3001, server only) |
+| `VITE_API_URL` | No | API base URL for local dev (default: `/api`) |
+
+### Setup per platform
+
+**Vercel:**
+Add `TMDB_API_KEY` in Project Settings > Environment Variables.
+
+**Cloudflare Pages:**
+```bash
+wrangler secret put TMDB_API_KEY
+```
+
+**Render.com:**
+Add `TMDB_API_KEY` in the service's Environment settings (or it is configured via `render.yaml`).
+
+**Local development:**
+Create `apps/server/.env`:
+```
+TMDB_API_KEY=your_key_here
+```
 
 ## Deploy
 
@@ -78,6 +117,8 @@ On every push to `main` and every pull request:
 - Lucide React (icons)
 - Vitest (testing)
 - Bun (package manager and runtime)
+- TMDB API (catalog data: movies, TV, search, details)
+- VidAPI / vaplayer.ru (video embed player)
 
 ## Project Structure
 

@@ -1,0 +1,42 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Rewrite frontend API client and update all components/pages to use new TMDB-backed endpoints. Enable real search, movie/TV details with overview/credits/runtime, season/episode selection, and proper TMDB poster URLs.",
+  "status": "completed",
+  "steps": [
+    "Rewrite apps/web/src/utils/api.js: Replace all VidAPI endpoint calls with new clean endpoints. New methods: getPopularMovies(page), getTrendingMovies(page), getTopRatedMovies(page), getUpcomingMovies(page), getPopularTV(page), getTrendingTV(page), getTopRatedTV(page), getMovieDetails(id), getTVDetails(id), getTVSeason(id, season), search(query, page). Each returns fetchWithCache with appropriate TTL. Remove the old page-offset simulation and client-side search. Response format from backend already includes poster_url, embed_url, etc.",
+    "Update apps/web/src/app/Movies.jsx: Change tabs to Popular/Trending/Top Rated/Upcoming. Update apiFns to use new api methods (api.getPopularMovies, api.getTrendingMovies, api.getTopRatedMovies, api.getUpcomingMovies). The response format changes: data.results becomes data.items, data.total_pages stays the same.",
+    "Update apps/web/src/app/TV.jsx: Change tabs to Popular/Trending/Top Rated. Update apiFns to use api.getPopularTV, api.getTrendingTV, api.getTopRatedTV.",
+    "Update apps/web/src/app/Home.jsx: Use api.getTrendingMovies and api.getTrendingTV for home sections.",
+    "Update apps/web/src/app/Search.jsx: Use api.search(query) which now does real server-side TMDB search. Remove client-side filtering logic if any remains.",
+    "Update apps/web/src/app/MovieDetail.jsx: Use api.getMovieDetails(id) which now returns full TMDB data (overview, runtime, credits, genres as string, poster_url, backdrop_url, embed_url). Pass all enriched data to DetailHero.",
+    "Update apps/web/src/app/TVDetail.jsx: Use api.getTVDetails(id) which returns full data including number_of_seasons. Add season/episode selection UI using api.getTVSeason(id, season). Import and use EpisodeList component with real episode data.",
+    "Update apps/web/src/components/DetailHero.jsx: Already supports overview, runtime, rating, genre, poster_url. Add support for backdrop_url as a background hero image if available. Add credits/cast display (show top 5 cast members).",
+    "Rewrite apps/web/src/components/EpisodeList.jsx: Replace the placeholder 'Play' button with real season selector dropdown and episode grid. Each episode shows: episode_number, name, overview (truncated), still_image, air_date. Clicking an episode navigates to /player/tv/{tmdb_id}?season=X&episode=Y.",
+    "Update apps/web/src/app/Player.jsx: Support season/episode from URL query params. When type is 'tv', construct embed URL as https://vaplayer.ru/embed/tv/{tmdb_id}/{season}/{episode}. Use useSearchParams or route params.",
+    "Update apps/web/src/utils/player.js: getTVEmbedUrl now always uses season/episode format since TMDB provides this data.",
+    "Update apps/web/src/components/ContentCard.jsx: The card already handles poster_url and tmdb_id. Ensure it works with the new response format (id field from TMDB becomes tmdb_id in transformed response).",
+    "Update apps/mobile/src/utils/api.js: Same refactor as web - point to new TMDB-backed endpoints via the server. Change BASE_URL to configurable server URL. Add same new methods (getPopularMovies, getTrendingMovies, etc., getMovieDetails, getTVDetails, getTVSeason, search)."
+  ],
+  "acceptance_criteria": [
+    "Movies page shows Popular/Trending/Top Rated/Upcoming tabs with real TMDB data",
+    "TV page shows Popular/Trending/Top Rated tabs with real TMDB data", 
+    "Movie detail page shows overview, runtime, cast, genres, and play button",
+    "TV detail page shows season selector and episode list from TMDB",
+    "Search performs real server-side multi-search via TMDB",
+    "Player page generates correct embed URLs: /embed/movie/{id} for movies, /embed/tv/{id}/{season}/{episode} for TV",
+    "Content cards show TMDB poster images via https://image.tmdb.org/t/p/w500/...",
+    "Infinite scroll pagination still works",
+    "Mobile API client updated to same endpoint structure",
+    "bun run build succeeds without errors",
+    "bun run lint passes",
+    "bun run typecheck passes"
+  ],
+  "verification": [
+    "Run 'bun run build' in apps/web - must succeed",
+    "Run 'bun run lint' in apps/web - must pass",
+    "Run 'bun run typecheck' in apps/web - must pass"
+  ],
+  "blocked_reason": null,
+  "findings": "Build succeeds, lint passes (1 pre-existing warning in main.jsx about react-refresh), typecheck passes, all 14 tests pass. The tests still hit the old VidAPI directly (testing that upstream), not our new backend proxy. ContentCard now supports both item.id (new TMDB API) and item.tmdb_id (legacy). Mobile app updated with same API structure pointing to Vercel edge function by default."
+}

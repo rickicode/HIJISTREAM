@@ -1,10 +1,10 @@
 import storage from './storage';
 
 export const TTL = {
-  CONTENT_LIST: 86400,
-  CONTENT_DETAIL: 604800,
-  IMAGES: 2592000,
-  SEARCH: 3600,
+  CONTENT_LIST: 300,       // 5 minutes
+  CONTENT_DETAIL: 600,     // 10 minutes
+  IMAGES: 3600,            // 1 hour
+  SEARCH: 120,             // 2 minutes
 };
 
 const CACHE_PREFIX = 'cache_';

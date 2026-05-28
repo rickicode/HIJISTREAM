@@ -1,13 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function Player() {
   const { type, id } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const playerContainerRef = useRef(null);
 
   const season = searchParams.get('season');
@@ -22,17 +22,14 @@ export default function Player() {
 
   let embedUrl = '';
   let title = routeState.title || '';
-  let contentId = id;
+  const contentId = id;
 
   if (type === 'movie') {
     embedUrl = getMovieEmbedUrl(id, resumeAt);
     title = title || `Movie - ${id}`;
   } else {
-    const s = season || '1';
-    const e = episode || '1';
-    embedUrl = getTVEmbedUrl(id, s, e, resumeAt);
-    title = title || `TV - S${s}E${e}`;
-    contentId = `${id}_s${s}e${e}`;
+    embedUrl = getTVEmbedUrl(id, season || 1, episode || 1, resumeAt);
+    title = title || `TV - ${id}`;
   }
 
   const metadata = {

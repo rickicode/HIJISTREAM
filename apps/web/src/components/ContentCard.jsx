@@ -3,8 +3,9 @@ import { useState } from 'react';
 
 export default function ContentCard({ item, type = 'movie', watchProgress = null }) {
   const [imgLoaded, setImgLoaded] = useState(false);
-  const effectiveType = item._detectedType || type;
-  const href = effectiveType === 'movie' ? `/movies/${item.tmdb_id}` : `/tv/${item.tmdb_id}`;
+  const effectiveType = item.type || item._detectedType || type;
+  const itemId = item.id || item.tmdb_id;
+  const href = effectiveType === 'movie' ? `/movies/${itemId}` : `/tv/${itemId}`;
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()).slice(0, 2) : [];
 
   return (
@@ -13,16 +14,22 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
       className="group block bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl overflow-hidden hover:border-[#404040] hover:scale-[1.05] card-glow transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F0F]"
     >
       <div className="relative aspect-[2/3]">
-        <img
-          src={item.poster_url}
-          alt={item.title}
-          loading="lazy"
-          onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            imgLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
-        {!imgLoaded && (
+        {item.poster_url ? (
+          <img
+            src={item.poster_url}
+            alt={item.title}
+            loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              imgLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        ) : (
+          <div className="w-full h-full bg-[#262626] flex items-center justify-center">
+            <span className="text-[#6B6B6B] text-xs text-center px-2">{item.title}</span>
+          </div>
+        )}
+        {item.poster_url && !imgLoaded && (
           <div className="absolute inset-0 shimmer-bg animate-shimmer rounded-xl" />
         )}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#1A1A1A] to-transparent pointer-events-none" />
@@ -39,7 +46,7 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <h3 className="font-medium text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-1">
           {item.year && <span className="text-xs text-[#A1A1A1]">{item.year}</span>}
-          {item.rating && (
+          {item.rating && item.rating !== '0.0' && (
             <span className="text-xs text-[#A1A1A1]">
               <span className="text-[#FBBF24]">&#9733;</span> {item.rating}
             </span>

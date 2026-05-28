@@ -5,21 +5,21 @@ import TabNavigation from '../components/TabNavigation';
 import ContentGrid from '../components/ContentGrid';
 
 const tabs = [
-  { id: 'latest', label: 'Latest' },
+  { id: 'popular', label: 'Popular' },
   { id: 'trending', label: 'Trending' },
   { id: 'top-rated', label: 'Top Rated' },
   { id: 'upcoming', label: 'Upcoming' },
 ];
 
 const apiFns = {
-  latest: (page) => api.getLatestMovies(page),
+  popular: (page) => api.getPopularMovies(page),
   trending: (page) => api.getTrendingMovies(page),
   'top-rated': (page) => api.getTopRatedMovies(page),
   upcoming: (page) => api.getUpcomingMovies(page),
 };
 
 export default function Movies() {
-  const [activeTab, setActiveTab] = useState('latest');
+  const [activeTab, setActiveTab] = useState('popular');
   const observerRef = useRef(null);
 
   const {

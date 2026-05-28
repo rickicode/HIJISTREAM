@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import DetailHero from '../components/DetailHero';
 import EpisodeList from '../components/EpisodeList';
@@ -10,10 +10,17 @@ import ErrorState from '../components/ErrorState';
 export default function TVDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [selectedSeason, setSelectedSeason] = useState(1);
 
   const { data: show, isLoading, error, refetch } = useQuery({
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),
+  });
+
+  const { data: seasonData, isLoading: seasonLoading } = useQuery({
+    queryKey: ['tv-season', id, selectedSeason],
+    queryFn: () => api.getTVSeason(id, selectedSeason),
+    enabled: !!show?.number_of_seasons,
   });
 
   useEffect(() => {
@@ -41,23 +48,26 @@ export default function TVDetail() {
   if (!show) return null;
 
   const handlePlay = () => {
-    navigate(`/player/tv/${id}?season=1&episode=1`);
+    navigate(`/player/tv/${show.id || id}?season=1&episode=1`);
   };
 
-  const handlePlayEpisode = (season, episode) => {
-    navigate(`/player/tv/${id}?season=${season}&episode=${episode}`);
+  const handlePlayEpisode = (season, episodeNumber) => {
+    navigate(`/player/tv/${show.id || id}?season=${season}&episode=${episodeNumber}`);
   };
 
-  const seasons = show.seasons || show.number_of_seasons || 1;
+  const numberOfSeasons = show.number_of_seasons || 1;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <DetailHero item={show} type="tv" onPlay={handlePlay} />
       <EpisodeList
-        episodes={show.episodes}
-        seasons={seasons}
-        tmdbId={id}
+        tvId={id}
+        seasons={numberOfSeasons}
+        currentSeason={selectedSeason}
+        onSeasonChange={setSelectedSeason}
+        episodes={seasonData?.episodes || []}
         onPlayEpisode={handlePlayEpisode}
+        isLoading={seasonLoading}
       />
     </div>
   );

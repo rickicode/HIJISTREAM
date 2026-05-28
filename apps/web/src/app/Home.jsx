@@ -62,7 +62,7 @@ export default function Home() {
             {watchProgress.map((item) => (
               <div key={item.id} className="w-[150px] sm:w-[160px] shrink-0">
                 <ContentCard
-                  item={{ tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
+                  item={{ id: item.id, tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
                   type={item.type || 'movie'}
                   watchProgress={item.percentage}
                 />
@@ -93,7 +93,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {movieItems.map((item) => (
-              <ContentCard key={item.tmdb_id} item={item} type="movie" />
+              <ContentCard key={item.id || item.tmdb_id} item={item} type="movie" />
             ))}
           </div>
         )}
@@ -111,7 +111,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {tvItems.map((item) => (
-              <ContentCard key={item.tmdb_id} item={item} type="tv" />
+              <ContentCard key={item.id || item.tmdb_id} item={item} type="tv" />
             ))}
           </div>
         )}
