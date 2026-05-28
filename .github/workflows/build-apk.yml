@@ -52,6 +52,13 @@ jobs:
         run: bunx expo prebuild --platform android --no-install
         working-directory: apps/mobile
 
+      - name: Patch ExpoModulesCorePlugin for CI compatibility
+        run: |
+          PLUGIN_FILE="node_modules/expo-modules-core/android/ExpoModulesCorePlugin.gradle"
+          if [ -f "$PLUGIN_FILE" ]; then
+            sed -i 's/from components.release/from components.findByName("release") ?: components.first()/' "$PLUGIN_FILE"
+          fi
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
