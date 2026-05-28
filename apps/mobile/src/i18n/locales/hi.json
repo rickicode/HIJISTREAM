@@ -65,7 +65,10 @@
     "popular": "लोकप्रिय",
     "topRated": "सर्वश्रेष्ठ रेटेड",
     "upcoming": "आगामी",
-    "ongoing": "प्रसारण में"
+    "ongoing": "प्रसारण में",
+    "searchPlaceholder": "फिल्में और टीवी शो खोजें...",
+    "recentSearches": "हाल की खोजें",
+    "closeSearch": "बंद करें"
   },
   "player": {
     "play": "चलाएं",

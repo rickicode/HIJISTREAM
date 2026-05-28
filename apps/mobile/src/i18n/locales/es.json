@@ -65,7 +65,10 @@
     "popular": "Popular",
     "topRated": "Mejor Valoradas",
     "upcoming": "Proximamente",
-    "ongoing": "En Emision"
+    "ongoing": "En Emision",
+    "searchPlaceholder": "Buscar peliculas y series...",
+    "recentSearches": "Busquedas Recientes",
+    "closeSearch": "Cerrar"
   },
   "player": {
     "play": "Reproducir",
