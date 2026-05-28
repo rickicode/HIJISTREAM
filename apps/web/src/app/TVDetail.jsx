@@ -106,7 +106,8 @@ export default function TVDetail() {
   const numberOfSeasons = show.number_of_seasons || 1;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+    <div className="pt-16">
+      {/* PlayerBox is full-width, outside content container */}
       <PlayerBox
         item={show}
         isPlaying={isPlaying}
@@ -116,27 +117,29 @@ export default function TVDetail() {
         contentId={`${tvId}_s${currentSeason}e${currentEpisode}`}
         metadata={metadata}
       />
-      <div className="mt-8">
-        <DetailHero item={show} type="tv" />
-      </div>
-      <EpisodeList
-        tvId={id}
-        seasons={numberOfSeasons}
-        currentSeason={selectedSeason}
-        onSeasonChange={setSelectedSeason}
-        episodes={seasonData?.episodes || []}
-        onPlayEpisode={handlePlayEpisode}
-        isLoading={seasonLoading}
-      />
-      {recommendedItems.length > 0 && (
-        <div className="mt-10">
-          <ContentRail
-            title="Related Series"
-            items={recommendedItems}
-            type="tv"
-          />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="mt-8">
+          <DetailHero item={show} type="tv" />
         </div>
-      )}
+        <EpisodeList
+          tvId={id}
+          seasons={numberOfSeasons}
+          currentSeason={selectedSeason}
+          onSeasonChange={setSelectedSeason}
+          episodes={seasonData?.episodes || []}
+          onPlayEpisode={handlePlayEpisode}
+          isLoading={seasonLoading}
+        />
+        {recommendedItems.length > 0 && (
+          <div className="mt-10">
+            <ContentRail
+              title="Related Series"
+              items={recommendedItems}
+              type="tv"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

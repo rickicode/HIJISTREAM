@@ -5,8 +5,8 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
   const backdropSrc = item.backdrop_url || item.poster_url;
 
   return (
-    <div className="relative w-full -mx-4 sm:-mx-6 lg:-mx-8 overflow-hidden">
-      {/* Backdrop full-width background */}
+    <div className="relative w-full">
+      {/* Backdrop image: TRUE full-width background, edge to edge */}
       {backdropSrc && (
         <img
           src={backdropSrc}
@@ -14,14 +14,14 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
           className="absolute inset-0 w-full h-full object-cover"
         />
       )}
-      {/* Dark overlay on backdrop */}
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/40" />
+      {/* Overlay on backdrop */}
+      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-black/30" />
 
-      {/* Embed player (solid black) centered over the backdrop */}
-      <div className="relative py-10 px-4 sm:px-6 lg:px-8">
+      {/* Player embed area: centered inside the backdrop section */}
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {isPlaying ? (
-          <div className="aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden shadow-2xl shadow-black/80 bg-black">
+          <div className="aspect-video w-full rounded-lg overflow-hidden shadow-2xl shadow-black/70 bg-black">
             <VideoPlayer
               embedUrl={embedUrl}
               title={item.title}
@@ -32,7 +32,7 @@ export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, 
           </div>
         ) : (
           <div
-            className="relative aspect-video w-full max-w-5xl mx-auto rounded-lg overflow-hidden cursor-pointer bg-black shadow-2xl shadow-black/80 hover:shadow-black/90 transition-shadow"
+            className="relative aspect-video w-full rounded-lg overflow-hidden cursor-pointer bg-black shadow-2xl shadow-black/70 hover:shadow-black transition-shadow"
             onClick={onPlay}
           >
             <div className="absolute inset-0 flex items-center justify-center">

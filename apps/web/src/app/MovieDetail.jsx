@@ -80,7 +80,8 @@ export default function MovieDetail() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
+    <div className="pt-16">
+      {/* PlayerBox is full-width, outside content container */}
       <PlayerBox
         item={movie}
         isPlaying={isPlaying}
@@ -90,18 +91,20 @@ export default function MovieDetail() {
         contentId={playId}
         metadata={metadata}
       />
-      <div className="mt-8">
-        <DetailHero item={movie} type="movie" />
-      </div>
-      {recommendedItems.length > 0 && (
-        <div className="mt-10">
-          <ContentRail
-            title="More Like This"
-            items={recommendedItems}
-            type="movie"
-          />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="mt-8">
+          <DetailHero item={movie} type="movie" />
         </div>
-      )}
+        {recommendedItems.length > 0 && (
+          <div className="mt-10">
+            <ContentRail
+              title="More Like This"
+              items={recommendedItems}
+              type="movie"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
