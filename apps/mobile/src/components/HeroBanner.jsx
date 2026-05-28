@@ -50,7 +50,6 @@ export default function HeroBanner({ item, type = 'movie' }) {
         style={styles.backdrop}
         resizeMode="cover"
       >
-        <View style={styles.overlay} />
         {showRating && (
           <View style={styles.ratingBadge}>
             <Star color="#FFD700" size={14} fill="#FFD700" />
@@ -88,14 +87,6 @@ const styles = StyleSheet.create({
     height: BACKDROP_HEIGHT,
     justifyContent: 'flex-end',
   },
-  overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    backgroundColor: 'rgba(10,10,10,0.75)',
-  },
   ratingBadge: {
     position: 'absolute',
     top: 50,
@@ -114,8 +105,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   content: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: 6,
     paddingBottom: spacing.sm,
+    backgroundColor: 'rgba(10,10,10,0.75)',
   },
   title: {
     color: colors.text,
