@@ -1,0 +1,23 @@
+import { Link } from 'react-router-dom';
+
+export default function Logo({ className = '' }) {
+  return (
+    <Link to="/" className={`flex items-center gap-2 ${className}`}>
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="shrink-0"
+      >
+        <rect width="32" height="32" rx="6" fill="#E50914" />
+        <path
+          d="M8 7h4v18H8V7zm12 0h4v18h-4V7zM12 14h8v4h-8v-4z"
+          fill="white"
+        />
+      </svg>
+      <span className="text-xl font-bold text-primary">HIJISTREAM</span>
+    </Link>
+  );
+}

@@ -4,6 +4,7 @@ import { Search, Menu, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
+import Logo from './Logo';
 
 function NavLink({ to, children }) {
   const { pathname } = useLocation();
@@ -49,9 +50,7 @@ export default function Layout() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-8">
-              <Link to="/" className="text-xl font-bold text-primary">
-                HIJISTREAM
-              </Link>
+              <Logo />
               <nav className="hidden sm:flex items-center gap-6">
                 <NavLink to="/">Home</NavLink>
                 <NavLink to="/movies">Movies</NavLink>
