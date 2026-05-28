@@ -1,23 +1,13 @@
-import { View, Text, Image, ImageBackground, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
-  const backdropUri = item.backdrop_url || item.poster_url;
 
   return (
     <View style={styles.container}>
-      <ImageBackground
-        source={{ uri: backdropUri }}
-        style={styles.backdrop}
-        resizeMode="cover"
-      >
-        <View style={styles.gradientOverlay1} />
-        <View style={styles.gradientOverlay2} />
-        <View style={styles.gradientOverlay3} />
-      </ImageBackground>
       <View style={styles.infoSection}>
         <View style={styles.posterRow}>
           <View style={styles.posterContainer}>
@@ -69,37 +59,13 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.background,
   },
-  backdrop: {
-    height: 350,
-    justifyContent: 'flex-end',
-  },
-  gradientOverlay1: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,20,20,0.2)',
-  },
-  gradientOverlay2: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 180,
-    backgroundColor: 'rgba(20,20,20,0.6)',
-  },
-  gradientOverlay3: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 80,
-    backgroundColor: 'rgba(20,20,20,0.9)',
-  },
+
   infoSection: {
     padding: spacing.md,
   },
   posterRow: {
     flexDirection: 'row',
     gap: spacing.md,
-    marginTop: -60,
   },
   posterContainer: {
     width: 150,

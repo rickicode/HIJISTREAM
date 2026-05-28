@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { colors } from '../../theme';
+import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
 import ContentRail from '../../components/ContentRail';
 import LoadingState from '../../components/LoadingState';
@@ -47,6 +48,7 @@ export default function MovieDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      <PlayerBox item={movie} onPlay={handlePlay} />
       <DetailHero item={movie} type="movie" onPlay={handlePlay} />
       {recommendedItems.length > 0 && (
         <ContentRail
