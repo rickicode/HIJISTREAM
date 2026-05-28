@@ -12,7 +12,7 @@ export default function ErrorState({ error, onRetry }) {
       <AlertCircle color={colors.textMuted} size={48} />
       <Text style={styles.heading}>{t('common.error')}</Text>
       <Text style={styles.message}>
-        {error?.message || 'An unexpected error occurred'}
+        {error?.message || t('common.error')}
       </Text>
       {onRetry && (
         <TVFocusable onPress={onRetry} style={styles.button}>

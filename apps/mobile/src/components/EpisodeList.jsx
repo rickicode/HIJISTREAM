@@ -82,7 +82,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
                   activeSeason === i + 1 && styles.seasonTextActive,
                 ]}
               >
-                Season {i + 1}
+                {t('player.season')} {i + 1}
               </Text>
             </TVFocusable>
           ))}
