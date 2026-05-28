@@ -1,17 +1,20 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
-import { colors } from '../../theme';
+import { useTranslation } from '../../i18n';
+import { colors, spacing } from '../../theme';
 import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
-import ContentRail from '../../components/ContentRail';
+import ContentCard from '../../components/ContentCard';
 import LoadingState from '../../components/LoadingState';
 import ErrorState from '../../components/ErrorState';
 
 export default function MovieDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
 
   const { data: movie, isLoading, error, refetch } = useQuery({
     queryKey: ['movie', id],
@@ -52,11 +55,18 @@ export default function MovieDetailScreen() {
       <PlayerBox item={movie} onPlay={handlePlay} />
       <DetailHero item={movie} type="movie" />
       {recommendedItems.length > 0 && (
-        <ContentRail
-          title="More Like This"
-          items={recommendedItems}
-          type="movie"
-        />
+        <View style={styles.recommendSection}>
+          <Text style={styles.recommendTitle}>
+            {t('common.moreLikeThis')}
+          </Text>
+          <View style={styles.recommendGrid}>
+            {recommendedItems.map((item) => (
+              <View key={String(item.id || item.tmdb_id)} style={{ width: (screenWidth - 52) / 3 }}>
+                <ContentCard item={item} type="movie" />
+              </View>
+            ))}
+          </View>
+        </View>
       )}
     </ScrollView>
   );
@@ -66,5 +76,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  recommendSection: {
+    padding: spacing.md,
+  },
+  recommendTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  recommendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 });

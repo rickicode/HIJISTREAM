@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Redesign Home screen hero section and add View All buttons to content rails. Redesign genre/category detail page with better styling. Make More Like This section vertical grid on detail pages. Make genre tags clickable on detail pages.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "1. HERO REDESIGN in apps/mobile/src/components/HeroBanner.jsx: (a) Increase backdrop height from 400 to 480 or use Dimensions.get('window').height * 0.6 for better screen coverage. (b) Reduce the heavy black padding: change gradientOverlay1 to transparent, make gradientOverlay2 height smaller (120) with lighter opacity rgba(10,10,10,0.5), make gradientOverlay3 height 60 with rgba(10,10,10,0.85). (c) Add a rating badge in top-right (item.rating) if available. (d) Improve content section padding to be less cramped.",
     "2. VIEW ALL BUTTONS on Home screen (apps/mobile/src/app/(tabs)/home.jsx): For each ContentRail, pass an onSeeAll prop that navigates to the appropriate listing page. For 'Continue Watching', 'Trending Movies', 'Trending TV', 'Ongoing Series', 'Trending Anime' sections, the onSeeAll handler should navigate to relevant browse/genre pages or use a new generic listing route. Use t('common.viewAll') for the button text in ContentRail component. Update ContentRail to show 'View All >' button using the existing onSeeAll prop (already supported in component). For Continue Watching, pass an onSeeAll that could navigate to a dedicated view or simply show all progress items.",

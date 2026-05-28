@@ -1,19 +1,22 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
-import { colors } from '../../theme';
+import { useTranslation } from '../../i18n';
+import { colors, spacing } from '../../theme';
 import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
 import EpisodeList from '../../components/EpisodeList';
-import ContentRail from '../../components/ContentRail';
+import ContentCard from '../../components/ContentCard';
 import LoadingState from '../../components/LoadingState';
 import ErrorState from '../../components/ErrorState';
 
 export default function TVDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
   const [selectedSeason, setSelectedSeason] = useState(1);
 
   const { data: show, isLoading, error, refetch } = useQuery({
@@ -85,11 +88,18 @@ export default function TVDetailScreen() {
         onSeasonChange={setSelectedSeason}
       />
       {recommendedItems.length > 0 && (
-        <ContentRail
-          title="Related Series"
-          items={recommendedItems}
-          type="tv"
-        />
+        <View style={styles.recommendSection}>
+          <Text style={styles.recommendTitle}>
+            {t('common.moreLikeThis')}
+          </Text>
+          <View style={styles.recommendGrid}>
+            {recommendedItems.map((item) => (
+              <View key={String(item.id || item.tmdb_id)} style={{ width: (screenWidth - 52) / 3 }}>
+                <ContentCard item={item} type="tv" />
+              </View>
+            ))}
+          </View>
+        </View>
       )}
     </ScrollView>
   );
@@ -99,5 +109,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  recommendSection: {
+    padding: spacing.md,
+  },
+  recommendTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  recommendGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 });

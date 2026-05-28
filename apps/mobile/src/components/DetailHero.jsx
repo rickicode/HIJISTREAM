@@ -1,10 +1,30 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
+function findGenreId(genreName) {
+  const normalized = genreName.toLowerCase().replace(/\s+/g, '');
+  const mapping = {
+    action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
+    documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
+    horror: 27, music: 10402, mystery: 9648, romance: 10749,
+    sciencefiction: 878, tvmovie: 10770, thriller: 53, war: 10752, western: 37,
+  };
+  return mapping[normalized] || null;
+}
+
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
+  const router = useRouter();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
+
+  const handleGenrePress = (genreName) => {
+    const genreId = findGenreId(genreName);
+    if (genreId) {
+      router.push(`/genre/${genreId}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -33,9 +53,13 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
         {genres.length > 0 && (
           <View style={styles.genreRow}>
             {genres.map((genre) => (
-              <View key={genre} style={styles.genrePill}>
+              <TVFocusable
+                key={genre}
+                onPress={() => handleGenrePress(genre)}
+                style={styles.genrePill}
+              >
                 <Text style={styles.genreText}>{genre}</Text>
-              </View>
+              </TVFocusable>
             ))}
           </View>
         )}
@@ -111,8 +135,13 @@ const styles = StyleSheet.create({
   genrePill: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    minHeight: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   genreText: {
     color: 'rgba(255,255,255,0.8)',

@@ -76,6 +76,7 @@ export default function HomeScreen() {
           title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
+          onSeeAll={() => {}}
         />
       );
     }
@@ -87,6 +88,7 @@ export default function HomeScreen() {
           items={movies}
           type="movie"
           isLoading={moviesLoading}
+          onSeeAll={() => router.push('/(tabs)/browse')}
         />
       );
     }
@@ -98,6 +100,7 @@ export default function HomeScreen() {
           items={tvShows}
           type="tv"
           isLoading={tvLoading}
+          onSeeAll={() => router.push('/(tabs)/browse')}
         />
       );
     }
@@ -109,6 +112,7 @@ export default function HomeScreen() {
           items={onTheAirItems}
           type="tv"
           isLoading={onTheAirLoading}
+          onSeeAll={() => router.push('/(tabs)/browse')}
         />
       );
     }
@@ -120,6 +124,7 @@ export default function HomeScreen() {
           items={animeItems}
           type="tv"
           isLoading={animeLoading}
+          onSeeAll={() => router.push('/(tabs)/browse')}
         />
       );
     }

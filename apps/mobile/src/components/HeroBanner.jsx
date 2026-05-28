@@ -1,16 +1,21 @@
-import { View, Text, ImageBackground, StyleSheet } from 'react-native';
+import { View, Text, ImageBackground, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Plus } from 'lucide-react-native';
+import { Play, Plus, Star } from 'lucide-react-native';
 import { colors, spacing, typography } from '../theme';
+import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
+
+const BACKDROP_HEIGHT = Dimensions.get('window').height * 0.55;
 
 export default function HeroBanner({ item, type = 'movie' }) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   if (!item) return null;
 
   const backdropUri = item.backdrop_url || item.poster_url;
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()).slice(0, 3) : [];
+  const showRating = item.rating && item.rating !== '0.0';
 
   const handlePlay = () => {
     if (type === 'movie') {
@@ -48,6 +53,12 @@ export default function HeroBanner({ item, type = 'movie' }) {
         <View style={styles.gradientOverlay1} />
         <View style={styles.gradientOverlay2} />
         <View style={styles.gradientOverlay3} />
+        {showRating && (
+          <View style={styles.ratingBadge}>
+            <Star color="#FFD700" size={14} fill="#FFD700" />
+            <Text style={styles.ratingText}>{item.rating}</Text>
+          </View>
+        )}
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           {genres.length > 0 && (
@@ -58,11 +69,11 @@ export default function HeroBanner({ item, type = 'movie' }) {
           <View style={styles.buttonRow}>
             <TVFocusable onPress={handlePlay} style={styles.playButton}>
               <Play color="#000000" size={18} fill="#000000" />
-              <Text style={styles.playText}>Play</Text>
+              <Text style={styles.playText}>{t('common.play')}</Text>
             </TVFocusable>
             <TVFocusable onPress={() => {}} style={styles.listButton}>
               <Plus color={colors.text} size={18} />
-              <Text style={styles.listText}>My List</Text>
+              <Text style={styles.listText}>{t('common.myList')}</Text>
             </TVFocusable>
           </View>
         </View>
@@ -76,28 +87,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   backdrop: {
-    height: 400,
+    height: BACKDROP_HEIGHT,
     justifyContent: 'flex-end',
   },
   gradientOverlay1: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,20,20,0.1)',
+    backgroundColor: 'transparent',
   },
   gradientOverlay2: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 200,
-    backgroundColor: 'rgba(20,20,20,0.6)',
+    height: 150,
+    backgroundColor: 'rgba(10,10,10,0.5)',
   },
   gradientOverlay3: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 100,
-    backgroundColor: 'rgba(20,20,20,0.9)',
+    height: 80,
+    backgroundColor: 'rgba(10,10,10,0.9)',
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  ratingText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
   },
   content: {
     padding: spacing.md,
