@@ -9,6 +9,6 @@
     "tests": "pass",
     "test_quality": "pass",
     "docker_build": "skipped",
-    "summary": "Web build (bun run build) passes. Web lint passes (0 errors, 2 warnings for react-refresh in i18n context - expected). Mobile export (npx expo export --platform android) passes. All 7 locale files across mobile and web have identical key structures (68 keys each, including new downloads.emptyState). Review fixes applied: getDiscoverByGenre API method added, genre detail screens fixed, locale added to mobile query keys, downloads empty state localized, home rail titles fully translated."
+    "summary": "Web build (bun run build) passes. Web lint passes (0 errors, 2 warnings for react-refresh in i18n context - expected). Mobile export (npx expo export --platform android) passes. Review v2 fixes applied: removed duplicate language= params from getGenres/getDiscoverByGenre/getDiscoverByCountry endpoint URLs in both web and mobile api.js, letting fetchWithCache handle language injection centrally. Updated all callers to drop language argument. Fixed mobile getApiLocale mismatch bug. Fixed cache key doubling."
   }
 }
