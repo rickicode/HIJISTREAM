@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Web app: Browse section on Home page with Genre/Country tabs, language dropdown in header with 7 languages, full i18n integration, and TMDB language-aware API calls.",
-  "status": "pending",
+  "status": "completed",
   "steps": [
     "Step 1: Create the BrowseSection component at apps/web/src/components/BrowseSection.jsx. Netflix pill/segment control tab switcher with 'Genre' and 'Country' tabs. Use the existing TabNavigation component pattern but style as pill/segment (rounded bg, active pill highlighted). Genre tab: responsive grid (grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6) of genre cards with localized names. Each card: dark bg (#1a1a1a), rounded-lg, hover effect, cursor-pointer. Country tab: same responsive grid with flag emoji + localized country name for all 14 countries. Click navigates to /genre/:id or /country/:code route.",
     "Step 2: Add BrowseSection to the Home page (apps/web/src/app/Home.jsx). Place it after the hero banner and before or between content rails. Add section title 'Browse' (localized) above the tabs.",
@@ -30,5 +30,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All steps implemented successfully. BrowseSection with pill-style tab switcher created, GenreDetail and CountryDetail pages with useInfiniteQuery added, routes registered in App.jsx with lazy loading, Layout.jsx language toggle replaced with a full 7-language dropdown (flag + native name + checkmark), i18n integrated in nav links, Home.jsx content rails, and Search.jsx. Query keys include locale for automatic refetch on language change. Build and lint both pass cleanly (only pre-existing react-refresh warnings in i18n/index.jsx)."
 }
