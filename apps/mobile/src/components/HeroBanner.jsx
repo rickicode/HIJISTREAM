@@ -5,7 +5,7 @@ import { colors, spacing, typography } from '../theme';
 import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
 
-const BACKDROP_HEIGHT = Dimensions.get('window').height * 0.55;
+const BACKDROP_HEIGHT = Dimensions.get('window').height * 0.40;
 
 export default function HeroBanner({ item, type = 'movie' }) {
   const router = useRouter();
@@ -50,9 +50,7 @@ export default function HeroBanner({ item, type = 'movie' }) {
         style={styles.backdrop}
         resizeMode="cover"
       >
-        <View style={styles.gradientOverlay1} />
-        <View style={styles.gradientOverlay2} />
-        <View style={styles.gradientOverlay3} />
+        <View style={styles.overlay} />
         {showRating && (
           <View style={styles.ratingBadge}>
             <Star color="#FFD700" size={14} fill="#FFD700" />
@@ -90,25 +88,13 @@ const styles = StyleSheet.create({
     height: BACKDROP_HEIGHT,
     justifyContent: 'flex-end',
   },
-  gradientOverlay1: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-  },
-  gradientOverlay2: {
+  overlay: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    height: 150,
-    backgroundColor: 'rgba(10,10,10,0.5)',
-  },
-  gradientOverlay3: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 80,
-    backgroundColor: 'rgba(10,10,10,0.9)',
+    height: '60%',
+    backgroundColor: 'rgba(10,10,10,0.75)',
   },
   ratingBadge: {
     position: 'absolute',
@@ -129,7 +115,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   title: {
     color: colors.text,

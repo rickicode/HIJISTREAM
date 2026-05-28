@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { getAllWatchProgress } from '../../utils/player';
 import { useTranslation } from '../../i18n';
-import { colors, spacing, typography } from '../../theme';
+import { colors } from '../../theme';
 import HeroBanner from '../../components/HeroBanner';
 import ContentRail from '../../components/ContentRail';
 
@@ -76,6 +76,7 @@ export default function HomeScreen() {
           title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
+          onSeeAll={() => router.push('/(tabs)/browse')}
         />
       );
     }

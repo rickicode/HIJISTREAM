@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import api, { GENRE_IDS, SORT_OPTIONS } from '../../utils/api';
 import { useTranslation } from '../../i18n';
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
 import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
@@ -45,8 +45,6 @@ export default function GenreDetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.heroHeader}>
-        <View style={styles.heroBackground} />
-        <View style={styles.heroOverlay} />
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft color={colors.text} size={24} />
         </TouchableOpacity>
@@ -73,19 +71,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   heroHeader: {
-    height: 140,
+    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-  },
-  heroBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.primary,
-    opacity: 0.15,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(20,20,20,0.6)',
+    backgroundColor: 'rgba(229,9,20,0.06)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   backButton: {
     position: 'absolute',
@@ -95,7 +87,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
   },
   filterSection: {

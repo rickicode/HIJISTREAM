@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Install dependencies for both mobile and web apps to establish a working baseline before making changes.",
+  "status": "completed",
+  "steps": [
+    "Run cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install to install mobile dependencies",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun install to install web dependencies",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo lint to verify mobile lint passes",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && npm run lint to verify web lint passes",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && npm run build to verify web build passes"
+  ],
+  "acceptance_criteria": [
+    "bun install succeeds in both apps/mobile/ and apps/web/",
+    "npx expo lint exits with 0 in apps/mobile/",
+    "npm run lint exits with 0 in apps/web/",
+    "npm run build exits with 0 in apps/web/"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && npm run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": "bun is installed at /root/.local/share/mise/installs/bun/1.2.14/bin/bun (needs PATH export). Mobile lint had 2 errors for setTimeout/clearTimeout globals - fixed by adding globals to .eslintrc.js. 6 warnings remain (unused vars) but are non-blocking. Web lint and build pass cleanly."
+}

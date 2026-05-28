@@ -31,12 +31,13 @@ export default function TVFocusable({
 
 const styles = StyleSheet.create({
   container: {
-    minWidth: 80,
-    minHeight: 80,
-    borderWidth: 3,
+    minWidth: 48,
+    minHeight: 48,
+    borderWidth: 0,
     borderColor: 'transparent',
   },
   focused: {
+    borderWidth: 3,
     borderColor: colors.primary,
   },
 });

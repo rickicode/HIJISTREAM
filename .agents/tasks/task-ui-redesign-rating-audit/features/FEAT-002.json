@@ -1,0 +1,26 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Redesign Home screen: improve HeroBanner (reduce height, simplify overlays, tighten padding), fix all ContentRail onSeeAll handlers (including Continue Watching), and redesign Bottom Navigation Bar styling in _layout.jsx.",
+  "status": "completed",
+  "steps": [
+    "In apps/mobile/src/components/HeroBanner.jsx: Change BACKDROP_HEIGHT from 55% to ~40% of screen height (Dimensions.get('window').height * 0.40). Remove the triple-overlay approach (gradientOverlay1 + gradientOverlay2 + gradientOverlay3). Replace with a single bottom gradient overlay: position absolute, bottom 0, left 0, right 0, height approximately 60% of the backdrop, using a semi-transparent dark color (rgba(10,10,10,0.8)) to keep text readable. Remove the empty gradientOverlay1. Reduce content paddingBottom from spacing.lg (24) to spacing.sm (8). Keep Play button, My List button, rating badge, and genre tags intact.",
+    "In apps/mobile/src/app/(tabs)/home.jsx: Add onSeeAll prop to the Continue Watching ContentRail. Currently it has no onSeeAll - add onSeeAll={() => router.push('/(tabs)/browse')}. All other sections already have onSeeAll so verify they are correct.",
+    "In apps/mobile/src/app/(tabs)/_layout.jsx: Redesign tabBarStyle - change backgroundColor from '#1a1a1a' to '#000000' (true black). Remove borderTopColor and borderTopWidth (the 0.5px white border). Reduce height from 70 to 60. Adjust paddingBottom to 8, paddingTop to 6. Change tabBarActiveTintColor from '#e50914' (red) to '#FFFFFF' (white) for a cleaner modern look. Change tabBarInactiveTintColor from '#808080' to '#666666' (slightly dimmer). Add a subtle top border with borderTopColor: 'rgba(255,255,255,0.05)' and borderTopWidth: 1. Keep shadow/elevation for depth."
+  ],
+  "acceptance_criteria": [
+    "HeroBanner renders at ~40% screen height instead of 55%",
+    "HeroBanner has only one gradient overlay (not three stacked)",
+    "Content padding in HeroBanner is tighter (sm instead of lg for bottom)",
+    "Continue Watching section in home.jsx has onSeeAll handler",
+    "All 5 ContentRail sections (continue watching, trending movies, trending tv, ongoing, anime) have onSeeAll",
+    "Bottom tab bar uses true black background, white active tint, 60px height",
+    "All 4 tabs (Home, Browse, My List, Profile) still navigate correctly"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes verified: expo lint passes (0 errors, 6 pre-existing warnings in other files), expo export --platform android succeeds. HeroBanner reduced to 40% height with single overlay, Continue Watching onSeeAll added, tab bar restyled to black/white."
+}

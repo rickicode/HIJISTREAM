@@ -3,8 +3,10 @@ import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
+import { useTranslation } from '../i18n';
 
 export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode, onSeasonChange }) {
+  const { t } = useTranslation();
   const totalSeasons = typeof seasons === 'number' ? seasons : 1;
   const [activeSeason, setActiveSeason] = useState(1);
 
@@ -17,13 +19,13 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyText}>No episodes available for this season</Text>
+      <Text style={styles.emptyText}>{t('player.noEpisodes')}</Text>
       <TVFocusable
         onPress={() => onPlayEpisode(activeSeason, 1)}
         style={styles.playSeasonButton}
       >
         <Play color="#000000" size={16} fill="#000000" />
-        <Text style={styles.playSeasonText}>Play Season {activeSeason}</Text>
+        <Text style={styles.playSeasonText}>{t('player.playSeason')} {activeSeason}</Text>
       </TVFocusable>
     </View>
   );
@@ -62,7 +64,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Episodes</Text>
+      <Text style={styles.heading}>{t('player.episodes')}</Text>
       {totalSeasons > 1 && (
         <View style={styles.seasonRow}>
           {Array.from({ length: totalSeasons }).map((_, i) => (
@@ -80,7 +82,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
                   activeSeason === i + 1 && styles.seasonTextActive,
                 ]}
               >
-                Season {i + 1}
+                {t('player.season')} {i + 1}
               </Text>
             </TVFocusable>
           ))}

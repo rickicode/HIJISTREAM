@@ -54,7 +54,7 @@ export default function ContentGrid({
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.xl,
+    padding: spacing.md,
     backgroundColor: colors.background,
   },
   row: {
