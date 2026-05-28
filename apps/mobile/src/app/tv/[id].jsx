@@ -19,6 +19,11 @@ export default function TVDetailScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const [selectedSeason, setSelectedSeason] = useState(1);
 
+  const gap = spacing.sm; // 8
+  const padding = spacing.md; // 16
+  const numColumns = screenWidth < 600 ? 3 : screenWidth < 900 ? 4 : 5;
+  const cardWidth = (screenWidth - padding * 2 - gap * (numColumns - 1)) / numColumns;
+
   const { data: show, isLoading, error, refetch } = useQuery({
     queryKey: ['tv', id],
     queryFn: () => api.getTVDetails(id),
@@ -94,7 +99,7 @@ export default function TVDetailScreen() {
           </Text>
           <View style={styles.recommendGrid}>
             {recommendedItems.map((item) => (
-              <View key={String(item.id || item.tmdb_id)} style={{ width: (screenWidth - 52) / 3 }}>
+              <View key={String(item.id || item.tmdb_id)} style={{ width: cardWidth }}>
                 <ContentCard item={item} type="tv" />
               </View>
             ))}
@@ -122,6 +127,6 @@ const styles = StyleSheet.create({
   recommendGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.sm,
   },
 });

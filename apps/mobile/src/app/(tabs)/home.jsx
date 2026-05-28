@@ -76,7 +76,6 @@ export default function HomeScreen() {
           title={t('common.continueWatching')}
           items={watchProgress}
           type="movie"
-          onSeeAll={() => {}}
         />
       );
     }

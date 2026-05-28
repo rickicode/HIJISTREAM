@@ -3,23 +3,40 @@ import { useRouter } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { useTranslation } from '../i18n';
+import { GENRE_IDS } from '../utils/api';
 import TVFocusable from './TVFocusable';
-
-function findGenreId(genreName) {
-  const normalized = genreName.toLowerCase().replace(/\s+/g, '');
-  const mapping = {
-    action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
-    documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
-    horror: 27, music: 10402, mystery: 9648, romance: 10749,
-    sciencefiction: 878, tvmovie: 10770, thriller: 53, war: 10752, western: 37,
-  };
-  return mapping[normalized] || null;
-}
 
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
   const router = useRouter();
   const { t } = useTranslation();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
+
+  // Build reverse mapping: translated genre name -> genre ID
+  // This supports all locales, not just English
+  const genreNameToId = {};
+  Object.keys(GENRE_IDS).forEach((key) => {
+    const translatedName = t(`genres.${key}`);
+    if (translatedName && translatedName !== `genres.${key}`) {
+      genreNameToId[translatedName.toLowerCase()] = GENRE_IDS[key];
+    }
+  });
+
+  function findGenreId(genreName) {
+    const lower = genreName.toLowerCase().trim();
+    // Try translated name lookup first (works for all locales)
+    if (genreNameToId[lower]) {
+      return genreNameToId[lower];
+    }
+    // Fallback: English-only normalized mapping for edge cases
+    const normalized = lower.replace(/\s+/g, '');
+    const fallbackMapping = {
+      action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
+      documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
+      horror: 27, music: 10402, mystery: 9648, romance: 10749,
+      sciencefiction: 878, tvmovie: 10770, thriller: 53, war: 10752, western: 37,
+    };
+    return fallbackMapping[normalized] || null;
+  }
 
   const handleGenrePress = (genreName) => {
     const genreId = findGenreId(genreName);

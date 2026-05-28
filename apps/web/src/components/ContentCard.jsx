@@ -49,11 +49,6 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <h3 className="text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-0.5">
           {item.year && <span className="text-xs text-muted-foreground">{item.year}</span>}
-          {item.rating && item.rating !== '0.0' && (
-            <span className="text-xs text-muted-foreground">
-              <span className="text-yellow-400">&#9733;</span> {item.rating}
-            </span>
-          )}
         </div>
       </div>
     </Link>
