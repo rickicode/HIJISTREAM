@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from '../i18n';
 import api, { TMDB_COUNTRIES, SORT_OPTIONS } from '../utils/api';
+import TabNavigation from '../components/TabNavigation';
 import ContentGrid from '../components/ContentGrid';
 
 export default function CountryDetail() {
@@ -40,43 +41,33 @@ export default function CountryDetail() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
-      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4">{countryName}</h1>
-
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
-        {SORT_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => setSortBy(option.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              sortBy === option.id
-                ? 'bg-primary text-white'
-                : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'
-            }`}
-          >
-            {t(option.label)}
-          </button>
-        ))}
-      </div>
-
-      <ContentGrid
-        items={items}
-        type="movie"
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
+      <h1 className="text-2xl sm:text-3xl font-bold text-white mb-6">{countryName}</h1>
+      <TabNavigation
+        tabs={SORT_OPTIONS.map((opt) => ({ id: opt.id, label: t(opt.label) }))}
+        activeTab={sortBy}
+        onTabChange={setSortBy}
       />
+      <div className="mt-6">
+        <ContentGrid
+          items={items}
+          type="movie"
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+        />
 
-      {hasNextPage && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            className="px-6 py-3 bg-primary hover:bg-primary/80 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-          >
-            {isFetchingNextPage ? t('common.loading') : t('common.seeAll')}
-          </button>
-        </div>
-      )}
+        {hasNextPage && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => fetchNextPage()}
+              disabled={isFetchingNextPage}
+              className="px-6 py-3 bg-primary hover:bg-primary/80 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              {isFetchingNextPage ? t('common.loading') : t('common.seeAll')}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

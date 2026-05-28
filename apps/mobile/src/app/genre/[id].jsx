@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { ChevronLeft } from 'lucide-react-native';
 import api, { GENRE_IDS, SORT_OPTIONS } from '../../utils/api';
 import { useTranslation } from '../../i18n';
 import { colors, spacing, typography } from '../../theme';
+import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
 export default function GenreDetailScreen() {
@@ -19,6 +20,8 @@ export default function GenreDetailScreen() {
     (key) => String(GENRE_IDS[key]) === String(id)
   );
   const genreName = genreKey ? t(`genres.${genreKey}`) : '';
+
+  const sortTabs = SORT_OPTIONS.map((opt) => ({ id: opt.id, label: t(opt.label) }));
 
   const {
     data,
@@ -47,32 +50,7 @@ export default function GenreDetailScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>{genreName}</Text>
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterRow}
-        contentContainerStyle={styles.filterContent}
-      >
-        {SORT_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.id}
-            onPress={() => setSortBy(option.id)}
-            style={[
-              styles.filterPill,
-              sortBy === option.id ? styles.filterPillActive : styles.filterPillInactive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                sortBy === option.id ? styles.filterTextActive : styles.filterTextInactive,
-              ]}
-            >
-              {t(option.label)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <TabBar tabs={sortTabs} activeTab={sortBy} onTabChange={setSortBy} />
       <ContentGrid
         items={items}
         type="movie"
@@ -102,37 +80,5 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     ...typography.title,
-  },
-  filterRow: {
-    maxHeight: 48,
-    marginBottom: spacing.sm,
-  },
-  filterContent: {
-    paddingHorizontal: spacing.md,
-    gap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  filterPillActive: {
-    backgroundColor: '#e50914',
-  },
-  filterPillInactive: {
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  filterText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
-  filterTextInactive: {
-    color: '#aaa',
   },
 });
