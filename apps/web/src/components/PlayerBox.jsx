@@ -1,7 +1,7 @@
 import { Play } from 'lucide-react';
 import VideoPlayer from './VideoPlayer';
 
-export default function PlayerBox({ item, isPlaying, onPlay, onClose, embedUrl, contentId, metadata }) {
+export default function PlayerBox({ item, isPlaying, onPlay, onClose: _onClose, embedUrl, contentId, metadata }) {
   const backdropSrc = item.backdrop_url || item.poster_url;
 
   return (
