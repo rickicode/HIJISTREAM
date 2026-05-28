@@ -22,8 +22,20 @@ export default function Home() {
     queryFn: () => api.getTrendingTV(1),
   });
 
+  const { data: tvOnTheAir, isLoading: onTheAirLoading } = useQuery({
+    queryKey: ['tv-on-the-air-home'],
+    queryFn: () => api.getTVOnTheAir(1),
+  });
+
+  const { data: animeTrending, isLoading: animeLoading } = useQuery({
+    queryKey: ['anime-trending-home'],
+    queryFn: () => api.getAnimeTrending(1),
+  });
+
   const movieItems = trendingMovies?.items?.slice(0, 10) || [];
   const tvItems = trendingTV?.items?.slice(0, 10) || [];
+  const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
+  const animeItems = animeTrending?.items?.slice(0, 10) || [];
   const heroItem = movieItems.length > 0
     ? movieItems[Math.floor(Math.random() * Math.min(movieItems.length, 5))]
     : null;
@@ -54,6 +66,22 @@ export default function Home() {
         items={tvItems}
         type="tv"
         isLoading={tvLoading}
+      />
+
+      <ContentRail
+        title="Ongoing Series"
+        href="/tv"
+        items={onTheAirItems}
+        type="tv"
+        isLoading={onTheAirLoading}
+      />
+
+      <ContentRail
+        title="Trending Anime"
+        href="/anime"
+        items={animeItems}
+        type="tv"
+        isLoading={animeLoading}
       />
     </div>
   );

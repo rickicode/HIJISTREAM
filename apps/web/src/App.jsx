@@ -8,6 +8,7 @@ const Movies = lazy(() => import('./app/Movies'));
 const MovieDetail = lazy(() => import('./app/MovieDetail'));
 const TV = lazy(() => import('./app/TV'));
 const TVDetail = lazy(() => import('./app/TVDetail'));
+const Anime = lazy(() => import('./app/Anime'));
 const Player = lazy(() => import('./app/Player'));
 const Search = lazy(() => import('./app/Search'));
 
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/movies/:id" element={<MovieDetail />} />
               <Route path="/tv" element={<TV />} />
               <Route path="/tv/:id" element={<TVDetail />} />
+              <Route path="/anime" element={<Anime />} />
               <Route path="/player/:type/:id" element={<Player />} />
               <Route path="/search" element={<Search />} />
             </Route>

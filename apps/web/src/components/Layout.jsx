@@ -55,6 +55,7 @@ export default function Layout() {
                 <NavLink to="/">Home</NavLink>
                 <NavLink to="/movies">Movies</NavLink>
                 <NavLink to="/tv">TV Shows</NavLink>
+                <NavLink to="/anime">Anime</NavLink>
               </nav>
             </div>
             <div className="flex items-center gap-2">
@@ -98,6 +99,13 @@ export default function Layout() {
                 className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
               >
                 TV Shows
+              </Link>
+              <Link
+                to="/anime"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded text-sm font-medium text-white hover:bg-white/10 transition-colors"
+              >
+                Anime
               </Link>
             </nav>
           </div>
