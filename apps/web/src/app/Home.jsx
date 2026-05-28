@@ -1,34 +1,66 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, Film } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import api from '../utils/api';
 import { getAllWatchProgress } from '../utils/player';
+import HeroBanner from '../components/HeroBanner';
+import ContentRail from '../components/ContentRail';
 import ContentCard from '../components/ContentCard';
-import LoadingState from '../components/LoadingState';
 
-function SectionHeader({ title, href = null }) {
+function ContinueWatchingRail({ watchProgress }) {
+  const scrollRef = useRef(null);
+
+  const scroll = (direction) => {
+    if (!scrollRef.current) return;
+    const amount = direction === 'left' ? -800 : 800;
+    scrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+  };
+
   return (
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
-      {href && (
-        <Link
-          to={href}
-          className="flex items-center gap-1 text-sm text-[#6366F1] hover:text-[#818CF8] transition-colors"
+    <section className="relative group/rail">
+      <div className="flex items-center justify-between mb-3 px-4 sm:px-8 md:px-12">
+        <h2 className="text-base sm:text-lg font-bold text-white">Continue Watching</h2>
+      </div>
+      <div className="relative">
+        <button
+          onClick={() => scroll('left')}
+          className={cn(
+            'absolute left-0 top-0 bottom-0 z-10 w-10 flex items-center justify-center',
+            'bg-black/50 text-white opacity-0 group-hover/rail:opacity-100 transition-opacity',
+            'hover:bg-black/70'
+          )}
+          aria-label="Scroll left"
         >
-          See All
-          <ChevronRight size={16} />
-        </Link>
-      )}
-    </div>
-  );
-}
-
-function HorizontalScroll({ children }) {
-  return (
-    <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
-      {children}
-    </div>
+          <ChevronLeft size={24} />
+        </button>
+        <div
+          ref={scrollRef}
+          className="flex gap-2 overflow-x-auto scrollbar-hide px-4 sm:px-8 md:px-12 pb-2"
+        >
+          {watchProgress.map((item) => (
+            <div key={item.id} className="w-[150px] sm:w-[180px] shrink-0">
+              <ContentCard
+                item={{ id: item.id, tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
+                type={item.type || 'movie'}
+                watchProgress={item.percentage}
+              />
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => scroll('right')}
+          className={cn(
+            'absolute right-0 top-0 bottom-0 z-10 w-10 flex items-center justify-center',
+            'bg-black/50 text-white opacity-0 group-hover/rail:opacity-100 transition-opacity',
+            'hover:bg-black/70'
+          )}
+          aria-label="Scroll right"
+        >
+          <ChevronRight size={24} />
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -49,73 +81,33 @@ export default function Home() {
     queryFn: () => api.getTrendingTV(1),
   });
 
-  const movieItems = trendingMovies?.items?.slice(0, 6) || [];
-  const tvItems = trendingTV?.items?.slice(0, 6) || [];
+  const movieItems = trendingMovies?.items?.slice(0, 10) || [];
+  const tvItems = trendingTV?.items?.slice(0, 10) || [];
+  const heroItem = movieItems[0] || null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      {/* Continue Watching */}
-      {watchProgress.length > 0 ? (
-        <section>
-          <SectionHeader title="Continue Watching" />
-          <HorizontalScroll>
-            {watchProgress.map((item) => (
-              <div key={item.id} className="w-[150px] sm:w-[160px] shrink-0">
-                <ContentCard
-                  item={{ id: item.id, tmdb_id: item.id, title: item.title || item.id, poster_url: item.poster_url || '', ...item }}
-                  type={item.type || 'movie'}
-                  watchProgress={item.percentage}
-                />
-              </div>
-            ))}
-          </HorizontalScroll>
-        </section>
-      ) : (
-        <section className="text-center py-12 bg-[#1A1A1A] rounded-xl border border-[#2E2E2E]">
-          <Film className="mx-auto text-[#6B6B6B] mb-3" size={48} />
-          <h2 className="text-lg font-semibold text-white mb-2">Welcome to HIJISTREAM</h2>
-          <p className="text-sm text-[#A1A1A1] mb-4">Start watching movies and TV shows to see your progress here</p>
-          <Link to="/movies" className="inline-flex items-center gap-2 bg-[#6366F1] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#818CF8] transition-colors">
-            Browse Movies
-          </Link>
-        </section>
+    <div className="space-y-8 pb-12">
+      <HeroBanner item={heroItem} type="movie" />
+
+      {watchProgress.length > 0 && (
+        <ContinueWatchingRail watchProgress={watchProgress} />
       )}
 
-      {/* Trending Movies */}
-      <section>
-        <SectionHeader title="Trending Movies" href="/movies" />
-        {moviesLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <LoadingState key={i} type="card" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {movieItems.map((item) => (
-              <ContentCard key={item.id || item.tmdb_id} item={item} type="movie" />
-            ))}
-          </div>
-        )}
-      </section>
+      <ContentRail
+        title="Trending Movies"
+        href="/movies"
+        items={movieItems}
+        type="movie"
+        isLoading={moviesLoading}
+      />
 
-      {/* Trending TV Shows */}
-      <section>
-        <SectionHeader title="Trending TV Shows" href="/tv" />
-        {tvLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <LoadingState key={i} type="card" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {tvItems.map((item) => (
-              <ContentCard key={item.id || item.tmdb_id} item={item} type="tv" />
-            ))}
-          </div>
-        )}
-      </section>
+      <ContentRail
+        title="Trending TV Shows"
+        href="/tv"
+        items={tvItems}
+        type="tv"
+        isLoading={tvLoading}
+      />
     </div>
   );
 }

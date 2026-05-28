@@ -14,7 +14,6 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 
       const data = event.data;
 
-      // Support TDD format: { type: 'PLAYER_EVENT', data: { player_status, player_progress, player_duration } }
       if (data.type === 'PLAYER_EVENT' && data.data) {
         const { player_status, player_progress, player_duration } = data.data;
 
@@ -27,7 +26,6 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
         }
       }
 
-      // Also support simpler format
       if (data.type === 'PLAYER_EVENT' && data.event === 'progress') {
         const now = Date.now();
         if (now - lastSaveRef.current >= 5000) {
@@ -46,10 +44,10 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 
   return (
     <div className="bg-black min-h-screen">
-      <div className="flex items-center gap-3 px-4 py-3 bg-[#0F0F0F]">
+      <div className="flex items-center gap-3 px-4 py-3 bg-black/80">
         <button
           onClick={onBack}
-          className="p-2 rounded-lg text-[#A1A1A1] hover:text-white hover:bg-[#262626] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          className="p-2 rounded text-muted-foreground hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />
         </button>

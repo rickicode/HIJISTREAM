@@ -25,15 +25,15 @@ export default function Search() {
   const items = data?.items || [];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
       <div className="mb-8">
         <SearchBar onSearch={handleSearch} initialQuery={query} />
       </div>
 
       {!query && (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <SearchIcon className="text-[#6B6B6B] mb-4" size={48} />
-          <p className="text-[#A1A1A1] text-sm">
+          <SearchIcon className="text-muted mb-4" size={48} />
+          <p className="text-muted-foreground text-sm">
             Start typing to search movies and TV shows
           </p>
         </div>
@@ -41,7 +41,7 @@ export default function Search() {
 
       {query && !isLoading && items.length === 0 && !error && (
         <div className="flex flex-col items-center justify-center min-h-[300px] text-center">
-          <p className="text-[#A1A1A1] text-sm">
+          <p className="text-muted-foreground text-sm">
             No results found for &apos;{query}&apos;
           </p>
         </div>

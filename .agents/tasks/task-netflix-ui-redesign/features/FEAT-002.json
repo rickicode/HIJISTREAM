@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Complete Netflix-style web app redesign. Rebuild all components and pages with Netflix UX patterns: full-bleed hero banners with backdrop images, horizontal content rails with scroll arrows, poster cards with hover zoom and info overlay, a sticky transparent-to-solid navbar, and cinematic detail pages. All using shadcn/ui patterns (cn utility, CVA variants) and the new Tailwind tokens.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Rewrite `apps/web/src/components/Layout.jsx` as a Netflix-style shell: sticky navbar that transitions from transparent to solid #141414 on scroll, Netflix-red logo 'HIJISTREAM', horizontal nav links (Home, Movies, TV Shows), search icon and mobile hamburger menu. Footer minimal. Use cn() utility throughout.",
     "Create `apps/web/src/components/HeroBanner.jsx` - a full-width hero component that takes a featured movie/show item with its backdrop_url as background (full bleed, height ~70vh on desktop, ~50vh mobile), gradient overlay from transparent to #141414, title in bold large text, overview text truncated to 2-3 lines, genre pills, Play button (white bg, black text, rounded) and More Info button (gray/transparent bg, white text). Include a subtle Ken Burns zoom animation on the backdrop.",
