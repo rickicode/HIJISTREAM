@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Play, Star, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
+export default function DetailHero({ item, type: _type = 'movie', onPlay = null }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
   const cast = item.credits?.slice(0, 5) || [];

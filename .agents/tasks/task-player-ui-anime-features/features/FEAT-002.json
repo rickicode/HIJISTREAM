@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Redesign the Player UI on web detail pages to show a video player placeholder box (backdrop + play icon) instead of a separate Play button. When clicked, the actual iframe player loads in place of the placeholder. Also add Related Movies/Series content rail below the detail section on both web and mobile detail pages.",
+  "status": "completed",
+  "steps": [
+    "In apps/web/src/components/DetailHero.jsx: Remove the Play button at the bottom of the component (the onPlay button block). The play action will now be handled by the new PlayerBox component above DetailHero.",
+    "Create a new component apps/web/src/components/PlayerBox.jsx: This renders a 16:9 aspect-ratio box. When NOT playing: shows the item's backdrop_url as background image with a semi-transparent dark overlay (bg-black/50) and a large centered white play circle icon (use Play from lucide-react, size 64, inside a white/30 border circle). When playing (isPlaying=true): shows the VideoPlayer component (iframe) in the same box area. Props: item (with backdrop_url, title), isPlaying, onPlay, onClose, embedUrl, contentId, metadata.",
+    "In apps/web/src/app/MovieDetail.jsx: Replace the current pattern (isPlaying shows VideoPlayer, then DetailHero with onPlay) with: Always show PlayerBox at the top (passes isPlaying, handlePlay, handleClosePlayer, embedUrl, item). Below it show DetailHero WITHOUT onPlay prop. Below DetailHero, add a Related Movies section using useQuery with queryKey ['movie-recommendations', id] calling api.getMovieRecommendations(id). Render results in a ContentRail with title 'More Like This' and type 'movie'.",
+    "In apps/web/src/app/TVDetail.jsx: Same pattern as MovieDetail - show PlayerBox at top, DetailHero without onPlay, then Related Series section using api.getTVRecommendations(id) rendered in ContentRail with title 'Related Series' and type 'tv'. Keep EpisodeList below.",
+    "In apps/mobile/src/app/movie/[id].jsx: After the DetailHero component, add a Related Movies section. Use useQuery with ['movie-recommendations', id] calling api.getMovieRecommendations(id). Render results using the existing ContentRail component with title 'More Like This'.",
+    "In apps/mobile/src/app/tv/[id].jsx: After the EpisodeList component, add a Related Series section. Use useQuery with ['tv-recommendations', id] calling api.getTVRecommendations(id). Render results using ContentRail with title 'Related Series'."
+  ],
+  "acceptance_criteria": [
+    "On web movie/TV detail pages, a 16:9 player box with backdrop and centered play icon is visible by default",
+    "Clicking the play icon in the player box loads the iframe embed in the same space, no separate button remains",
+    "DetailHero no longer shows a Play button (onPlay prop removed from DetailHero usage in detail pages)",
+    "Related Movies/Series ContentRail appears below detail info on both web and mobile",
+    "Web app builds without errors"
+  ],
+  "verification": [
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint to confirm no lint errors",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run build to confirm web builds successfully",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/mobile && bun run lint to confirm no mobile lint errors"
+  ],
+  "blocked_reason": null,
+  "findings": "PlayerBox component created with 16:9 aspect-video ratio, backdrop background, dark overlay, centered play circle with Play icon. When playing, renders VideoPlayer in-place. MovieDetail and TVDetail updated to use PlayerBox at top, DetailHero without onPlay, and ContentRail for recommendations below. Mobile detail pages also updated with recommendation rails. All lint and build pass cleanly."
+}

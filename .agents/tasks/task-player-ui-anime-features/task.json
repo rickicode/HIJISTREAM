@@ -1,0 +1,14 @@
+{
+  "task_id": "task-player-ui-anime-features",
+  "task_description": "Redesign Player UI to show a video player box with play button overlay (no separate Play button), add Related Movies/Series sections below detail pages, add Anime page with navigation menu, and add Ongoing Series + Trending Anime content rails to the Home page. All using TMDB API with genre filtering for anime.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "Web lint passes (0 errors, 0 warnings), web production build succeeds, mobile lint passes (0 errors, 0 warnings). Review fixes applied: useMemo for hero stabilization, with_status for ongoing anime accuracy. Issues #1 and #4 from review intentionally not fixed (documented as known limitation and pre-existing pattern respectively)."
+  }
+}

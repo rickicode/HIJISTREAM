@@ -1,0 +1,23 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add new server API endpoints for recommendations, anime, and on-the-air TV. Then update both web and mobile API client utilities to consume them.",
+  "status": "completed",
+  "steps": [
+    "In apps/server/src/index.js, add 6 new route handlers following the existing pattern (fetchTMDB + transform + cache + wrapPaginatedList): (1) GET /api/movies/:id/recommendations using TMDB /3/movie/{id}/recommendations, transform with transformMovieListItem. (2) GET /api/tv/:id/recommendations using TMDB /3/tv/{id}/recommendations, transform with transformTVListItem. (3) GET /api/anime/trending using TMDB /3/discover/tv with params with_genres=16, with_original_language=ja, sort_by=popularity.desc, transform with transformTVListItem. (4) GET /api/anime/ongoing using TMDB /3/discover/tv with params with_genres=16, with_original_language=ja, air_date.gte={30 days ago ISO date}, sort_by=popularity.desc, transform with transformTVListItem. (5) GET /api/anime/top-rated using TMDB /3/discover/tv with params with_genres=16, with_original_language=ja, sort_by=vote_average.desc, vote_count.gte=100, transform with transformTVListItem. (6) GET /api/tv/on-the-air using TMDB /3/tv/on_the_air, transform with transformTVListItem. Place these BEFORE the generic /api/movie/:id and /api/tv/:id routes to avoid regex conflicts.",
+    "In apps/web/src/utils/api.js, add methods: getMovieRecommendations(id), getTVRecommendations(id), getAnimeTrending(page=1), getAnimeOngoing(page=1), getAnimeTopRated(page=1), getTVOnTheAir(page=1). Each calls fetchWithCache with appropriate endpoint and cache key.",
+    "In apps/mobile/src/utils/api.js, add the same methods as web (getMovieRecommendations, getTVRecommendations, getAnimeTrending, getAnimeOngoing, getAnimeTopRated, getTVOnTheAir) following the existing async fetchWithCache pattern."
+  ],
+  "acceptance_criteria": [
+    "Server has all 6 new routes returning proper paginated JSON with items array",
+    "Web api.js exports all 6 new methods",
+    "Mobile api.js exports all 6 new methods",
+    "All new routes use the existing caching and transform patterns"
+  ],
+  "verification": [
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint to confirm no lint errors",
+    "Run cd /projects/sandbox/HIJISTREAM/apps/web && bun run build to confirm web builds successfully"
+  ],
+  "blocked_reason": null,
+  "findings": "All 6 routes added to server before the generic /api/tv/:id and /api/movie/:id routes. Web and mobile API clients updated with matching methods. Lint and build pass cleanly."
+}
