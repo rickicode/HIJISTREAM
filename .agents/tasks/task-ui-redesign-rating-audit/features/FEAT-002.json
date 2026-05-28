@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Redesign Home screen: improve HeroBanner (reduce height, simplify overlays, tighten padding), fix all ContentRail onSeeAll handlers (including Continue Watching), and redesign Bottom Navigation Bar styling in _layout.jsx.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "In apps/mobile/src/components/HeroBanner.jsx: Change BACKDROP_HEIGHT from 55% to ~40% of screen height (Dimensions.get('window').height * 0.40). Remove the triple-overlay approach (gradientOverlay1 + gradientOverlay2 + gradientOverlay3). Replace with a single bottom gradient overlay: position absolute, bottom 0, left 0, right 0, height approximately 60% of the backdrop, using a semi-transparent dark color (rgba(10,10,10,0.8)) to keep text readable. Remove the empty gradientOverlay1. Reduce content paddingBottom from spacing.lg (24) to spacing.sm (8). Keep Play button, My List button, rating badge, and genre tags intact.",
     "In apps/mobile/src/app/(tabs)/home.jsx: Add onSeeAll prop to the Continue Watching ContentRail. Currently it has no onSeeAll - add onSeeAll={() => router.push('/(tabs)/browse')}. All other sections already have onSeeAll so verify they are correct.",
@@ -22,5 +22,5 @@
     "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All changes verified: expo lint passes (0 errors, 6 pre-existing warnings in other files), expo export --platform android succeeds. HeroBanner reduced to 40% height with single overlay, Continue Watching onSeeAll added, tab bar restyled to black/white."
 }
