@@ -5,7 +5,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts';
 import Logo from './Logo';
-import { useTranslation, SUPPORTED_LOCALES } from '../i18n';
+import { useTranslation } from '../i18n';
+import { SUPPORTED_LOCALES } from '../i18n/locales';
 
 function NavLink({ to, children }) {
   const { pathname } = useLocation();

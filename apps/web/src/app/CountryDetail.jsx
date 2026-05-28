@@ -26,8 +26,9 @@ export default function CountryDetail() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['country-detail', code, locale],
-    queryFn: ({ pageParam = 1 }) =>
+    queryFn: ({ pageParam }) =>
       api.getDiscoverByCountry('movie', code, pageParam),
+    initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage?.items?.length > 0) return allPages.length + 1;
       return undefined;

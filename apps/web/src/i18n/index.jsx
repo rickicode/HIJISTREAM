@@ -7,20 +7,11 @@ import pt from './locales/pt.json';
 import hi from './locales/hi.json';
 import ja from './locales/ja.json';
 import ko from './locales/ko.json';
+import { SUPPORTED_LOCALES } from './locales';
 
 const translations = { id, en, es, pt, hi, ja, ko };
 
 const STORAGE_KEY = 'hijistream_locale';
-
-export const SUPPORTED_LOCALES = [
-  { code: 'id', locale: 'id-ID', name: 'Indonesian', nativeName: 'Bahasa Indonesia', flag: '🇮🇩' },
-  { code: 'en', locale: 'en-US', name: 'English', nativeName: 'English', flag: '🇺🇸' },
-  { code: 'es', locale: 'es-ES', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
-  { code: 'pt', locale: 'pt-BR', name: 'Portuguese', nativeName: 'Português', flag: '🇧🇷' },
-  { code: 'hi', locale: 'hi-IN', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'ja', locale: 'ja-JP', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
-  { code: 'ko', locale: 'ko-KR', name: 'Korean', nativeName: '한국어', flag: '🇰🇷' },
-];
 
 const LanguageContext = createContext(null);
 
@@ -79,6 +70,7 @@ export function LanguageProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTranslation() {
   const context = useContext(LanguageContext);
   if (!context) throw new Error('useTranslation must be used within LanguageProvider');

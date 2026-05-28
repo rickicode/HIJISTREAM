@@ -29,7 +29,8 @@ export default function GenreDetail() {
     refetch,
   } = useInfiniteQuery({
     queryKey: ['genre-detail', id, locale],
-    queryFn: ({ pageParam = 1 }) => api.getDiscoverByGenre('movie', id, pageParam),
+    queryFn: ({ pageParam }) => api.getDiscoverByGenre('movie', id, pageParam),
+    initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage?.items?.length > 0) return allPages.length + 1;
       return undefined;
