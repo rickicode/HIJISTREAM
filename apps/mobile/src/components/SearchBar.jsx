@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '../theme';
+import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
 
 const { clearTimeout, setTimeout } = global;
 
-export default function SearchBar({ onSearch, initialQuery = '' }) {
+export default function SearchBar({ onSearch, initialQuery = '', placeholder }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(initialQuery);
   const debounceRef = useRef(null);
 
@@ -35,7 +37,7 @@ export default function SearchBar({ onSearch, initialQuery = '' }) {
         style={styles.input}
         value={query}
         onChangeText={setQuery}
-        placeholder="Search movies and TV shows..."
+        placeholder={placeholder || t('common.searchPlaceholder')}
         placeholderTextColor={colors.textMuted}
         returnKeyType="search"
         autoCorrect={false}
