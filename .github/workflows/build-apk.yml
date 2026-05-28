@@ -18,16 +18,16 @@ jobs:
         abi: [arm64-v8a, armeabi-v7a, x86_64]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
@@ -37,7 +37,7 @@ jobs:
           bun-version: latest
 
       - name: Cache node_modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/mobile/node_modules
           key: mobile-deps-${{ hashFiles('apps/mobile/bun.lock', 'apps/mobile/package.json') }}
@@ -52,10 +52,10 @@ jobs:
         working-directory: apps/mobile
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -92,7 +92,7 @@ jobs:
           fi
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apk-${{ matrix.abi }}
           path: HIJISTREAM-${{ matrix.abi }}-v${{ steps.version.outputs.version }}.apk
@@ -104,7 +104,7 @@ jobs:
     needs: build-apk
     steps:
       - name: Download all APK artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: apk-*
           merge-multiple: true
@@ -114,7 +114,7 @@ jobs:
         run: ls -la apks/
 
       - name: Upload combined artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: HIJISTREAM-all-apks
           path: apks/
