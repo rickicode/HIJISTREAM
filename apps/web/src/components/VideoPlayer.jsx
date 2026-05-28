@@ -46,11 +46,11 @@ export default function VideoPlayer({ embedUrl, title, contentId, metadata = {} 
       src={embedUrl}
       title={title}
       width="100%"
-      height="600"
+      height="100%"
       frameBorder="0"
       allowFullScreen
       allow="autoplay; encrypted-media; picture-in-picture"
-      className="w-full border-0"
+      style={{ border: 'none', display: 'block' }}
     />
   );
 }
