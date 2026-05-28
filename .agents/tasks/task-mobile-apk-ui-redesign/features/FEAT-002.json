@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Redesign Home screen hero section and add View All buttons to content rails. Redesign genre/category detail page with better styling. Make More Like This section vertical grid on detail pages. Make genre tags clickable on detail pages.",
+  "status": "completed",
+  "steps": [
+    "1. HERO REDESIGN in apps/mobile/src/components/HeroBanner.jsx: (a) Increase backdrop height from 400 to 480 or use Dimensions.get('window').height * 0.6 for better screen coverage. (b) Reduce the heavy black padding: change gradientOverlay1 to transparent, make gradientOverlay2 height smaller (120) with lighter opacity rgba(10,10,10,0.5), make gradientOverlay3 height 60 with rgba(10,10,10,0.85). (c) Add a rating badge in top-right (item.rating) if available. (d) Improve content section padding to be less cramped.",
+    "2. VIEW ALL BUTTONS on Home screen (apps/mobile/src/app/(tabs)/home.jsx): For each ContentRail, pass an onSeeAll prop that navigates to the appropriate listing page. For 'Continue Watching', 'Trending Movies', 'Trending TV', 'Ongoing Series', 'Trending Anime' sections, the onSeeAll handler should navigate to relevant browse/genre pages or use a new generic listing route. Use t('common.viewAll') for the button text in ContentRail component. Update ContentRail to show 'View All >' button using the existing onSeeAll prop (already supported in component). For Continue Watching, pass an onSeeAll that could navigate to a dedicated view or simply show all progress items.",
+    "3. GENRE DETAIL PAGE REDESIGN in apps/mobile/src/app/genre/[id].jsx: (a) Add a header image/backdrop area at the top with a gradient overlay and the genre name prominently displayed (like a hero section). (b) Style the sort tabs (TabBar) with pill/chip design: rounded-full background pills instead of bottom-border tabs. Update TabBar.jsx to accept a 'variant' prop - when variant='pill', use pill styling with backgroundColor for active state. (c) Improve the overall spacing: add more padding, better visual separation between filter area and grid content.",
+    "4. CLICKABLE GENRE TAGS in apps/mobile/src/components/DetailHero.jsx: Convert genre pills from plain View/Text to TouchableOpacity (or TVFocusable). Each genre pill should navigate to the genre detail page. Map the genre name text back to a genre ID using the GENRE_IDS map from utils/api.js (reverse lookup: find key whose translated name matches, then get GENRE_IDS[key]). Import useRouter from expo-router and navigate to /genre/[id]. Add visual feedback (slight scale or highlight on press).",
+    "5. MORE LIKE THIS as VERTICAL GRID: In apps/mobile/src/app/movie/[id].jsx and apps/mobile/src/app/tv/[id].jsx, replace the ContentRail for recommendations with ContentGrid component. Import ContentGrid and render it with the recommendedItems. Add a section header Text 'More Like This' (or t('common.moreLikeThis')) above the grid. Since ContentGrid uses FlatList and the detail page uses ScrollView, need to either: (a) use ContentGrid with scrollEnabled={false} and compute the items manually, or (b) replace ScrollView with FlatList as the container with sections. Best approach: render ContentGrid items manually in a View with flexWrap instead, or pass a prop to ContentGrid to disable scroll. Add a new prop 'scrollEnabled' to ContentGrid that when false, uses View instead of FlatList."
+  ],
+  "acceptance_criteria": [
+    "Hero banner on home has larger image, less black padding, more immersive look",
+    "Each content rail on home screen shows a View All button",
+    "Genre detail page has a visual header area and pill-style sort filters",
+    "Genre tags on movie/TV detail pages are tappable and navigate to /genre/[genreId]",
+    "More Like This section on movie and TV detail pages renders as a vertical grid (not horizontal scroll)",
+    "npx expo export --platform android passes",
+    "npx tsc --noEmit passes in apps/mobile"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx expo export --platform android",
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx tsc --noEmit"
+  ],
+  "blocked_reason": null,
+  "findings": "All verifications passed: npx tsc --noEmit (exit 0), npx expo export --platform android (exit 0). Hero banner uses 55% screen height with lighter gradients and rating badge. All ContentRails on home now have onSeeAll prop. Genre detail page has colored hero header and pill-style TabBar variant. Genre pills in DetailHero are now clickable TVFocusable with reverse genre ID lookup. Movie and TV detail pages use vertical grid for More Like This instead of ContentRail."
+}

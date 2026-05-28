@@ -2,7 +2,9 @@ import { ScrollView, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
-export default function TabBar({ tabs, activeTab, onTabChange }) {
+export default function TabBar({ tabs, activeTab, onTabChange, variant = 'default' }) {
+  const isPill = variant === 'pill';
+
   return (
     <ScrollView
       horizontal
@@ -11,13 +13,19 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTab;
+        const tabStyle = isPill
+          ? [styles.pillTab, isActive && styles.activePillTab]
+          : [styles.tab, isActive && styles.activeTab];
+        const textStyle = isPill
+          ? [styles.pillTabText, isActive && styles.activePillTabText]
+          : [styles.tabText, isActive && styles.activeTabText];
         return (
           <TVFocusable
             key={tab.id}
             onPress={() => onTabChange(tab.id)}
-            style={[styles.tab, isActive && styles.activeTab]}
+            style={tabStyle}
           >
-            <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+            <Text style={textStyle}>
               {tab.label}
             </Text>
           </TVFocusable>
@@ -30,7 +38,7 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -53,6 +61,27 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   activeTabText: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  pillTab: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activePillTab: {
+    backgroundColor: colors.primary,
+  },
+  pillTabText: {
+    color: colors.textSecondary,
+    ...typography.body,
+    fontWeight: '500',
+  },
+  activePillTabText: {
     color: colors.text,
     fontWeight: '700',
   },

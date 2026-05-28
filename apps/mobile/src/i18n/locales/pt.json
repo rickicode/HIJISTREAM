@@ -2,7 +2,7 @@
   "nav": {
     "home": "Inicio",
     "browse": "Explorar",
-    "downloads": "Downloads",
+    "myList": "Minha Lista",
     "profile": "Perfil",
     "movies": "Filmes",
     "tvShows": "Series de TV",
@@ -68,7 +68,9 @@
     "ongoing": "No Ar",
     "searchPlaceholder": "Buscar filmes e series...",
     "recentSearches": "Buscas Recentes",
-    "closeSearch": "Fechar"
+    "closeSearch": "Fechar",
+    "viewAll": "Ver Tudo",
+    "moreLikeThis": "Similares"
   },
   "player": {
     "play": "Reproduzir",
@@ -83,8 +85,8 @@
     "language": "Idioma",
     "selectLanguage": "Selecionar Idioma"
   },
-  "downloads": {
-    "emptyState": "Seus downloads aparecerao aqui"
+  "myList": {
+    "emptyState": "Seus titulos salvos aparecerao aqui"
   },
   "filters": {
     "popular": "Popular",

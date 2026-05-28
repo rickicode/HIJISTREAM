@@ -2,7 +2,7 @@
   "nav": {
     "home": "홈",
     "browse": "둘러보기",
-    "downloads": "다운로드",
+    "myList": "내 목록",
     "profile": "프로필",
     "movies": "영화",
     "tvShows": "TV 프로그램",
@@ -68,7 +68,9 @@
     "ongoing": "방영 중",
     "searchPlaceholder": "영화 및 TV 프로그램 검색...",
     "recentSearches": "최근 검색",
-    "closeSearch": "닫기"
+    "closeSearch": "닫기",
+    "viewAll": "모두 보기",
+    "moreLikeThis": "비슷한 콘텐츠"
   },
   "player": {
     "play": "재생",
@@ -83,8 +85,8 @@
     "language": "언어",
     "selectLanguage": "언어 선택"
   },
-  "downloads": {
-    "emptyState": "다운로드한 항목이 여기에 표시됩니다"
+  "myList": {
+    "emptyState": "저장한 타이틀이 여기에 표시됩니다"
   },
   "filters": {
     "popular": "인기",

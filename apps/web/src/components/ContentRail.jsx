@@ -2,11 +2,13 @@ import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '../i18n';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 
 export default function ContentRail({ title, href = '', items = [], type = 'movie', isLoading = false }) {
   const scrollRef = useRef(null);
+  const { t } = useTranslation();
 
   const scroll = (direction) => {
     if (!scrollRef.current) return;
@@ -23,7 +25,7 @@ export default function ContentRail({ title, href = '', items = [], type = 'movi
             to={href}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-white transition-colors"
           >
-            See All
+            {t('common.viewAll')}
             <ChevronRight size={16} />
           </Link>
         )}

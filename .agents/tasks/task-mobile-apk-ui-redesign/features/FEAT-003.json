@@ -1,0 +1,25 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Add IMDB rating badge to ALL content card poster images on both mobile and web platforms. Show rating in top-right corner of poster/card images in content grids.",
+  "status": "completed",
+  "steps": [
+    "1. MOBILE - apps/mobile/src/components/ContentCard.jsx: Add a rating badge overlay in the posterContainer. If item.rating exists and is not '0' or '0.0', render a View positioned absolute top-right (top: 6, right: 6) with: (a) backgroundColor 'rgba(0,0,0,0.75)', (b) borderRadius borderRadius.sm, (c) paddingHorizontal 5, paddingVertical 2, (d) A Text showing a star character and the rating value (e.g. '7.5'), (e) Text color '#FFD700' (gold) for star, white for number, fontSize 10, fontWeight '700'.",
+    "2. WEB - apps/web/src/components/ContentCard.jsx: Add a rating badge overlay inside the poster container div (the relative aspect-[2/3] div). If item.rating exists and is not '0.0', render a div positioned absolute top-2 right-2 with: (a) bg-black/75 backdrop-blur-sm, (b) rounded px-1.5 py-0.5, (c) flex items-center gap-0.5, (d) A span with text-yellow-400 for star icon and text-white text-[10px] font-bold for the rating number. Position: 'absolute top-1.5 right-1.5'."
+  ],
+  "acceptance_criteria": [
+    "Every content card on mobile shows IMDB rating badge in top-right of poster (when rating is available and non-zero)",
+    "Every content card on web shows IMDB rating badge in top-right of poster (when rating is available and non-zero)",
+    "Badge is small, unobtrusive, with dark semi-transparent background and gold star",
+    "Cards without a rating or with 0.0 rating do not show the badge",
+    "npx tsc --noEmit passes in apps/mobile",
+    "bun run build and bun run lint pass in apps/web"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/mobile && npx tsc --noEmit",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint"
+  ],
+  "blocked_reason": null,
+  "findings": "Implementation straightforward. Both mobile and web ContentCard components already had the item.rating field available. Mobile uses StyleSheet with absolute positioning; web uses Tailwind utility classes. All verification steps pass cleanly."
+}

@@ -1,10 +1,49 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
+import { useTranslation } from '../i18n';
+import { GENRE_IDS } from '../utils/api';
 import TVFocusable from './TVFocusable';
 
 export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
+  const router = useRouter();
+  const { t } = useTranslation();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
+
+  // Build reverse mapping: translated genre name -> genre ID
+  // This supports all locales, not just English
+  const genreNameToId = {};
+  Object.keys(GENRE_IDS).forEach((key) => {
+    const translatedName = t(`genres.${key}`);
+    if (translatedName && translatedName !== `genres.${key}`) {
+      genreNameToId[translatedName.toLowerCase()] = GENRE_IDS[key];
+    }
+  });
+
+  function findGenreId(genreName) {
+    const lower = genreName.toLowerCase().trim();
+    // Try translated name lookup first (works for all locales)
+    if (genreNameToId[lower]) {
+      return genreNameToId[lower];
+    }
+    // Fallback: English-only normalized mapping for edge cases
+    const normalized = lower.replace(/\s+/g, '');
+    const fallbackMapping = {
+      action: 28, adventure: 12, animation: 16, comedy: 35, crime: 80,
+      documentary: 99, drama: 18, family: 10751, fantasy: 14, history: 36,
+      horror: 27, music: 10402, mystery: 9648, romance: 10749,
+      sciencefiction: 878, tvmovie: 10770, thriller: 53, war: 10752, western: 37,
+    };
+    return fallbackMapping[normalized] || null;
+  }
+
+  const handleGenrePress = (genreName) => {
+    const genreId = findGenreId(genreName);
+    if (genreId) {
+      router.push(`/genre/${genreId}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -33,9 +72,13 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
         {genres.length > 0 && (
           <View style={styles.genreRow}>
             {genres.map((genre) => (
-              <View key={genre} style={styles.genrePill}>
+              <TVFocusable
+                key={genre}
+                onPress={() => handleGenrePress(genre)}
+                style={styles.genrePill}
+              >
                 <Text style={styles.genreText}>{genre}</Text>
-              </View>
+              </TVFocusable>
             ))}
           </View>
         )}
@@ -47,7 +90,7 @@ export default function DetailHero({ item, type: _type = 'movie', onPlay }) {
         {onPlay && (
           <TVFocusable onPress={onPlay} style={styles.playButton}>
             <Play color="#000000" size={20} fill="#000000" />
-            <Text style={styles.playText}>Play</Text>
+            <Text style={styles.playText}>{t('common.play')}</Text>
           </TVFocusable>
         )}
       </View>
@@ -111,8 +154,13 @@ const styles = StyleSheet.create({
   genrePill: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    minHeight: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   genreText: {
     color: 'rgba(255,255,255,0.8)',

@@ -30,6 +30,12 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         {item.poster_url && !imgLoaded && (
           <div className="absolute inset-0 shimmer-bg animate-shimmer" />
         )}
+        {item.poster_url && item.rating && item.rating !== '0' && item.rating !== '0.0' && (
+          <div className="absolute top-1.5 right-1.5 bg-black/75 backdrop-blur-sm rounded px-1.5 py-0.5 flex items-center gap-0.5">
+            <span className="text-yellow-400 text-[10px] font-bold">★</span>
+            <span className="text-white text-[10px] font-bold">{item.rating}</span>
+          </div>
+        )}
         {watchProgress != null && watchProgress > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
             <div
@@ -43,11 +49,6 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <h3 className="text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-0.5">
           {item.year && <span className="text-xs text-muted-foreground">{item.year}</span>}
-          {item.rating && item.rating !== '0.0' && (
-            <span className="text-xs text-muted-foreground">
-              <span className="text-yellow-400">&#9733;</span> {item.rating}
-            </span>
-          )}
         </div>
       </div>
     </Link>

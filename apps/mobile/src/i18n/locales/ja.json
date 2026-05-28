@@ -2,7 +2,7 @@
   "nav": {
     "home": "ホーム",
     "browse": "見つける",
-    "downloads": "ダウンロード",
+    "myList": "マイリスト",
     "profile": "プロフィール",
     "movies": "映画",
     "tvShows": "テレビ番組",
@@ -68,7 +68,9 @@
     "ongoing": "放送中",
     "searchPlaceholder": "映画やテレビ番組を検索...",
     "recentSearches": "最近の検索",
-    "closeSearch": "閉じる"
+    "closeSearch": "閉じる",
+    "viewAll": "すべて見る",
+    "moreLikeThis": "おすすめ"
   },
   "player": {
     "play": "再生",
@@ -83,8 +85,8 @@
     "language": "言語",
     "selectLanguage": "言語を選択"
   },
-  "downloads": {
-    "emptyState": "ダウンロードはここに表示されます"
+  "myList": {
+    "emptyState": "保存したタイトルはここに表示されます"
   },
   "filters": {
     "popular": "人気",

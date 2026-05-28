@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Home, Compass, Download, User, Globe } from 'lucide-react-native';
+import { Home, Compass, Heart, User, Globe } from 'lucide-react-native';
 import { colors } from '../../theme';
 import { useTranslation } from '../../i18n';
 import LanguageModal from '../../components/LanguageModal';
@@ -28,18 +28,23 @@ export default function TabLayout() {
             </TouchableOpacity>
           ),
           tabBarStyle: {
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
+            backgroundColor: '#1a1a1a',
+            borderTopColor: 'rgba(255,255,255,0.08)',
+            borderTopWidth: 0.5,
+            height: 70,
+            paddingBottom: 10,
             paddingTop: 8,
+            elevation: 8,
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 4,
           },
           tabBarActiveTintColor: '#e50914',
-          tabBarInactiveTintColor: '#b3b3b3',
+          tabBarInactiveTintColor: '#808080',
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
+            fontSize: 11,
+            fontWeight: '600',
           },
         }}
       >
@@ -58,10 +63,10 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="downloads"
+          name="mylist"
           options={{
-            title: t('nav.downloads'),
-            tabBarIcon: ({ color, size }) => <Download color={color} size={size} />,
+            title: t('nav.myList'),
+            tabBarIcon: ({ color, size }) => <Heart color={color} size={size} />,
           }}
         />
         <Tabs.Screen

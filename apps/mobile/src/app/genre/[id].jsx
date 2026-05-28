@@ -44,13 +44,17 @@ export default function GenreDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.heroHeader}>
+        <View style={styles.heroBackground} />
+        <View style={styles.heroOverlay} />
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft color={colors.text} size={24} />
         </TouchableOpacity>
-        <Text style={styles.title}>{genreName}</Text>
+        <Text style={styles.heroTitle}>{genreName}</Text>
       </View>
-      <TabBar tabs={sortTabs} activeTab={sortBy} onTabChange={setSortBy} />
+      <View style={styles.filterSection}>
+        <TabBar tabs={sortTabs} activeTab={sortBy} onTabChange={setSortBy} variant="pill" />
+      </View>
       <ContentGrid
         items={items}
         type="movie"
@@ -68,17 +72,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
+  heroHeader: {
+    height: 140,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
+    position: 'relative',
+  },
+  heroBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.primary,
+    opacity: 0.15,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(20,20,20,0.6)',
   },
   backButton: {
-    marginRight: spacing.sm,
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
     padding: spacing.xs,
   },
-  title: {
+  heroTitle: {
     color: colors.text,
-    ...typography.title,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  filterSection: {
+    paddingVertical: spacing.sm,
   },
 });
