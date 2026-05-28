@@ -103,18 +103,24 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon --parallel --max-workers=2 -Dorg.gradle.jvmargs="-Xmx2g"
         working-directory: apps/mobile/android
 
+      - name: Get app version
+        id: version
+        run: |
+          VERSION=$(cat apps/mobile/app.json | python3 -c "import sys,json; print(json.load(sys.stdin)['expo']['version'])")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Rename APK
         run: |
           APK=$(find apps/mobile/android/app/build/outputs/apk/release -name "*.apk" -type f | head -1)
           if [ -n "$APK" ]; then
-            cp "$APK" "HIJISTREAM-${{ matrix.abi }}.apk"
+            cp "$APK" "HIJISTREAM-${{ matrix.abi }}-v${{ steps.version.outputs.version }}.apk"
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ matrix.abi }}
-          path: HIJISTREAM-${{ matrix.abi }}.apk
+          path: HIJISTREAM-${{ matrix.abi }}-v${{ steps.version.outputs.version }}.apk
           retention-days: 30
 
   combine:
