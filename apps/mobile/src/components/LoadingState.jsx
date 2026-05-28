@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
+import { colors, spacing, borderRadius } from '../theme';
 
 function PulseBox({ style }) {
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -32,7 +33,6 @@ export default function LoadingState({ type = 'grid' }) {
       <View style={styles.cardContainer}>
         <PulseBox style={styles.cardPoster} />
         <PulseBox style={styles.cardTitle} />
-        <PulseBox style={styles.cardSubtitle} />
       </View>
     );
   }
@@ -40,11 +40,10 @@ export default function LoadingState({ type = 'grid' }) {
   if (type === 'detail') {
     return (
       <View style={styles.detailContainer}>
-        <PulseBox style={styles.detailPoster} />
+        <PulseBox style={styles.detailBackdrop} />
         <View style={styles.detailInfo}>
           <PulseBox style={styles.detailTitle} />
           <PulseBox style={styles.detailMeta} />
-          <PulseBox style={styles.detailGenres} />
           <PulseBox style={styles.detailOverview} />
           <PulseBox style={styles.detailOverview2} />
         </View>
@@ -59,7 +58,6 @@ export default function LoadingState({ type = 'grid' }) {
         <View key={i} style={styles.gridItem}>
           <PulseBox style={styles.gridPoster} />
           <PulseBox style={styles.gridTitle} />
-          <PulseBox style={styles.gridSubtitle} />
         </View>
       ))}
     </View>
@@ -68,100 +66,79 @@ export default function LoadingState({ type = 'grid' }) {
 
 const styles = StyleSheet.create({
   placeholder: {
-    backgroundColor: '#262626',
-    borderRadius: 8,
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: borderRadius.md,
   },
   // Card type
   cardContainer: {
-    width: 180,
-    padding: 8,
+    width: 120,
+    paddingHorizontal: spacing.md,
   },
   cardPoster: {
     width: '100%',
     aspectRatio: 2 / 3,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
   },
   cardTitle: {
-    height: 14,
-    width: '80%',
-    marginTop: 8,
-    borderRadius: 4,
-  },
-  cardSubtitle: {
     height: 12,
-    width: '50%',
-    marginTop: 6,
-    borderRadius: 4,
+    width: '80%',
+    marginTop: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
   // Detail type
   detailContainer: {
-    flexDirection: 'row',
-    padding: 40,
+    backgroundColor: colors.background,
   },
-  detailPoster: {
-    width: 250,
-    aspectRatio: 2 / 3,
-    borderRadius: 12,
+  detailBackdrop: {
+    width: '100%',
+    height: 350,
+    borderRadius: 0,
   },
   detailInfo: {
-    flex: 1,
-    marginLeft: 24,
-    justifyContent: 'center',
+    padding: spacing.md,
   },
   detailTitle: {
     height: 28,
     width: '60%',
-    borderRadius: 6,
+    borderRadius: borderRadius.sm,
   },
   detailMeta: {
     height: 16,
     width: '40%',
-    marginTop: 12,
-    borderRadius: 4,
-  },
-  detailGenres: {
-    height: 28,
-    width: '50%',
-    marginTop: 16,
-    borderRadius: 14,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.sm,
   },
   detailOverview: {
     height: 14,
     width: '90%',
-    marginTop: 16,
-    borderRadius: 4,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.sm,
   },
   detailOverview2: {
     height: 14,
     width: '75%',
-    marginTop: 8,
-    borderRadius: 4,
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.sm,
   },
   // Grid type
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 40,
-    gap: 16,
+    padding: spacing.xl,
+    gap: spacing.md,
   },
   gridItem: {
-    width: 180,
+    width: 120,
   },
   gridPoster: {
     width: '100%',
     aspectRatio: 2 / 3,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
   },
   gridTitle: {
-    height: 14,
-    width: '80%',
-    marginTop: 8,
-    borderRadius: 4,
-  },
-  gridSubtitle: {
     height: 12,
-    width: '50%',
-    marginTop: 6,
-    borderRadius: 4,
+    width: '80%',
+    marginTop: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
 });

@@ -23,7 +23,7 @@ export default function MovieDetail() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
         <LoadingState type="detail" />
       </div>
     );
@@ -31,7 +31,7 @@ export default function MovieDetail() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
         <ErrorState error={error} onRetry={refetch} />
       </div>
     );
@@ -45,7 +45,7 @@ export default function MovieDetail() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8">
       <DetailHero item={movie} type="movie" onPlay={handlePlay} />
     </div>
   );

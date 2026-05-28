@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
+import { colors } from '../theme';
 
 export default function TVFocusable({
   children,
@@ -36,6 +37,6 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   focused: {
-    borderColor: '#2563EB',
+    borderColor: colors.primary,
   },
 });

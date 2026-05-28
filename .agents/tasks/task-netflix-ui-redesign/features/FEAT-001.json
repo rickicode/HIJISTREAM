@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Install dependencies and set up shadcn/ui design system foundation for the web app. Establish the Netflix-inspired design token system in Tailwind config that both web components and mobile will reference for color consistency.",
+  "status": "completed",
+  "steps": [
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/web && bun install` to set up existing dependencies",
+    "Install shadcn/ui dependencies: `bun add class-variance-authority clsx tailwind-merge` (these are the core utilities shadcn/ui components use)",
+    "Create `apps/web/src/lib/utils.js` with the standard shadcn/ui cn() utility: import { clsx } from 'clsx'; import { twMerge } from 'tailwind-merge'; export function cn(...inputs) { return twMerge(clsx(inputs)); }",
+    "Rewrite `apps/web/tailwind.config.js` with a Netflix-inspired design token palette: background: { DEFAULT: '#141414', elevated: '#1a1a1a', card: '#181818' }, foreground: '#FFFFFF', muted: { DEFAULT: '#808080', foreground: '#b3b3b3' }, primary: { DEFAULT: '#E50914', hover: '#F40612' }, ring: '#E50914', border: '#333333'. Also add proper container, fontFamily (Inter), and the shimmer keyframe.",
+    "Rewrite `apps/web/src/index.css` with Netflix-inspired base styles: dark background #141414, white text, scrollbar-hide utility, shimmer animation, and add CSS custom properties matching the tokens for potential future use.",
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint && bun run typecheck && bun run build` to verify the foundation compiles cleanly",
+    "Run `cd /projects/sandbox/HIJISTREAM/apps/mobile && bun install` to set up mobile dependencies"
+  ],
+  "acceptance_criteria": [
+    "apps/web/node_modules exists and bun install succeeds",
+    "shadcn/ui utilities (class-variance-authority, clsx, tailwind-merge) are in package.json dependencies",
+    "apps/web/src/lib/utils.js exports a working cn() function",
+    "tailwind.config.js has Netflix-inspired color tokens (red primary #E50914, dark backgrounds #141414/#181818)",
+    "bun run build succeeds with 0 errors",
+    "bun run lint passes with 0 errors and 0 warnings",
+    "bun run typecheck passes with 0 errors",
+    "apps/mobile/node_modules exists and bun install succeeds"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run typecheck",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build"
+  ],
+  "blocked_reason": null,
+  "findings": "All verification passed cleanly: lint 0 errors, typecheck 0 errors, build succeeds. Existing components still reference old color tokens (e.g. #6366F1, #0F0F0F) but compile fine since Tailwind only purges unused classes. Mobile bun install was already satisfied (no changes). The bun.lock at repo root was updated with the new shadcn/ui dependencies."
+}

@@ -1,26 +1,38 @@
 import { useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { Play } from 'lucide-react-native';
+import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 
 export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode }) {
   const totalSeasons = typeof seasons === 'number' ? seasons : 1;
   const [activeSeason, setActiveSeason] = useState(1);
-  const episodesPerSeason = 10;
 
   const hasEpisodeData = Array.isArray(episodes) && episodes.length > 0;
   const seasonEpisodes = hasEpisodeData
     ? episodes.filter(
         (ep) => ep.season === activeSeason || ep.season_number === activeSeason
       )
-    : Array.from({ length: episodesPerSeason }).map((_, i) => ({
-        episode: i + 1,
-        title: `Episode ${i + 1}`,
-      }));
+    : [];
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyText}>No episodes available for this season</Text>
+      <TVFocusable
+        onPress={() => onPlayEpisode(activeSeason, 1)}
+        style={styles.playSeasonButton}
+      >
+        <Play color="#000000" size={16} fill="#000000" />
+        <Text style={styles.playSeasonText}>Play Season {activeSeason}</Text>
+      </TVFocusable>
+    </View>
+  );
 
   const renderEpisode = ({ item: ep, index }) => {
     const epNumber = ep.episode_number || ep.episode || index + 1;
     const epTitle = ep.name || ep.title || `Episode ${epNumber}`;
+    const runtime = ep.runtime ? `${ep.runtime}m` : null;
+    const overview = ep.overview || null;
 
     return (
       <View style={styles.episodeRow}>
@@ -28,7 +40,15 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           <Text style={styles.episodeNumber}>
             {String(epNumber).padStart(2, '0')}
           </Text>
-          <Text style={styles.episodeTitle}>{epTitle}</Text>
+          <View style={styles.episodeDetails}>
+            <View style={styles.episodeTitleRow}>
+              <Text style={styles.episodeTitle} numberOfLines={1}>{epTitle}</Text>
+              {runtime && <Text style={styles.episodeRuntime}>{runtime}</Text>}
+            </View>
+            {overview && (
+              <Text style={styles.episodeOverview} numberOfLines={2}>{overview}</Text>
+            )}
+          </View>
         </View>
         <TVFocusable
           onPress={() => onPlayEpisode(activeSeason, epNumber)}
@@ -66,88 +86,142 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           ))}
         </View>
       )}
-      <FlatList
-        data={seasonEpisodes}
-        keyExtractor={(item, index) =>
-          String(item.episode_number || item.episode || index)
-        }
-        renderItem={renderEpisode}
-        scrollEnabled={false}
-      />
+      {seasonEpisodes.length === 0 ? (
+        renderEmptyState()
+      ) : (
+        <FlatList
+          data={seasonEpisodes}
+          keyExtractor={(item, index) =>
+            String(item.episode_number || item.episode || index)
+          }
+          renderItem={renderEpisode}
+          scrollEnabled={false}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 40,
-    paddingTop: 24,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
   },
   heading: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
+    color: colors.text,
+    ...typography.title,
+    marginBottom: spacing.md,
   },
   seasonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   seasonButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#262626',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.card,
     minWidth: 80,
     minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   seasonButtonActive: {
-    backgroundColor: '#2563EB',
+    backgroundColor: colors.primary,
   },
   seasonText: {
-    color: '#9CA3AF',
-    fontSize: 13,
+    color: colors.textMuted,
+    ...typography.body,
     fontWeight: '500',
   },
   seasonTextActive: {
-    color: '#FFFFFF',
+    color: colors.text,
   },
   episodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#262626',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
   },
   episodeInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: spacing.md,
     flex: 1,
   },
   episodeNumber: {
-    color: '#9CA3AF',
-    fontSize: 13,
+    color: colors.textMuted,
+    ...typography.body,
     width: 28,
   },
+  episodeDetails: {
+    flex: 1,
+  },
+  episodeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   episodeTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: colors.text,
+    ...typography.body,
+    flex: 1,
+  },
+  episodeRuntime: {
+    color: colors.textMuted,
+    ...typography.small,
+  },
+  episodeOverview: {
+    color: colors.textMuted,
+    ...typography.small,
+    marginTop: spacing.xs,
   },
   playButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2563EB',
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 36,
     minHeight: 36,
+  },
+  emptyState: {
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: colors.textMuted,
+    ...typography.body,
+    textAlign: 'center',
+  },
+  playSeasonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.md,
+    minWidth: 140,
+    minHeight: 48,
+  },
+  playSeasonText: {
+    color: '#000000',
+    ...typography.subtitle,
+    fontWeight: '600',
   },
 });

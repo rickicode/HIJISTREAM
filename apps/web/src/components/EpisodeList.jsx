@@ -11,7 +11,7 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
           <select
             value={currentSeason}
             onChange={(e) => onSeasonChange(Number(e.target.value))}
-            className="bg-[#1A1A1A] border border-[#2E2E2E] text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+            className="bg-background-elevated border border-border text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             aria-label="Select season"
           >
             {seasonOptions.map((num) => (
@@ -26,26 +26,26 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
       {isLoading ? (
         <div className="grid gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl p-4 animate-pulse">
+            <div key={i} className="bg-background-card rounded-lg p-4 animate-pulse">
               <div className="flex gap-4">
-                <div className="w-40 h-24 bg-[#262626] rounded-lg shrink-0" />
+                <div className="w-40 h-24 bg-background-elevated rounded-lg shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-[#262626] rounded w-1/3" />
-                  <div className="h-3 bg-[#262626] rounded w-full" />
-                  <div className="h-3 bg-[#262626] rounded w-2/3" />
+                  <div className="h-4 bg-background-elevated rounded w-1/3" />
+                  <div className="h-3 bg-background-elevated rounded w-full" />
+                  <div className="h-3 bg-background-elevated rounded w-2/3" />
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : episodes.length === 0 ? (
-        <div className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl p-6 text-center">
-          <p className="text-[#A1A1A1] text-sm">No episodes available for this season</p>
+        <div className="bg-background-card rounded-lg p-6 text-center">
+          <p className="text-muted-foreground text-sm">No episodes available for this season</p>
           <button
             onClick={() => onPlayEpisode(currentSeason, 1)}
-            className="mt-4 inline-flex items-center gap-2 bg-[#6366F1] text-white px-6 py-3 rounded-xl text-sm font-medium hover:bg-[#818CF8] transition-colors"
+            className="mt-4 inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded text-sm font-semibold hover:bg-white/90 transition-colors"
           >
-            <Play size={16} fill="white" />
+            <Play size={16} fill="black" />
             Play Season {currentSeason}
           </button>
         </div>
@@ -54,10 +54,10 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
           {episodes.map((episode) => (
             <div
               key={episode.episode_number}
-              className="bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl p-4 hover:border-[#404040] transition-colors group"
+              className="bg-background-card rounded-lg p-4 hover:bg-background-elevated transition-colors group"
             >
               <div className="flex gap-4">
-                <div className="relative w-40 h-24 bg-[#262626] rounded-lg overflow-hidden shrink-0">
+                <div className="relative w-40 h-24 bg-background-elevated rounded-lg overflow-hidden shrink-0">
                   {episode.still_path ? (
                     <img
                       src={episode.still_path}
@@ -67,7 +67,7 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-[#6B6B6B] text-xs">Ep {episode.episode_number}</span>
+                      <span className="text-muted text-xs">Ep {episode.episode_number}</span>
                     </div>
                   )}
                   <button
@@ -84,21 +84,21 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
                       <h3 className="text-white font-medium text-sm truncate">
                         {episode.episode_number}. {episode.name}
                       </h3>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-[#A1A1A1]">
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         {episode.air_date && <span>{episode.air_date}</span>}
                         {episode.runtime && <span>{episode.runtime} min</span>}
                       </div>
                     </div>
                     <button
                       onClick={() => onPlayEpisode(currentSeason, episode.episode_number)}
-                      className="shrink-0 bg-[#6366F1] text-white p-2 rounded-lg hover:bg-[#818CF8] transition-colors"
+                      className="shrink-0 bg-white/10 text-white p-2 rounded hover:bg-white/20 transition-colors"
                       aria-label={`Play episode ${episode.episode_number}`}
                     >
                       <Play size={14} fill="white" />
                     </button>
                   </div>
                   {episode.overview && (
-                    <p className="mt-2 text-[#A1A1A1] text-xs line-clamp-2 leading-relaxed">
+                    <p className="mt-2 text-muted-foreground text-xs line-clamp-2 leading-relaxed">
                       {episode.overview}
                     </p>
                   )}

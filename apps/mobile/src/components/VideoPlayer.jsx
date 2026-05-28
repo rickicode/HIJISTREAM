@@ -2,6 +2,7 @@ import { useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft } from 'lucide-react-native';
+import { colors, spacing, borderRadius } from '../theme';
 import { saveWatchProgress } from '../utils/player';
 import TVFocusable from './TVFocusable';
 
@@ -67,7 +68,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
     <View style={styles.container}>
       <View style={styles.header}>
         <TVFocusable onPress={onBack} style={styles.backButton}>
-          <ArrowLeft color="#9CA3AF" size={20} />
+          <ArrowLeft color={colors.text} size={20} />
         </TVFocusable>
         <Text style={styles.title} numberOfLines={1}>
           {title}
@@ -89,26 +90,26 @@ export default function VideoPlayer({ embedUrl, title, contentId, onBack, metada
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#1A1A1A',
-    gap: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundElevated,
+    gap: spacing.sm,
   },
   backButton: {
     minWidth: 40,
     minHeight: 40,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#262626',
+    backgroundColor: colors.card,
   },
   title: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 14,
     fontWeight: '500',
     flex: 1,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
+import { colors } from '../../theme';
 import TabBar from '../../components/TabBar';
 import ContentGrid from '../../components/ContentGrid';
 
@@ -68,6 +69,6 @@ export default function MoviesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: colors.background,
   },
 });

@@ -13,7 +13,6 @@ export default function Player() {
   const season = searchParams.get('season');
   const episode = searchParams.get('episode');
 
-  // Get metadata from route state or fallback to stored progress
   const routeState = location.state || {};
   const storedProgress = loadWatchProgress(id);
 

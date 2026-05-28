@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon } from 'lucide-react-native';
 import api from '../../utils/api';
+import { colors, spacing, typography } from '../../theme';
 import SearchBar from '../../components/SearchBar';
 import ContentGrid from '../../components/ContentGrid';
 
@@ -35,7 +36,7 @@ export default function SearchScreen() {
 
       {query.length === 0 ? (
         <View style={styles.emptyState}>
-          <SearchIcon color="#6B7280" size={48} />
+          <SearchIcon color={colors.textMuted} size={48} />
           <Text style={styles.emptyText}>Start typing to search</Text>
         </View>
       ) : items.length === 0 && !isLoading ? (
@@ -60,25 +61,25 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F',
+    backgroundColor: colors.background,
   },
   searchContainer: {
-    paddingHorizontal: 40,
-    paddingTop: 40,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: spacing.md,
   },
   emptyText: {
-    color: '#9CA3AF',
-    fontSize: 16,
+    color: colors.textMuted,
+    ...typography.subtitle,
   },
   noResultsText: {
-    color: '#9CA3AF',
-    fontSize: 16,
+    color: colors.textMuted,
+    ...typography.subtitle,
   },
 });
