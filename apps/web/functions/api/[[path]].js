@@ -205,6 +205,47 @@ export async function onRequest(context) {
       result = transformSearchResults(data);
       cacheControl = 'public, s-maxage=120, stale-while-revalidate=300';
     }
+    // Route: /anime/trending
+    else if (pathname === '/anime/trending') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'popularity.desc', page });
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /anime/ongoing
+    else if (pathname === '/anime/ongoing') {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', 'air_date.gte': thirtyDaysAgo, with_status: '0', sort_by: 'popularity.desc', page });
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /anime/top-rated
+    else if (pathname === '/anime/top-rated') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/discover/tv', { with_genres: '16', with_original_language: 'ja', sort_by: 'vote_average.desc', 'vote_count.gte': '100', page });
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /tv/on-the-air
+    else if (pathname === '/tv/on-the-air') {
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/tv/on_the_air', { page });
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /movies/:id/recommendations
+    else if (pathname.match(/^\/movies\/(\d+)\/recommendations$/)) {
+      const match = pathname.match(/^\/movies\/(\d+)\/recommendations$/);
+      const movieId = match[1];
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}/recommendations`, { page });
+      const items = (data.results || []).map(transformMovieListItem);
+      result = wrapPaginatedList(data, items);
+    }
+    // Route: /tv/:id/recommendations
+    else if (pathname.match(/^\/tv\/(\d+)\/recommendations$/)) {
+      const match = pathname.match(/^\/tv\/(\d+)\/recommendations$/);
+      const tvId = match[1];
+      const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}/recommendations`, { page });
+      const items = (data.results || []).map(transformTVListItem);
+      result = wrapPaginatedList(data, items);
+    }
     // Route: /tv/:id/season/:season
     else if (pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/)) {
       const match = pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/);
