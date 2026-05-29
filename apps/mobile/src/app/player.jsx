@@ -3,17 +3,14 @@ import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { ChevronLeft } from 'lucide-react-native';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import { useTranslation } from '../i18n';
 import VideoPlayer from '../components/VideoPlayer';
-import useIsTV, { isTV as isTVStatic } from '../hooks/useIsTV';
-import TVFocusable from '../components/TVFocusable';
+import { isTV as isTVStatic } from '../hooks/useIsTV';
 
 export default function PlayerScreen() {
   const { type, id, season, episode, title, poster_url } = useLocalSearchParams();
   const router = useRouter();
-  const isTV = useIsTV();
   // Read locale synchronously from the LanguageProvider — it gates rendering
   // on isReady, so locale is guaranteed to be loaded by the time we get here.
   // This eliminates the race that previously built the embed URL with a null
@@ -82,18 +79,6 @@ export default function PlayerScreen() {
           type: type || 'movie',
         }}
       />
-      {isTV && (
-        <View style={styles.tvBackOverlay}>
-          <TVFocusable
-            onPress={() => router.back()}
-            style={styles.tvBackButton}
-            hasTVPreferredFocus={true}
-            accessibilityLabel="Go back"
-          >
-            <ChevronLeft size={28} color="#FFFFFF" />
-          </TVFocusable>
-        </View>
-      )}
     </View>
   );
 }
@@ -102,18 +87,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-  },
-  tvBackOverlay: {
-    position: 'absolute',
-    top: 24,
-    left: 24,
-    zIndex: 10,
-  },
-  tvBackButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 24,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
