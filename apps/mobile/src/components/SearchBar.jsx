@@ -1,50 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '../theme';
 import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
 
-const { clearTimeout, setTimeout } = global;
-
-export default function SearchBar({ onSearch, initialQuery = '', placeholder }) {
+/**
+ * Controlled search input. The parent owns the text value (so it can be set
+ * from a tapped recent search / suggestion) and any debouncing. This component
+ * is purely presentational + emits onChangeText / onClear.
+ */
+export default function SearchBar({
+  value = '',
+  onChangeText,
+  onClear,
+  placeholder,
+  autoFocus = false,
+}) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState(initialQuery);
-  const debounceRef = useRef(null);
-
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      onSearch(query);
-    }, 300);
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [query, onSearch]);
-
-  const handleClear = () => {
-    setQuery('');
-  };
+  const [focused, setFocused] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <Search color={colors.textMuted} size={20} style={styles.icon} />
+    <View style={[styles.container, focused && styles.containerFocused]}>
+      <Search color={focused ? colors.text : colors.textMuted} size={20} style={styles.icon} />
       <TextInput
         style={styles.input}
-        value={query}
-        onChangeText={setQuery}
+        value={value}
+        onChangeText={onChangeText}
         placeholder={placeholder || t('common.searchPlaceholder')}
         placeholderTextColor={colors.textMuted}
         returnKeyType="search"
         autoCorrect={false}
+        autoCapitalize="none"
+        autoFocus={autoFocus}
+        cursorColor={colors.primary}
+        selectionColor={colors.primary}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       />
-      {query.length > 0 && (
-        <TVFocusable onPress={handleClear} style={styles.clearButton}>
-          <X color={colors.textMuted} size={18} />
+      {value.length > 0 && (
+        <TVFocusable onPress={onClear} style={styles.clearButton} accessibilityLabel={t('common.closeSearch')}>
+          <X color={colors.text} size={15} strokeWidth={2.6} />
         </TVFocusable>
       )}
     </View>
@@ -56,11 +52,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.backgroundElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
-    height: 48,
+    height: 46,
+  },
+  containerFocused: {
+    borderColor: colors.primary,
+    backgroundColor: '#202020',
   },
   icon: {
     marginRight: spacing.sm,
@@ -70,13 +70,17 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     height: '100%',
+    paddingVertical: 0,
   },
   clearButton: {
-    minWidth: 36,
-    minHeight: 36,
+    width: 24,
+    height: 24,
+    minWidth: 24,
+    minHeight: 24,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginLeft: spacing.xs,
   },
 });
