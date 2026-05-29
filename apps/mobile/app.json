@@ -18,9 +18,18 @@
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "backgroundImage": "./assets/adaptive-icon-background.png"
       },
-      "minSdkVersion": 24
+      "minSdkVersion": 24,
+      "intentFilters": [
+        {
+          "action": "MAIN",
+          "category": ["LEANBACK_LAUNCHER"]
+        }
+      ]
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "./plugins/withAndroidTV.js"
+    ],
     "experiments": {
       "typedRoutes": true
     }

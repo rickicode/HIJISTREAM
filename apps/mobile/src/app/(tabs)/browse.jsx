@@ -6,6 +6,7 @@ import { GENRE_IDS, TMDB_COUNTRIES } from '../../utils/api';
 import { colors, spacing, typography, borderRadius } from '../../theme';
 import TabBar from '../../components/TabBar';
 import TVFocusable from '../../components/TVFocusable';
+import useIsTV from '../../hooks/useIsTV';
 
 function SkeletonCard() {
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -31,6 +32,7 @@ function SkeletonCard() {
 export default function BrowseScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const isTV = useIsTV();
   const [activeTab, setActiveTab] = useState('genre');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,38 +46,51 @@ export default function BrowseScreen() {
     { id: 'country', label: t('browse.countryTab') },
   ];
 
+  // TV uses 5 columns of larger cards; phone keeps 2 columns. The grid has
+  // to fit comfortably in the focus-ring scale so we leave room for the 1.06
+  // zoom plus padding around each card.
+  const numColumns = isTV ? 5 : 2;
   const genreKeys = Object.keys(GENRE_IDS);
 
-  const renderGenreCard = ({ item: genreKey }) => {
+  const renderGenreCard = ({ item: genreKey, index }) => {
     const genreId = GENRE_IDS[genreKey];
     return (
       <TVFocusable
         onPress={() => router.push(`/genre/${genreId}`)}
-        style={styles.card}
+        hasTVPreferredFocus={isTV && index === 0}
+        style={[styles.card, isTV && styles.cardTV]}
+        accessibilityLabel={t(`genres.${genreKey}`)}
       >
-        <Text style={styles.cardText}>{t(`genres.${genreKey}`)}</Text>
+        <Text style={[styles.cardText, isTV && styles.cardTextTV]}>
+          {t(`genres.${genreKey}`)}
+        </Text>
       </TVFocusable>
     );
   };
 
-  const renderCountryCard = ({ item: country }) => (
+  const renderCountryCard = ({ item: country, index }) => (
     <TVFocusable
       onPress={() => router.push(`/country/${country.iso}`)}
-      style={styles.card}
+      hasTVPreferredFocus={isTV && index === 0}
+      style={[styles.card, isTV && styles.cardTV]}
+      accessibilityLabel={t(`countries.${country.code}`)}
     >
-      <Text style={styles.flagText}>{country.flag}</Text>
-      <Text style={styles.cardText}>{t(`countries.${country.code}`)}</Text>
+      <Text style={[styles.flagText, isTV && styles.flagTextTV]}>{country.flag}</Text>
+      <Text style={[styles.cardText, isTV && styles.cardTextTV]}>
+        {t(`countries.${country.code}`)}
+      </Text>
     </TVFocusable>
   );
 
   const renderSkeletonGrid = () => (
     <FlatList
-      data={Array.from({ length: 8 }, (_, i) => ({ id: String(i) }))}
-      numColumns={2}
+      data={Array.from({ length: numColumns * 4 }, (_, i) => ({ id: String(i) }))}
+      numColumns={numColumns}
+      key={`skeleton-${numColumns}`}
       keyExtractor={(item) => item.id}
       renderItem={() => <SkeletonCard />}
       columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.gridContainer}
+      contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
     />
   );
 
@@ -94,20 +109,22 @@ export default function BrowseScreen() {
       {activeTab === 'genre' ? (
         <FlatList
           data={genreKeys}
-          numColumns={2}
+          numColumns={numColumns}
+          key={`genre-${numColumns}`}
           keyExtractor={(item) => item}
           renderItem={renderGenreCard}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.gridContainer}
+          contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
         />
       ) : (
         <FlatList
           data={TMDB_COUNTRIES}
-          numColumns={2}
+          numColumns={numColumns}
+          key={`country-${numColumns}`}
           keyExtractor={(item) => item.iso}
           renderItem={renderCountryCard}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.gridContainer}
+          contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
         />
       )}
     </View>
@@ -122,6 +139,9 @@ const styles = StyleSheet.create({
   gridContainer: {
     padding: spacing.md,
   },
+  gridContainerTV: {
+    padding: spacing.xxl,
+  },
   row: {
     gap: spacing.sm,
     marginBottom: spacing.sm,
@@ -135,14 +155,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 80,
   },
+  cardTV: {
+    minHeight: 140,
+    padding: spacing.lg,
+    marginHorizontal: spacing.xs,
+    marginVertical: spacing.sm,
+  },
   cardText: {
     color: colors.text,
     ...typography.subtitle,
     textAlign: 'center',
   },
+  cardTextTV: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
   flagText: {
     fontSize: 24,
     marginBottom: spacing.xs,
+  },
+  flagTextTV: {
+    fontSize: 44,
+    marginBottom: spacing.sm,
   },
   skeletonText: {
     width: '60%',

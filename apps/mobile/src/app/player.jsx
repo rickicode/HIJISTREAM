@@ -6,6 +6,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import { useTranslation } from '../i18n';
 import VideoPlayer from '../components/VideoPlayer';
+import { isTV as isTVStatic } from '../hooks/useIsTV';
 
 export default function PlayerScreen() {
   const { type, id, season, episode, title, poster_url } = useLocalSearchParams();
@@ -23,8 +24,11 @@ export default function PlayerScreen() {
   const contentId =
     type === 'tv' ? `${id}_s${season || '1'}e${episode || '1'}` : id;
 
-  // Lock to landscape fullscreen on mount, restore on unmount
+  // Lock to landscape fullscreen on mount, restore on unmount.
+  // Skip on Android TV — TV is permanently landscape and the orientation
+  // module logs a "not supported on this device" warning when invoked there.
   useEffect(() => {
+    if (isTVStatic) return undefined;
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     return () => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT);
