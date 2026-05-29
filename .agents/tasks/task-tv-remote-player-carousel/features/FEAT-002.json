@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "Fix video player on TV so controls (CC/subtitle, settings, play/pause) are accessible via D-pad remote. The embedded vaplayer.ru player works on mobile touch but on Android TV WebView the HTML controls are not clickable/visible because WebView does not translate D-pad events into mouse/touch events. Solution: Inject JavaScript into WebView that (1) listens for keydown events and shows/focuses player controls, (2) enables keyboard navigation within the embedded player, AND (3) add a native TV controls overlay with Play/Pause, Subtitle toggle, and Back buttons as TVFocusable elements that communicate with the WebView via injectJavaScript/postMessage.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. In apps/mobile/src/components/VideoPlayer.jsx: Add a webViewRef using useRef to access the WebView instance for calling injectJavaScript().",
     "2. In apps/mobile/src/components/VideoPlayer.jsx: Enhance the injectedJavaScript to add TV-specific keyboard/remote handling. Inject code that: (a) Listens for 'keydown' events in the WebView (Android TV D-pad sends keydown events to WebView), (b) On any key press, shows the player's built-in controls by dispatching a mouse move event or clicking the video element (which typically toggles controls in HTML5 players), (c) Maps D-pad center/Enter key to play/pause toggle, (d) Maps D-pad left/right to seek backward/forward by 10 seconds, (e) Finds subtitle/CC buttons in the player DOM and triggers them when the user presses a specific key. Post messages back to React Native about player state.",
@@ -25,5 +25,5 @@
     "Run: cd /projects/sandbox/HIJISTREAM/apps/mobile && node -e \"const fs = require('fs'); const code = fs.readFileSync('src/components/VideoPlayer.jsx','utf8'); const checks = ['TVFocusable','useIsTV','injectJavaScript','showTVControls','onBack']; checks.forEach(c => { if (!code.includes(c)) { console.error('Missing:', c); process.exit(1); } }); console.log('All required patterns present');\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implementation verified: all 28 JSX files parse OK with Babel. Studied vaplayer.ru embed source - outer page contains iframe#pf pointing to brightpathsignals.com, with postMessage forwarding between parent and inner iframe. TV overlay uses native TVFocusable buttons that inject keyboard events and postMessage commands into the WebView. Auto-hide timer at 6s with transparent focus trigger to re-show controls. lucide-react-native icons used for player buttons. The isTV static export is used in injectedJavaScript template literal (module scope) while useIsTV hook handles runtime rendering decisions."
 }
