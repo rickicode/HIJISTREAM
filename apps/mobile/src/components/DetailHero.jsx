@@ -1,6 +1,6 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Heart } from 'lucide-react-native';
+import { Play, Plus, Check } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
@@ -64,24 +64,40 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
             {item.overview}
           </Text>
         )}
+        {/* Action Buttons - redesigned */}
         <View style={[styles.actionRow, isTV && styles.actionRowTV]}>
           {onPlay && (
-            <TVFocusable onPress={onPlay} style={[styles.playButton, isTV && styles.playButtonTV]}>
-              <Play color="#000000" size={isTV ? 24 : 20} fill="#000000" />
-              <Text style={[styles.playText, isTV && styles.playTextTV]}>{t('common.play')}</Text>
+            <TVFocusable
+              onPress={onPlay}
+              style={isTV ? styles.playBtnTV : styles.playBtn}
+              hasTVPreferredFocus={true}
+            >
+              <View style={isTV ? styles.playIconWrapTV : styles.playIconWrap}>
+                <Play color="#000000" size={isTV ? 28 : 18} fill="#000000" />
+              </View>
+              <Text style={isTV ? styles.playLabelTV : styles.playLabel}>
+                {t('common.play')}
+              </Text>
             </TVFocusable>
           )}
           <TVFocusable
             onPress={toggleList}
-            style={[styles.listButton, inList && styles.listButtonActive, isTV && styles.listButtonTV]}
+            style={[
+              isTV ? styles.myListBtnTV : styles.myListBtn,
+              inList && (isTV ? styles.myListBtnActiveTV : styles.myListBtnActive),
+            ]}
           >
-            <Heart
-              color={inList ? colors.primary : colors.text}
-              fill={inList ? colors.primary : 'transparent'}
-              size={isTV ? 24 : 20}
-              strokeWidth={2.2}
-            />
-            <Text style={[styles.listText, inList && styles.listTextActive, isTV && styles.listTextTV]}>
+            {inList ? (
+              <Check color={colors.primary} size={isTV ? 26 : 18} strokeWidth={3} />
+            ) : (
+              <Plus color={colors.text} size={isTV ? 26 : 18} strokeWidth={2.5} />
+            )}
+            <Text
+              style={[
+                isTV ? styles.myListLabelTV : styles.myListLabel,
+                inList && styles.myListLabelActive,
+              ]}
+            >
               {t('common.myList')}
             </Text>
           </TVFocusable>
@@ -143,6 +159,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
+  genreRowTV: {
+    marginTop: spacing.lg,
+    gap: spacing.md,
+  },
   genrePill: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: borderRadius.sm,
@@ -164,80 +184,127 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: spacing.md,
   },
+
+  // --- Action Row ---
   actionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  playButton: {
-    flex: 1.4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.text,
-    paddingVertical: 14,
-    borderRadius: borderRadius.lg,
-    minHeight: 52,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 5,
+  actionRowTV: {
+    gap: spacing.xl,
+    marginTop: spacing.xl,
   },
-  playText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  listButton: {
+
+  // --- Play Button (Mobile) ---
+  playBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 14,
-    borderRadius: borderRadius.lg,
-    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minHeight: 48,
+    elevation: 4,
   },
-  listButtonActive: {
-    backgroundColor: 'rgba(229,9,20,0.18)',
+  playIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playLabel: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  // --- Play Button (TV) ---
+  playBtnTV: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 20,
+    paddingHorizontal: 48,
+    borderRadius: borderRadius.lg,
+    minHeight: 68,
+    minWidth: 220,
+    elevation: 6,
+  },
+  playIconWrapTV: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playLabelTV: {
+    color: '#000000',
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
+  // --- My List Button (Mobile) ---
+  myListBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minHeight: 48,
+  },
+  myListBtnActive: {
+    backgroundColor: 'rgba(229,9,20,0.12)',
     borderColor: colors.primary,
   },
-  listText: {
+  myListLabel: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  listTextActive: {
+  myListLabelActive: {
     color: colors.primary,
   },
-  actionRowTV: {
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  playButtonTV: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-  },
-  listButtonTV: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 28,
-  },
-  playTextTV: {
-    fontSize: 20,
-  },
-  listTextTV: {
-    fontSize: 18,
-  },
-  genreRowTV: {
-    marginTop: spacing.lg,
+
+  // --- My List Button (TV) ---
+  myListBtnTV: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    paddingVertical: 20,
+    paddingHorizontal: 40,
+    borderRadius: borderRadius.lg,
+    minHeight: 68,
+    minWidth: 200,
+  },
+  myListBtnActiveTV: {
+    backgroundColor: 'rgba(229,9,20,0.15)',
+    borderColor: colors.primary,
+  },
+  myListLabelTV: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
   },
 });

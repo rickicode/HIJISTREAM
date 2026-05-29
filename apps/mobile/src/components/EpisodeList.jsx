@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { Play } from 'lucide-react-native';
+import { Play, Clock } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 import { useTranslation } from '../i18n';
@@ -42,20 +42,35 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
       return (
         <TVFocusable
           onPress={() => onPlayEpisode(activeSeason, epNumber)}
-          style={styles.episodeRowTV}
+          style={styles.episodeCardTV}
           accessibilityLabel={`${epTitle} - Episode ${epNumber}`}
         >
-          <Text style={styles.episodeNumberTV}>{String(epNumber).padStart(2, '0')}</Text>
-          <View style={styles.episodeDetailsTV}>
-            <View style={styles.episodeTitleRow}>
-              <Text style={styles.episodeTitleTV} numberOfLines={1}>{epTitle}</Text>
-              {runtime && <Text style={styles.episodeRuntimeTV}>{runtime}</Text>}
+          <View style={styles.episodeCardLeftTV}>
+            <View style={styles.episodeNumberBadgeTV}>
+              <Text style={styles.episodeNumberTextTV}>
+                {String(epNumber).padStart(2, '0')}
+              </Text>
             </View>
-            {overview && (
-              <Text style={styles.episodeOverviewTV} numberOfLines={2}>{overview}</Text>
-            )}
+            <View style={styles.episodeContentTV}>
+              <Text style={styles.episodeTitleTV} numberOfLines={1}>
+                {epTitle}
+              </Text>
+              {overview && (
+                <Text style={styles.episodeOverviewTV} numberOfLines={2}>
+                  {overview}
+                </Text>
+              )}
+              {runtime && (
+                <View style={styles.episodeMetaRowTV}>
+                  <Clock color={colors.textMuted} size={14} />
+                  <Text style={styles.episodeRuntimeTV}>{runtime}</Text>
+                </View>
+              )}
+            </View>
           </View>
-          <Play color="#FFFFFF" size={20} fill="#FFFFFF" />
+          <View style={styles.episodePlayIndicatorTV}>
+            <Play color="#FFFFFF" size={22} fill="#FFFFFF" />
+          </View>
         </TVFocusable>
       );
     }
@@ -87,22 +102,26 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>{t('player.episodes')}</Text>
+    <View style={[styles.container, isTV && styles.containerTV]}>
+      <Text style={[styles.heading, isTV && styles.headingTV]}>
+        {t('player.episodes')}
+      </Text>
       {totalSeasons > 1 && (
-        <View style={styles.seasonRow}>
+        <View style={[styles.seasonRow, isTV && styles.seasonRowTV]}>
           {Array.from({ length: totalSeasons }).map((_, i) => (
             <TVFocusable
               key={i + 1}
               onPress={() => handleSeasonChange(i + 1)}
               style={[
                 styles.seasonButton,
+                isTV && styles.seasonButtonTV,
                 activeSeason === i + 1 && styles.seasonButtonActive,
               ]}
             >
               <Text
                 style={[
                   styles.seasonText,
+                  isTV && styles.seasonTextTV,
                   activeSeason === i + 1 && styles.seasonTextActive,
                 ]}
               >
@@ -122,6 +141,7 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
           }
           renderItem={renderEpisode}
           scrollEnabled={false}
+          contentContainerStyle={isTV ? styles.episodeListTV : undefined}
         />
       )}
     </View>
@@ -133,16 +153,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.lg,
   },
+  containerTV: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+  },
   heading: {
     color: colors.text,
     ...typography.title,
     marginBottom: spacing.md,
+  },
+  headingTV: {
+    fontSize: 26,
+    marginBottom: spacing.lg,
   },
   seasonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.md,
+  },
+  seasonRowTV: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   seasonButton: {
     paddingVertical: spacing.sm,
@@ -154,6 +186,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  seasonButtonTV: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minWidth: 120,
+    minHeight: 52,
+    borderRadius: borderRadius.lg,
+  },
   seasonButtonActive: {
     backgroundColor: colors.primary,
   },
@@ -162,9 +201,84 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '500',
   },
+  seasonTextTV: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
   seasonTextActive: {
     color: colors.text,
   },
+
+  // --- Episode List TV ---
+  episodeListTV: {
+    gap: spacing.sm,
+  },
+  episodeCardTV: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    minHeight: 88,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  episodeCardLeftTV: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  episodeNumberBadgeTV: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  episodeNumberTextTV: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  episodeContentTV: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  episodeTitleTV: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  episodeOverviewTV: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  episodeMetaRowTV: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  episodeRuntimeTV: {
+    color: colors.textMuted,
+    fontSize: 13,
+  },
+  episodePlayIndicatorTV: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(229,9,20,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.lg,
+  },
+
+  // --- Mobile Episode Row ---
   episodeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,39 +363,5 @@ const styles = StyleSheet.create({
     color: '#000000',
     ...typography.subtitle,
     fontWeight: '600',
-  },
-  episodeRowTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-    gap: spacing.lg,
-    minHeight: 72,
-  },
-  episodeNumberTV: {
-    color: colors.textMuted,
-    fontSize: 20,
-    fontWeight: '600',
-    width: 40,
-  },
-  episodeDetailsTV: {
-    flex: 1,
-  },
-  episodeTitleTV: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  episodeRuntimeTV: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  episodeOverviewTV: {
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: spacing.xs,
   },
 });
