@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { TouchableOpacity, Animated, StyleSheet, Platform, findNodeHandle } from 'react-native';
+import { Pressable, Animated, StyleSheet, Platform } from 'react-native';
 import { colors } from '../theme';
 import useIsTV from '../hooks/useIsTV';
 
@@ -9,9 +9,10 @@ import useIsTV from '../hooks/useIsTV';
  * Features:
  *  - Animated scale-up on focus (1.06 default, configurable).
  *  - High-contrast border ring + elevation when focused.
- *  - Supports nextFocusDown/Up/Left/Right refs for explicit focus routing.
+ *  - Supports nextFocusDown/Up/Left/Right for explicit focus routing.
  *  - Falls back to no-op on phones (focus events never fire on touch).
- *  - Uses `focusable={true}` to ensure Android TV focus engine can find it.
+ *  - Uses Pressable from react-native-tvos which natively supports
+ *    hasTVPreferredFocus and D-pad navigation props.
  */
 export default function TVFocusable({
   children,
@@ -34,7 +35,6 @@ export default function TVFocusable({
   const isTV = useIsTV();
   const [isFocused, setIsFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
-  const innerRef = useRef(null);
 
   useEffect(() => {
     Animated.spring(scale, {
@@ -57,13 +57,14 @@ export default function TVFocusable({
 
   const showRing = isTV && showFocusRing && isFocused;
 
-  // Build nextFocus props for explicit D-pad routing
-  const focusProps = {};
+  // Build TV-specific focus routing props
+  const tvProps = {};
   if (isTV) {
-    if (nextFocusDown != null) focusProps.nextFocusDown = findNodeHandle(nextFocusDown);
-    if (nextFocusUp != null) focusProps.nextFocusUp = findNodeHandle(nextFocusUp);
-    if (nextFocusLeft != null) focusProps.nextFocusLeft = findNodeHandle(nextFocusLeft);
-    if (nextFocusRight != null) focusProps.nextFocusRight = findNodeHandle(nextFocusRight);
+    tvProps.hasTVPreferredFocus = hasTVPreferredFocus;
+    if (nextFocusDown != null) tvProps.nextFocusDown = nextFocusDown;
+    if (nextFocusUp != null) tvProps.nextFocusUp = nextFocusUp;
+    if (nextFocusLeft != null) tvProps.nextFocusLeft = nextFocusLeft;
+    if (nextFocusRight != null) tvProps.nextFocusRight = nextFocusRight;
   }
 
   return (
@@ -75,22 +76,19 @@ export default function TVFocusable({
         showRing && Platform.OS === 'android' ? { elevation: 16 } : null,
       ]}
     >
-      <TouchableOpacity
-        ref={innerRef}
+      <Pressable
         onPress={onPress}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        hasTVPreferredFocus={hasTVPreferredFocus}
-        activeOpacity={isTV ? 1 : 0.85}
         disabled={disabled}
         focusable={!disabled}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
         style={[styles.inner, style, isFocused && focusStyle]}
-        {...focusProps}
+        {...tvProps}
       >
         {children}
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 }

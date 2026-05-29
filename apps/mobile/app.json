@@ -28,7 +28,8 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/withAndroidTV.js"
+      "./plugins/withAndroidTV.js",
+      ["@react-native-tvos/config-tv", { "isTV": true }]
     ],
     "experiments": {
       "typedRoutes": true
