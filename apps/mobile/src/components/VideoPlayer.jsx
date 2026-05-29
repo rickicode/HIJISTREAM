@@ -1,13 +1,63 @@
 import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Modal, ScrollView, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { Play, Pause, SkipBack, SkipForward, Captions, ArrowLeft } from 'lucide-react-native';
+import { Play, Pause, SkipBack, SkipForward, Captions, ArrowLeft, Settings, Check } from 'lucide-react-native';
 import { saveWatchProgress } from '../utils/player';
 import TVFocusable from './TVFocusable';
 import useIsTV, { isTV } from '../hooks/useIsTV';
-import { colors, spacing } from '../theme';
+import { colors, spacing, borderRadius } from '../theme';
 
 const TV_CONTROLS_HIDE_DELAY = 6000;
+
+const SUBTITLE_LANGUAGES = [
+  { code: '', label: 'Off' },
+  { code: 'eng', label: 'English' },
+  { code: 'ind', label: 'Indonesian' },
+  { code: 'ara', label: 'Arabic' },
+  { code: 'chi', label: 'Chinese' },
+  { code: 'dut', label: 'Dutch' },
+  { code: 'fre', label: 'French' },
+  { code: 'ger', label: 'German' },
+  { code: 'hin', label: 'Hindi' },
+  { code: 'ita', label: 'Italian' },
+  { code: 'jpn', label: 'Japanese' },
+  { code: 'kor', label: 'Korean' },
+  { code: 'may', label: 'Malay' },
+  { code: 'por', label: 'Portuguese' },
+  { code: 'pob', label: 'Portuguese-BR' },
+  { code: 'rus', label: 'Russian' },
+  { code: 'spa', label: 'Spanish' },
+  { code: 'tha', label: 'Thai' },
+  { code: 'tur', label: 'Turkish' },
+  { code: 'vie', label: 'Vietnamese' },
+];
+
+const PLAYBACK_SPEEDS = [
+  { value: 0.5, label: '0.5x' },
+  { value: 0.75, label: '0.75x' },
+  { value: 1, label: '1x (Normal)' },
+  { value: 1.25, label: '1.25x' },
+  { value: 1.5, label: '1.5x' },
+  { value: 2, label: '2x' },
+];
+
+/**
+ * Build the player URL with an optional ds_lang parameter for subtitles.
+ * If langCode is empty or null, ds_lang is removed from the URL.
+ */
+function buildUrlWithSubtitle(baseUrl, langCode) {
+  try {
+    const url = new URL(baseUrl);
+    if (langCode) {
+      url.searchParams.set('ds_lang', langCode);
+    } else {
+      url.searchParams.delete('ds_lang');
+    }
+    return url.toString();
+  } catch {
+    return baseUrl;
+  }
+}
 
 export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {} }) {
   const lastSaveRef = useRef(0);
@@ -16,6 +66,16 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
   const isTVDevice = useIsTV();
   const [showTVControls, setShowTVControls] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [showSubtitleModal, setShowSubtitleModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [selectedSubtitle, setSelectedSubtitle] = useState('');
+  const [selectedSpeed, setSelectedSpeed] = useState(1);
+  const [currentUrl, setCurrentUrl] = useState(embedUrl);
+
+  // Update internal URL when embedUrl prop changes
+  useEffect(() => {
+    setCurrentUrl(embedUrl);
+  }, [embedUrl]);
 
   // Auto-hide timer logic for TV controls
   const resetHideTimer = useCallback(() => {
@@ -53,7 +113,6 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
       (function() {
         var iframe = document.getElementById('pf');
         if (iframe) {
-          iframe.focus();
           iframe.contentWindow.postMessage({type:'PLAYER_COMMAND', action:'togglePlay'}, '*');
         }
         var evt = new KeyboardEvent('keydown', {key: ' ', code: 'Space', keyCode: 32, bubbles: true});
@@ -66,10 +125,6 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
     resetHideTimer();
     injectCommand(`
       (function() {
-        var iframe = document.getElementById('pf');
-        if (iframe) {
-          iframe.focus();
-        }
         var evt = new KeyboardEvent('keydown', {key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37, bubbles: true});
         document.dispatchEvent(evt);
       })(); true;
@@ -80,32 +135,48 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
     resetHideTimer();
     injectCommand(`
       (function() {
-        var iframe = document.getElementById('pf');
-        if (iframe) {
-          iframe.focus();
-        }
         var evt = new KeyboardEvent('keydown', {key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, bubbles: true});
         document.dispatchEvent(evt);
       })(); true;
     `);
   }, [injectCommand, resetHideTimer]);
 
-  const handleToggleCC = useCallback(() => {
+  // Open native subtitle selection modal
+  const handleOpenSubtitles = useCallback(() => {
     resetHideTimer();
-    // Hide native overlay so user can interact with the WebView CC menu directly
-    setShowTVControls(false);
+    setShowSubtitleModal(true);
+  }, [resetHideTimer]);
+
+  // Open native settings/speed modal
+  const handleOpenSettings = useCallback(() => {
+    resetHideTimer();
+    setShowSettingsModal(true);
+  }, [resetHideTimer]);
+
+  // Handle subtitle language selection - rebuild URL with ds_lang param
+  const handleSelectSubtitle = useCallback((langCode) => {
+    setSelectedSubtitle(langCode);
+    setShowSubtitleModal(false);
+    const newUrl = buildUrlWithSubtitle(embedUrl, langCode);
+    setCurrentUrl(newUrl);
+    resetHideTimer();
+  }, [embedUrl, resetHideTimer]);
+
+  // Handle playback speed selection - inject postMessage to inner player
+  const handleSelectSpeed = useCallback((speed) => {
+    setSelectedSpeed(speed);
+    setShowSettingsModal(false);
     injectCommand(`
       (function() {
         var iframe = document.getElementById('pf');
         if (iframe) {
-          iframe.focus();
-          iframe.contentWindow.postMessage({type:'PLAYER_COMMAND', action:'toggleCC'}, '*');
-          iframe.contentWindow.postMessage({type:'UI_ACTION', target:'ccBtn', action:'click'}, '*');
-          // Notify parent that menu is now open (pause mouse simulation)
-          window.postMessage({type:'MENU_STATE', open:true}, '*');
+          iframe.contentWindow.postMessage({type:'PLAYER_COMMAND', action:'setSpeed', value: ${speed}}, '*');
         }
+        // Also try dispatching on the document for the outer frame
+        document.dispatchEvent(new CustomEvent('setPlaybackRate', {detail: ${speed}}));
       })(); true;
     `);
+    resetHideTimer();
   }, [injectCommand, resetHideTimer]);
 
   const handleBack = useCallback(() => {
@@ -187,7 +258,7 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
         }, 500);
 
         ${isTV ? `
-        // TV-specific: ensure player controls work with remote
+        // TV-specific: ensure iframe fills the screen, hide ad overlays
         (function() {
           var iframe = document.getElementById('pf');
           if (!iframe) return;
@@ -199,39 +270,6 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
             'body > *:not(iframe):not(script):not(style) { display: none !important; }',
           ].join('\\n');
           document.head.appendChild(style);
-
-          // Focus the iframe so it receives keyboard events from the remote
-          iframe.focus();
-
-          // Track if a menu is open (CC/Settings) - pause mouse sim when open
-          var menuOpen = false;
-          window.addEventListener('message', function(ev) {
-            if (ev.data && ev.data.type === 'MENU_STATE') {
-              menuOpen = ev.data.open;
-            }
-          });
-
-          // Periodically simulate mouse movement on the iframe
-          // This keeps the inner player's controls visible (only when no menu open)
-          setInterval(function() {
-            if (menuOpen) return;
-            try {
-              var rect = iframe.getBoundingClientRect();
-              var moveEvt = new MouseEvent('mousemove', {
-                clientX: rect.width / 2,
-                clientY: rect.height - 60,
-                bubbles: true,
-                cancelable: true
-              });
-              document.dispatchEvent(moveEvt);
-              iframe.dispatchEvent(moveEvt);
-            } catch(err) {}
-          }, 4000);
-
-          // Re-focus iframe on any interaction
-          document.addEventListener('focus', function() {
-            setTimeout(function() { if (iframe) iframe.focus(); }, 50);
-          }, true);
 
           // Forward key events to the iframe via postMessage
           document.addEventListener('keydown', function(e) {
@@ -245,19 +283,6 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
                 }, '*');
               } catch(err) {}
             }
-
-            // Simulate mouse movement on key press to show controls (only if no menu)
-            if (!menuOpen) {
-              try {
-                var rect = iframe.getBoundingClientRect();
-                var moveEvt = new MouseEvent('mousemove', {
-                  clientX: rect.width / 2,
-                  clientY: rect.height - 60,
-                  bubbles: true
-                });
-                iframe.dispatchEvent(moveEvt);
-              } catch(err) {}
-            }
           });
         })();
         ` : ''}
@@ -269,14 +294,7 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
   const handleShouldStartLoad = useCallback((request) => {
     const url = request.url || '';
-    // Allow the embed player and all domains required for it to function:
-    // - vaplayer.ru: outer embed page
-    // - brightpathsignals.com: inner player iframe
-    // - streamdata.vaplayer.ru: video stream API (HLS manifest + segments)
-    // - cdn.jsdelivr.net: HLS.js, disable-devtool
-    // - code.jquery.com: jQuery (player dependency)
-    // - cdnjs.cloudflare.com: pako.js (subtitle decompression)
-    // - www.gstatic.com: Chromecast sender SDK
+    // Allow the embed player and all domains required for it to function
     if (
       url.startsWith('https://vaplayer.ru') ||
       url.startsWith('https://brightpathsignals.com') ||
@@ -336,7 +354,7 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
-        source={{ uri: embedUrl }}
+        source={{ uri: currentUrl }}
         style={styles.webview}
         javaScriptEnabled={true}
         mediaPlaybackRequiresUserAction={false}
@@ -408,12 +426,21 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
             </TVFocusable>
 
             <TVFocusable
-              onPress={handleToggleCC}
+              onPress={handleOpenSubtitles}
               onFocus={handleOverlayFocus}
               style={styles.tvButton}
-              accessibilityLabel="Toggle subtitles"
+              accessibilityLabel="Subtitles"
             >
               <Captions color="#FFFFFF" size={28} />
+            </TVFocusable>
+
+            <TVFocusable
+              onPress={handleOpenSettings}
+              onFocus={handleOverlayFocus}
+              style={styles.tvButton}
+              accessibilityLabel="Settings"
+            >
+              <Settings color="#FFFFFF" size={28} />
             </TVFocusable>
           </View>
         </View>
@@ -433,6 +460,100 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
           </TVFocusable>
         </View>
       )}
+
+      {/* Native Subtitle Selection Modal */}
+      <Modal
+        visible={showSubtitleModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSubtitleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Subtitles</Text>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+              {SUBTITLE_LANGUAGES.map((lang, index) => (
+                <TVFocusable
+                  key={lang.code || 'off'}
+                  onPress={() => handleSelectSubtitle(lang.code)}
+                  style={[
+                    styles.modalItem,
+                    selectedSubtitle === lang.code && styles.modalItemActive,
+                  ]}
+                  hasTVPreferredFocus={index === 0}
+                  accessibilityLabel={lang.label}
+                >
+                  <Text
+                    style={[
+                      styles.modalItemText,
+                      selectedSubtitle === lang.code && styles.modalItemTextActive,
+                    ]}
+                  >
+                    {lang.label}
+                  </Text>
+                  {selectedSubtitle === lang.code && (
+                    <Check color={colors.primary} size={20} />
+                  )}
+                </TVFocusable>
+              ))}
+            </ScrollView>
+            <TVFocusable
+              onPress={() => setShowSubtitleModal(false)}
+              style={styles.modalCloseButton}
+              accessibilityLabel="Close subtitle menu"
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TVFocusable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Native Settings/Speed Modal */}
+      <Modal
+        visible={showSettingsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Playback Speed</Text>
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
+              {PLAYBACK_SPEEDS.map((speed, index) => (
+                <TVFocusable
+                  key={speed.value}
+                  onPress={() => handleSelectSpeed(speed.value)}
+                  style={[
+                    styles.modalItem,
+                    selectedSpeed === speed.value && styles.modalItemActive,
+                  ]}
+                  hasTVPreferredFocus={index === 0}
+                  accessibilityLabel={speed.label}
+                >
+                  <Text
+                    style={[
+                      styles.modalItemText,
+                      selectedSpeed === speed.value && styles.modalItemTextActive,
+                    ]}
+                  >
+                    {speed.label}
+                  </Text>
+                  {selectedSpeed === speed.value && (
+                    <Check color={colors.primary} size={20} />
+                  )}
+                </TVFocusable>
+              ))}
+            </ScrollView>
+            <TVFocusable
+              onPress={() => setShowSettingsModal(false)}
+              style={styles.modalCloseButton}
+              accessibilityLabel="Close settings menu"
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TVFocusable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -506,5 +627,70 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     opacity: 0,
+  },
+  // Modal styles for subtitle and settings selection
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: 400,
+    maxHeight: '80%',
+    backgroundColor: colors.backgroundElevated,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  modalScroll: {
+    maxHeight: 400,
+  },
+  modalScrollContent: {
+    gap: spacing.xs,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  modalItemActive: {
+    backgroundColor: 'rgba(229,9,20,0.15)',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  modalItemText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  modalItemTextActive: {
+    color: colors.text,
+    fontWeight: '700',
+  },
+  modalCloseButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
