@@ -152,16 +152,44 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
         window.addEventListener('message', function(event) {
           if (window.ReactNativeWebView && event.data) {
-            window.ReactNativeWebView.postMessage(
-              typeof event.data === 'string' ? event.data : JSON.stringify(event.data)
-            );
+            try {
+              var msg = typeof event.data === 'string' ? event.data : JSON.stringify(event.data);
+              window.ReactNativeWebView.postMessage(msg);
+            } catch(e) {}
           }
         });
 
         ${isTV ? `
-        // TV-specific: ensure iframe gets keyboard focus and forward key events
+        // TV-specific: inject CSS to force player controls to always be visible on TV
         (function() {
+          var style = document.createElement('style');
+          style.textContent = [
+            // Force any common player control bar to stay visible
+            '.jw-controls, .plyr__controls, .vjs-control-bar, .player-controls, .controls-wrapper, [class*="controls"]  { opacity: 1 !important; visibility: visible !important; display: flex !important; }',
+            // Hide any overlay ads or click-catchers
+            '.overlay-ad, .ad-overlay, [class*="ad-overlay"], [class*="popup"] { display: none !important; }',
+          ].join('\\n');
+          document.head.appendChild(style);
+
           var iframe = document.getElementById('pf');
+
+          // Periodically simulate mouse activity to keep player controls visible
+          var keepAliveInterval = setInterval(function() {
+            if (iframe) {
+              try {
+                var rect = iframe.getBoundingClientRect();
+                var moveEvt = new MouseEvent('mousemove', {
+                  clientX: rect.width / 2,
+                  clientY: rect.height - 50,
+                  bubbles: true,
+                  cancelable: true
+                });
+                iframe.dispatchEvent(moveEvt);
+                document.dispatchEvent(moveEvt);
+              } catch(err) {}
+            }
+          }, 3000);
+
           if (iframe) {
             iframe.focus();
             // Re-focus iframe whenever document gets focus
@@ -174,12 +202,6 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
           // Listen for key events from Android TV remote (forwarded by WebView)
           document.addEventListener('keydown', function(e) {
-            // D-pad center = Enter (keyCode 13) or Space (keyCode 32) -> toggle play
-            // D-pad left = ArrowLeft (keyCode 37) -> seek back
-            // D-pad right = ArrowRight (keyCode 39) -> seek forward
-            // These will propagate to the focused iframe naturally
-
-            // Forward key events to the inner iframe via postMessage
             if (iframe && iframe.contentWindow) {
               try {
                 iframe.contentWindow.postMessage({type:'KEY_EVENT', key: e.key, keyCode: e.keyCode}, '*');
@@ -192,8 +214,9 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
                 var rect = iframe.getBoundingClientRect();
                 var moveEvt = new MouseEvent('mousemove', {
                   clientX: rect.width / 2,
-                  clientY: rect.height / 2,
-                  bubbles: true
+                  clientY: rect.height - 50,
+                  bubbles: true,
+                  cancelable: true
                 });
                 iframe.dispatchEvent(moveEvt);
               } catch(err) {}
@@ -224,6 +247,13 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
         if (data.type === 'PLAYER_EVENT' && data.data) {
           const { player_status, player_progress, player_duration } = data.data;
+
+          // Sync overlay play/pause state with actual player
+          if (player_status === 'playing') {
+            setIsPlaying(true);
+          } else if (player_status === 'paused') {
+            setIsPlaying(false);
+          }
 
           if (player_status === 'playing' || player_status === 'paused') {
             const now = Date.now();
@@ -342,7 +372,7 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
             onFocus={handleOverlayFocus}
             onPress={handleOverlayFocus}
             style={styles.tvFocusTriggerButton}
-            hasTVPreferredFocus={true}
+            hasTVPreferredFocus={false}
             accessibilityLabel="Show player controls"
           >
             <View />

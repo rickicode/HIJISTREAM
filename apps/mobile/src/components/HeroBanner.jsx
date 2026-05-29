@@ -212,6 +212,7 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
   const resumeTimeout = useRef(null);
 
   const backdropHeight = isTV ? Math.round(height * 0.72) : Math.round(height * 0.56);
+  const activeIndexRef = useRef(0);
 
   // Auto-advance every 8 seconds
   useEffect(() => {
@@ -220,11 +221,10 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
     const startTimer = () => {
       autoScrollTimer.current = setInterval(() => {
         if (isPaused.current) return;
-        setActiveIndex((prev) => {
-          const next = (prev + 1) % heroItems.length;
-          flatListRef.current?.scrollToIndex({ index: next, animated: true });
-          return next;
-        });
+        const next = (activeIndexRef.current + 1) % heroItems.length;
+        activeIndexRef.current = next;
+        setActiveIndex(next);
+        flatListRef.current?.scrollToIndex({ index: next, animated: true });
       }, 8000);
     };
 
@@ -247,6 +247,7 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
   // Track page changes via onMomentumScrollEnd
   const onMomentumScrollEnd = useCallback((e) => {
     const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+    activeIndexRef.current = newIndex;
     setActiveIndex(newIndex);
   }, [width]);
 
@@ -288,6 +289,7 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
         data={heroItems}
         horizontal
         pagingEnabled
+        scrollEnabled={!isTV}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(slideItem) => String(slideItem.id || slideItem.tmdb_id)}
         renderItem={renderSlide}
