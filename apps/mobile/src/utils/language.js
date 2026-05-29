@@ -20,6 +20,9 @@ export function getApiLanguageParam(langCode) {
 }
 
 export async function getDsLang() {
-  const lang = await getCurrentLanguage();
-  return lang === 'en' ? null : lang;
+  // Always return the user's selected locale (ISO 639-1) so the embed
+  // player can preselect subtitle language and auto-search OpenSubtitles
+  // for matching subs. Returning null for English would skip the param
+  // entirely, leaving the player without a language preference.
+  return await getCurrentLanguage();
 }

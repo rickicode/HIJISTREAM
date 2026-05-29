@@ -1,7 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Heart } from 'lucide-react-native';
 import { useTranslation } from '../../i18n';
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
 import { useMyListItems } from '../../hooks/useMyList';
 import ContentGrid from '../../components/ContentGrid';
 
@@ -9,19 +8,23 @@ export default function MyListScreen() {
   const { t } = useTranslation();
   const { items, loading } = useMyListItems();
 
-  if (!loading && items.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Heart color={colors.textMuted} size={64} />
-        <Text style={styles.title}>{t('nav.myList')}</Text>
-        <Text style={styles.subtitle}>{t('myList.emptyState')}</Text>
+  // Compact empty state — no large icon/title block. Keeps the screen
+  // visually consistent with the other list/grid views (genre, browse,
+  // /list/[type]) which simply render a grid.
+  const emptyState =
+    !loading && items.length === 0 ? (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyText}>{t('myList.emptyState')}</Text>
       </View>
-    );
-  }
+    ) : null;
 
   return (
     <View style={styles.container}>
-      <ContentGrid items={items} isLoading={loading} />
+      <ContentGrid
+        items={items}
+        isLoading={loading}
+        ListEmptyComponent={emptyState}
+      />
     </View>
   );
 }
@@ -31,22 +34,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  emptyContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
+  emptyState: {
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-    gap: spacing.sm,
   },
-  title: {
-    color: colors.text,
-    ...typography.title,
-    marginTop: spacing.md,
-  },
-  subtitle: {
+  emptyText: {
     color: colors.textMuted,
-    ...typography.body,
+    fontSize: 14,
     textAlign: 'center',
   },
 });

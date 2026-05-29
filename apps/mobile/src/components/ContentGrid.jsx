@@ -20,6 +20,7 @@ export default function ContentGrid({
   onRetry,
   onEndReached,
   ListHeaderComponent,
+  ListEmptyComponent,
 }) {
   const { width } = useWindowDimensions();
   const numColumns = getNumColumns(width);
@@ -43,11 +44,12 @@ export default function ContentGrid({
       renderItem={({ item }) => (
         <ContentCard item={item} type={type} watchProgress={item.watchProgress} />
       )}
-      columnWrapperStyle={styles.row}
+      columnWrapperStyle={validItems.length > 0 ? styles.row : undefined}
       contentContainerStyle={styles.container}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       ListHeaderComponent={ListHeaderComponent}
+      ListEmptyComponent={ListEmptyComponent}
     />
   );
 }

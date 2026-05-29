@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { useTranslation } from '../../i18n';
 import { colors, spacing } from '../../theme';
-import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
 import ContentCard from '../../components/ContentCard';
 import LoadingState from '../../components/LoadingState';
@@ -57,8 +56,7 @@ export default function MovieDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <PlayerBox item={movie} onPlay={handlePlay} />
-      <DetailHero item={movie} type="movie" />
+      <DetailHero item={movie} type="movie" onPlay={handlePlay} />
       {recommendedItems.length > 0 && (
         <View style={styles.recommendSection}>
           <Text style={styles.recommendTitle}>
