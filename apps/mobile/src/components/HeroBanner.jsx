@@ -105,25 +105,44 @@ export default function HeroBanner({ item, type = 'movie', hasTVPreferredFocus =
               style={[styles.playButton, isTV ? styles.playButtonTV : styles.playButtonMobile]}
               accessibilityLabel={t('common.play')}
             >
-              <Play color="#000000" size={isTV ? 24 : 18} fill="#000000" />
+              <Play color="#000000" size={isTV ? 24 : 20} fill="#000000" />
               <Text style={[styles.playText, isTV && styles.playTextTV]}>
                 {t('common.play')}
               </Text>
             </TVFocusable>
-            <TVFocusable
-              onPress={toggleList}
-              style={[styles.listButton, isTV ? styles.listButtonTV : styles.listButtonMobile]}
-              accessibilityLabel={t('common.myList')}
-            >
-              {inList ? (
-                <Check color={colors.text} size={isTV ? 24 : 18} strokeWidth={3} />
-              ) : (
-                <Plus color={colors.text} size={isTV ? 24 : 18} />
-              )}
-              <Text style={[styles.listText, isTV && styles.listTextTV]}>
-                {t('common.myList')}
-              </Text>
-            </TVFocusable>
+
+            {isTV ? (
+              <TVFocusable
+                onPress={toggleList}
+                style={[styles.listButton, styles.listButtonTV]}
+                accessibilityLabel={t('common.myList')}
+              >
+                {inList ? (
+                  <Check color={colors.text} size={24} strokeWidth={3} />
+                ) : (
+                  <Plus color={colors.text} size={24} />
+                )}
+                <Text style={[styles.listText, styles.listTextTV]}>
+                  {t('common.myList')}
+                </Text>
+              </TVFocusable>
+            ) : (
+              // Mobile: a compact circular toggle keeps Play as the dominant
+              // CTA and reads as a real streaming app (Prime/Disney+ pattern)
+              // instead of two competing flat blocks.
+              <TVFocusable
+                onPress={toggleList}
+                style={[styles.iconButtonMobile, inList && styles.iconButtonMobileActive]}
+                focusScale={1.02}
+                accessibilityLabel={t('common.myList')}
+              >
+                {inList ? (
+                  <Check color={colors.primary} size={24} strokeWidth={2.8} />
+                ) : (
+                  <Plus color={colors.text} size={24} strokeWidth={2.6} />
+                )}
+              </TVFocusable>
+            )}
           </View>
         </View>
       </ImageBackground>
@@ -235,6 +254,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
   },
   buttonRowTV: {
@@ -247,14 +267,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.text,
-    borderRadius: borderRadius.md,
   },
-  // Mobile: stretch each button to share the row evenly so they read as a
-  // balanced pair edge-to-edge within the content's horizontal padding.
+  // Mobile: Play is the dominant primary CTA. It fills the remaining row
+  // width, sits a bit taller, has rounded corners and a soft shadow so it
+  // reads as a real button rather than a flat slab.
   playButtonMobile: {
     flex: 1,
-    paddingVertical: spacing.md,
-    minHeight: 48,
+    paddingVertical: 14,
+    minHeight: 52,
+    borderRadius: borderRadius.lg,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 5,
   },
   playButtonTV: {
     paddingVertical: spacing.md,
@@ -266,12 +292,28 @@ const styles = StyleSheet.create({
   },
   playText: {
     color: '#000000',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   playTextTV: {
     fontSize: 20,
     fontWeight: '700',
+  },
+  // Mobile circular My List toggle.
+  iconButtonMobile: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.45)',
+  },
+  iconButtonMobileActive: {
+    backgroundColor: 'rgba(229,9,20,0.18)',
+    borderColor: colors.primary,
   },
   listButton: {
     flexDirection: 'row',
@@ -282,11 +324,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.4)',
     borderRadius: borderRadius.md,
-  },
-  listButtonMobile: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    minHeight: 48,
   },
   listButtonTV: {
     paddingVertical: spacing.md,
