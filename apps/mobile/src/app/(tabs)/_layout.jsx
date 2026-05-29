@@ -55,7 +55,7 @@ function makeTabLabel(label) {
  * navigator's internal state. Navigation uses `router.push` against the
  * (tabs) route group so route persistence behaves the same as on phone.
  */
-function TVTopNav({ items, onOpenSearch, onOpenLanguage }) {
+function TVTopNav({ items, onOpenSearch }) {
   const router = useRouter();
   const segments = useSegments();
   // Layout segments look like ['(tabs)', 'home']; pick the second segment.
@@ -98,13 +98,6 @@ function TVTopNav({ items, onOpenSearch, onOpenLanguage }) {
           accessibilityLabel="Search"
         >
           <Search color="#FFFFFF" size={26} />
-        </TVFocusable>
-        <TVFocusable
-          onPress={onOpenLanguage}
-          style={tvNavStyles.actionButton}
-          accessibilityLabel="Language"
-        >
-          <Globe color="#FFFFFF" size={26} />
         </TVFocusable>
       </View>
     </View>
@@ -180,7 +173,6 @@ export default function TabLayout() {
           <TVTopNav
             items={tvNavItems}
             onOpenSearch={() => router.push('/search')}
-            onOpenLanguage={() => setLangModalVisible(true)}
           />
         )}
         <View style={styles.body}>

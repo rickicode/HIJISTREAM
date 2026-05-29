@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { saveWatchProgress } from '../utils/player';
 
-export default function VideoPlayer({ embedUrl, contentId, metadata = {} }) {
+export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {} }) {
   const lastSaveRef = useRef(0);
 
   const injectedJavaScript = useMemo(
@@ -103,6 +103,7 @@ export default function VideoPlayer({ embedUrl, contentId, metadata = {} }) {
         javaScriptEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        allowsFullscreenVideo={true}
         setSupportMultipleWindows={false}
         javaScriptCanOpenWindowsAutomatically={false}
         onShouldStartLoadWithRequest={handleShouldStartLoad}
@@ -116,10 +117,14 @@ export default function VideoPlayer({ embedUrl, contentId, metadata = {} }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#000000',
   },
   webview: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: '#000000',
   },
 });

@@ -4,9 +4,11 @@ import { Play } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '../theme';
 import TVFocusable from './TVFocusable';
 import { useTranslation } from '../i18n';
+import useIsTV from '../hooks/useIsTV';
 
 export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, onPlayEpisode, onSeasonChange }) {
   const { t } = useTranslation();
+  const isTV = useIsTV();
   const totalSeasons = typeof seasons === 'number' ? seasons : 1;
   const [activeSeason, setActiveSeason] = useState(1);
 
@@ -35,6 +37,28 @@ export default function EpisodeList({ episodes, seasons = 1, tmdbId: _tmdbId, on
     const epTitle = ep.name || ep.title || `Episode ${epNumber}`;
     const runtime = ep.runtime ? `${ep.runtime}m` : null;
     const overview = ep.overview || null;
+
+    if (isTV) {
+      return (
+        <TVFocusable
+          onPress={() => onPlayEpisode(activeSeason, epNumber)}
+          style={styles.episodeRowTV}
+          accessibilityLabel={`${epTitle} - Episode ${epNumber}`}
+        >
+          <Text style={styles.episodeNumberTV}>{String(epNumber).padStart(2, '0')}</Text>
+          <View style={styles.episodeDetailsTV}>
+            <View style={styles.episodeTitleRow}>
+              <Text style={styles.episodeTitleTV} numberOfLines={1}>{epTitle}</Text>
+              {runtime && <Text style={styles.episodeRuntimeTV}>{runtime}</Text>}
+            </View>
+            {overview && (
+              <Text style={styles.episodeOverviewTV} numberOfLines={2}>{overview}</Text>
+            )}
+          </View>
+          <Play color="#FFFFFF" size={20} fill="#FFFFFF" />
+        </TVFocusable>
+      );
+    }
 
     return (
       <View style={styles.episodeRow}>
@@ -225,5 +249,39 @@ const styles = StyleSheet.create({
     color: '#000000',
     ...typography.subtitle,
     fontWeight: '600',
+  },
+  episodeRowTV: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    gap: spacing.lg,
+    minHeight: 72,
+  },
+  episodeNumberTV: {
+    color: colors.textMuted,
+    fontSize: 20,
+    fontWeight: '600',
+    width: 40,
+  },
+  episodeDetailsTV: {
+    flex: 1,
+  },
+  episodeTitleTV: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  episodeRuntimeTV: {
+    color: colors.textMuted,
+    fontSize: 14,
+  },
+  episodeOverviewTV: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginTop: spacing.xs,
   },
 });

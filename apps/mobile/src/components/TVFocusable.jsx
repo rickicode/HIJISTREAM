@@ -47,7 +47,7 @@ export default function TVFocusable({
         styles.wrapper,
         showRing && styles.ringWrapper,
         { transform: [{ scale }] },
-        showRing && Platform.OS === 'android' ? { elevation: 12 } : null,
+        showRing && Platform.OS === 'android' ? { elevation: 16 } : null,
       ]}
     >
       <TouchableOpacity
@@ -75,14 +75,11 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   ringWrapper: {
-    // Drawn AROUND the child. Uses a thick high-contrast border + shadow
+    // Drawn AROUND the child. Uses a thick high-contrast border + elevation
     // so it's readable from 3 meters away on a 1080p TV.
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 16,
+    borderWidth: 4,
+    borderColor: colors.primary,
+    elevation: 16,
   },
   inner: {
     minWidth: 48,

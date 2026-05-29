@@ -3,6 +3,7 @@ import { colors, spacing } from '../theme';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';
+import useIsTV from '../hooks/useIsTV';
 
 function getNumColumns(width) {
   if (width < 600) return 2;
@@ -24,6 +25,7 @@ export default function ContentGrid({
 }) {
   const { width } = useWindowDimensions();
   const numColumns = getNumColumns(width);
+  const isTV = useIsTV();
 
   if (isLoading && (!items || items.length === 0)) {
     return <LoadingState type="grid" />;
@@ -41,11 +43,11 @@ export default function ContentGrid({
       numColumns={numColumns}
       key={`grid-${numColumns}`}
       keyExtractor={(item) => String(item.id || item.tmdb_id)}
-      renderItem={({ item }) => (
-        <ContentCard item={item} type={type} watchProgress={item.watchProgress} />
+      renderItem={({ item, index }) => (
+        <ContentCard item={item} type={type} watchProgress={item.watchProgress} hasTVPreferredFocus={isTV && index === 0} />
       )}
       columnWrapperStyle={validItems.length > 0 ? styles.row : undefined}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, isTV && styles.containerTV]}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       ListHeaderComponent={ListHeaderComponent}
@@ -58,6 +60,9 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
     backgroundColor: colors.background,
+  },
+  containerTV: {
+    padding: spacing.xxl,
   },
   row: {
     gap: spacing.md,
