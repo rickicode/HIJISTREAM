@@ -27,5 +27,5 @@
     "Verify useIsTV is imported in DetailHero.jsx and EpisodeList.jsx"
   ],
   "blocked_reason": null,
-  "findings": "All 8 steps implemented successfully. Build verified via expo export --platform android. ESLint passes with no errors. Globe import kept in _layout.jsx since it is still used by the mobile headerRight section. ContentRail step 5 required no changes as gap was already spacing.md on TV."
+  "findings": "All 8 steps implemented successfully. Build verified via expo export --platform android. ESLint passes with no errors. Globe import kept in _layout.jsx since it is still used by the mobile headerRight section. ContentRail step 5 required no changes as gap was already spacing.md on TV. REVIEW FIX: Removed iOS-only shadow styles (shadowOpacity, shadowRadius, shadowOffset) from TVFocusable ringWrapper since they are dead code on Android. Increased elevation from 12 to 16 for better focus ring visibility. Fixed focus seeding so Continue Watching rail gets hasTVPreferredFocus when present, and trending movies only gets it when Continue Watching is empty."
 }

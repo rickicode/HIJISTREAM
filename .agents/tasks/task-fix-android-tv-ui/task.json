@@ -1,0 +1,14 @@
+{
+  "task_id": "task-fix-android-tv-ui",
+  "task_description": "Fix Android TV UI: make player visible and fullscreen, add TV player controls overlay, fix button spacing in DetailHero, remove redundant language button from top nav, and ensure full D-pad remote navigation works across all screens with clear focus indicators.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "All 8 modified JSX files pass Babel parsing with the React Native preset. No syntax errors. Key changes verified: Globe button removed from TV nav, useIsTV imported in all relevant files, TVFocusable focus ring updated to borderWidth:4 with primary color, player has fullscreen WebView with TV overlay controls."
+  }
+}
