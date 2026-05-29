@@ -77,12 +77,12 @@ const styles = StyleSheet.create({
   ringWrapper: {
     // Drawn AROUND the child. Uses a thick high-contrast border + shadow
     // so it's readable from 3 meters away on a 1080p TV.
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+    borderWidth: 4,
+    borderColor: colors.primary,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 16,
+    shadowOpacity: 1,
+    shadowRadius: 20,
   },
   inner: {
     minWidth: 48,

@@ -8,10 +8,12 @@ import { useTranslation } from '../../i18n';
 import { colors } from '../../theme';
 import HeroBanner from '../../components/HeroBanner';
 import ContentRail from '../../components/ContentRail';
+import useIsTV from '../../hooks/useIsTV';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t, locale } = useTranslation();
+  const isTV = useIsTV();
   const [watchProgress, setWatchProgress] = useState([]);
 
   const loadProgress = useCallback(async () => {
@@ -98,6 +100,7 @@ export default function HomeScreen() {
           type="movie"
           isLoading={moviesLoading}
           onSeeAll={() => goToList('trending-movies')}
+          hasTVPreferredFocus={isTV}
         />
       );
     }

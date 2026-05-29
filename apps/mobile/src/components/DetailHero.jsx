@@ -5,12 +5,14 @@ import { colors, spacing, borderRadius, typography } from '../theme';
 import { useTranslation } from '../i18n';
 import TVFocusable from './TVFocusable';
 import useMyList from '../hooks/useMyList';
+import useIsTV from '../hooks/useIsTV';
 import { findGenreId } from '../utils/genres';
 
 export default function DetailHero({ item, type = 'movie', onPlay }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { inList, toggle: toggleList } = useMyList(item, type);
+  const isTV = useIsTV();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
 
   const handleGenrePress = (genreName) => {
@@ -45,7 +47,7 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
           </View>
         </View>
         {genres.length > 0 && (
-          <View style={styles.genreRow}>
+          <View style={[styles.genreRow, isTV && styles.genreRowTV]}>
             {genres.map((genre) => (
               <TVFocusable
                 key={genre}
@@ -62,24 +64,24 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
             {item.overview}
           </Text>
         )}
-        <View style={styles.actionRow}>
+        <View style={[styles.actionRow, isTV && styles.actionRowTV]}>
           {onPlay && (
-            <TVFocusable onPress={onPlay} style={styles.playButton}>
-              <Play color="#000000" size={20} fill="#000000" />
-              <Text style={styles.playText}>{t('common.play')}</Text>
+            <TVFocusable onPress={onPlay} style={[styles.playButton, isTV && styles.playButtonTV]}>
+              <Play color="#000000" size={isTV ? 24 : 20} fill="#000000" />
+              <Text style={[styles.playText, isTV && styles.playTextTV]}>{t('common.play')}</Text>
             </TVFocusable>
           )}
           <TVFocusable
             onPress={toggleList}
-            style={[styles.listButton, inList && styles.listButtonActive]}
+            style={[styles.listButton, inList && styles.listButtonActive, isTV && styles.listButtonTV]}
           >
             <Heart
               color={inList ? colors.primary : colors.text}
               fill={inList ? colors.primary : 'transparent'}
-              size={20}
+              size={isTV ? 24 : 20}
               strokeWidth={2.2}
             />
-            <Text style={[styles.listText, inList && styles.listTextActive]}>
+            <Text style={[styles.listText, inList && styles.listTextActive, isTV && styles.listTextTV]}>
               {t('common.myList')}
             </Text>
           </TVFocusable>
@@ -213,5 +215,29 @@ const styles = StyleSheet.create({
   },
   listTextActive: {
     color: colors.primary,
+  },
+  actionRowTV: {
+    gap: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  playButtonTV: {
+    minHeight: 60,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+  },
+  listButtonTV: {
+    minHeight: 60,
+    paddingVertical: 18,
+    paddingHorizontal: 28,
+  },
+  playTextTV: {
+    fontSize: 20,
+  },
+  listTextTV: {
+    fontSize: 18,
+  },
+  genreRowTV: {
+    marginTop: spacing.lg,
+    gap: spacing.md,
   },
 });

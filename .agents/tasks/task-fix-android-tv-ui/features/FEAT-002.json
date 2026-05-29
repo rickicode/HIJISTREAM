@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Fix Android TV UI layout issues: remove language button from topbar (already in profile), add proper spacing/padding to Play and My List buttons in DetailHero, and improve overall D-pad focus management across all screens so the remote is fully usable with clear visual feedback of the current focus position.",
+  "status": "in_progress",
+  "steps": [
+    "1. In apps/mobile/src/app/(tabs)/_layout.jsx: Remove the Globe/Language button from TVTopNav's actions section. The language setting already exists in the profile tab (apps/mobile/src/app/(tabs)/profile.jsx), so it is redundant in the top bar. Keep only the Search button in TVTopNav actions.",
+    "2. In apps/mobile/src/components/DetailHero.jsx: Add proper spacing (padding/gap) to the actionRow containing the Play and My List buttons. Currently actionRow has gap: spacing.md (16) but the buttons themselves lack horizontal padding on TV. Add TV-specific styles: increase paddingVertical and paddingHorizontal on both buttons for TV. Use the isTV hook (import it) to apply conditional styles.",
+    "3. In apps/mobile/src/components/DetailHero.jsx: Import useIsTV hook at the top. Apply larger button sizes for TV (minHeight: 60, paddingVertical: 18, paddingHorizontal: 28). Also add spacing.lg gap between the genre pills and the action row on TV.",
+    "4. In apps/mobile/src/components/ContentGrid.jsx: Add TV-specific spacing and pass hasTVPreferredFocus to the first ContentCard item so that when a grid screen loads on TV, the first card is auto-focused.",
+    "5. In apps/mobile/src/components/ContentRail.jsx: Ensure the first item in each rail gets hasTVPreferredFocus only for the very first rail on the page (currently passed via prop). Verify gap between cards is spacing.md (16) on TV for comfortable D-pad navigation.",
+    "6. In apps/mobile/src/components/EpisodeList.jsx: On TV, make the episode rows use TVFocusable instead of having a small play button. The entire episode row should be the focusable target so it is easier to navigate with D-pad. Import useIsTV and conditionally wrap each episode in TVFocusable on TV.",
+    "7. In apps/mobile/src/app/(tabs)/home.jsx: On TV, pass hasTVPreferredFocus={true} to the first ContentRail (after the hero) so that when navigating down from the hero, focus lands on the first card of the first rail.",
+    "8. In apps/mobile/src/components/TVFocusable.jsx: Increase the focus ring border width from 3 to 4 for better visibility at distance. Add a slight glow effect via an elevated borderColor (use a brighter white or the primary color for more contrast)."
+  ],
+  "acceptance_criteria": [
+    "Language/Globe button is removed from the TV top navigation bar in _layout.jsx",
+    "Play and My List buttons in DetailHero have visible padding/spacing on TV - not cramped together",
+    "D-pad navigation works: first focusable element on each screen receives initial focus",
+    "Episode list rows on TV are focusable as a whole row (not just the tiny play button)",
+    "TVFocusable focus ring is clearly visible (thicker border, brighter color)",
+    "All screens are navigable using only D-pad (up/down/left/right/select)"
+  ],
+  "verification": [
+    "Run: cd /projects/sandbox/HIJISTREAM/apps/mobile && npx eslint src/app/\\(tabs\\)/_layout.jsx src/components/DetailHero.jsx src/components/ContentGrid.jsx src/components/ContentRail.jsx src/components/EpisodeList.jsx src/components/TVFocusable.jsx src/app/\\(tabs\\)/home.jsx --no-eslintrc --rule '{\"no-undef\": \"error\"}' --parser-options=ecmaVersion:2022,ecmaFeatures:{jsx:true},sourceType:module --env es6 || true",
+    "Grep for Globe import in _layout.jsx to confirm it is removed from TV section",
+    "Verify useIsTV is imported in DetailHero.jsx and EpisodeList.jsx"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
