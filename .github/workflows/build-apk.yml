@@ -54,6 +54,51 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Determine app version
+        id: version
+        run: |
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          TAG_VERSION="${{ github.event.release.tag_name }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          elif [ -n "$TAG_VERSION" ]; then
+            # Strip a leading v / V from the release tag (v1.2.0 -> 1.2.0)
+            VERSION="${TAG_VERSION#v}"
+            VERSION="${VERSION#V}"
+          else
+            VERSION=$(python3 -c "import json; print(json.load(open('apps/mobile/app.json'))['expo']['version'])")
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Resolved app version: $VERSION"
+
+      - name: Patch app.json with resolved version
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          path = 'apps/mobile/app.json'
+          version = "${{ steps.version.outputs.version }}"
+
+          cfg = json.load(open(path))
+          cfg['expo']['version'] = version
+
+          # Derive a monotonic integer versionCode from the semver so each
+          # released tag produces a higher Android versionCode (1.2.3 -> 10203).
+          parts = (version.split('.') + ['0', '0', '0'])[:3]
+          nums = []
+          for p in parts:
+              digits = ''.join(ch for ch in p if ch.isdigit())
+              nums.append(int(digits) if digits else 0)
+          major, minor, patch = nums
+          version_code = max(1, major * 10000 + minor * 100 + patch)
+
+          cfg['expo'].setdefault('android', {})
+          cfg['expo']['android']['versionCode'] = version_code
+
+          json.dump(cfg, open(path, 'w'), indent=2)
+          print(f'Patched app.json: version={version} versionCode={version_code}')
+          EOF
+
       - name: Generate native Android project
         run: bunx expo prebuild --platform android --no-install
         working-directory: apps/mobile
@@ -91,17 +136,6 @@ jobs:
       - name: Build Release APK (${{ matrix.abi }})
         run: ./gradlew assembleRelease --no-daemon --parallel --max-workers=2 -Dorg.gradle.jvmargs="-Xmx2g" --warning-mode=none
         working-directory: apps/mobile/android
-
-      - name: Get app version
-        id: version
-        run: |
-          INPUT_VERSION="${{ github.event.inputs.version }}"
-          if [ -n "$INPUT_VERSION" ]; then
-            VERSION="$INPUT_VERSION"
-          else
-            VERSION=$(python3 -c "import json; print(json.load(open('apps/mobile/app.json'))['expo']['version'])")
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
         run: |
