@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { useTranslation } from '../../i18n';
 import { colors, spacing } from '../../theme';
-import PlayerBox from '../../components/PlayerBox';
 import DetailHero from '../../components/DetailHero';
 import EpisodeList from '../../components/EpisodeList';
 import ContentCard from '../../components/ContentCard';
@@ -83,8 +82,7 @@ export default function TVDetailScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <PlayerBox item={show} onPlay={handlePlay} />
-      <DetailHero item={show} type="tv" />
+      <DetailHero item={show} type="tv" onPlay={handlePlay} />
       <EpisodeList
         episodes={seasonData?.episodes || []}
         seasons={show.number_of_seasons || 1}
