@@ -88,6 +88,7 @@ export default function HomeScreen() {
           items={watchProgress}
           type="movie"
           onSeeAll={() => goToList('continue-watching')}
+          hasTVPreferredFocus={isTV}
         />
       );
     }
@@ -100,7 +101,7 @@ export default function HomeScreen() {
           type="movie"
           isLoading={moviesLoading}
           onSeeAll={() => goToList('trending-movies')}
-          hasTVPreferredFocus={isTV}
+          hasTVPreferredFocus={isTV && watchProgress.length === 0}
         />
       );
     }
