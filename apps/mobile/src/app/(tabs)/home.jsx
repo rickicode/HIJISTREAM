@@ -55,9 +55,9 @@ export default function HomeScreen() {
   const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
   const animeItems = animeTrending?.items?.slice(0, 10) || [];
   const animeOngoingItems = animeOngoing?.items?.slice(0, 10) || [];
-  const heroItem = useMemo(() => {
-    if (movies.length === 0) return null;
-    return movies[Math.floor(Math.random() * Math.min(movies.length, 5))];
+  const heroItems = useMemo(() => {
+    if (movies.length === 0) return [];
+    return movies.slice(0, 5);
   }, [movies]);
 
   const sections = [];
@@ -78,7 +78,7 @@ export default function HomeScreen() {
 
   const renderSection = ({ item: section }) => {
     if (section.type === 'hero') {
-      return <HeroBanner item={heroItem} type="movie" />;
+      return <HeroBanner items={heroItems} type="movie" />;
     }
 
     if (section.type === 'progress') {

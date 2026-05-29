@@ -1,4 +1,5 @@
-import { View, Text, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, ImageBackground, StyleSheet, useWindowDimensions, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Play, Plus, Check, Info, Star } from 'lucide-react-native';
@@ -9,26 +10,17 @@ import useMyList from '../hooks/useMyList';
 import useIsTV from '../hooks/useIsTV';
 import { findGenreId } from '../utils/genres';
 
-export default function HeroBanner({ item, type = 'movie', hasTVPreferredFocus = true }) {
+// Inner component that renders a single slide (billboard UI for one item)
+function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, height: backdropHeight }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { inList, toggle: toggleList } = useMyList(item, type);
-  const isTV = useIsTV();
-  const { height } = useWindowDimensions();
-
-  if (!item) return null;
 
   const backdropUri = item.backdrop_url || item.poster_url;
   const genres = item.genre
     ? item.genre.split(',').map((g) => g.trim()).filter(Boolean).slice(0, 3)
     : [];
   const showRating = item.rating && item.rating !== '0.0' && item.rating !== '0';
-
-  // Cinematic full-bleed billboard. The gradient fades to the page background
-  // so the hero melts into the rails below (Netflix-style) instead of ending
-  // at a hard-edged panel.
-  const backdropHeight = isTV ? Math.round(height * 0.72) : Math.round(height * 0.56);
-
   const itemId = item.id || item.tmdb_id;
 
   const handlePlay = () => {
@@ -68,8 +60,6 @@ export default function HeroBanner({ item, type = 'movie', hasTVPreferredFocus =
     }
   };
 
-  // Bullet-separated, tappable genres (Netflix metadata row) — replaces the
-  // old bordered pills which looked clunky.
   const genreRow =
     genres.length > 0 ? (
       <View style={[styles.genreRow, isTV ? styles.genreRowTV : styles.genreRowMobile]}>
@@ -78,6 +68,7 @@ export default function HeroBanner({ item, type = 'movie', hasTVPreferredFocus =
             {idx > 0 && <Text style={[styles.genreDot, isTV && styles.genreDotTV]}>•</Text>}
             <TVFocusable
               onPress={() => handleGenrePress(genre)}
+              onFocus={onButtonFocus}
               style={styles.genreTouch}
               focusScale={isTV ? 1.06 : 1.0}
               showFocusRing={isTV}
@@ -91,124 +82,228 @@ export default function HeroBanner({ item, type = 'movie', hasTVPreferredFocus =
     ) : null;
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={{ uri: backdropUri }}
-        style={[styles.backdrop, { height: backdropHeight }]}
-        resizeMode="cover"
+    <ImageBackground
+      source={{ uri: backdropUri }}
+      style={[styles.backdrop, { height: backdropHeight }]}
+      resizeMode="cover"
+    >
+      {showRating && (
+        <View style={[styles.ratingBadge, isTV && styles.ratingBadgeTV]}>
+          <Star color="#FFD700" size={isTV ? 18 : 13} fill="#FFD700" />
+          <Text style={[styles.ratingText, isTV && styles.ratingTextTV]}>{item.rating}</Text>
+        </View>
+      )}
+
+      <LinearGradient
+        colors={[
+          'rgba(20,20,20,0)',
+          'rgba(20,20,20,0.10)',
+          'rgba(20,20,20,0.55)',
+          colors.background,
+        ]}
+        locations={[0, 0.4, 0.75, 1]}
+        style={styles.gradient}
       >
-        {showRating && (
-          <View style={[styles.ratingBadge, isTV && styles.ratingBadgeTV]}>
-            <Star color="#FFD700" size={isTV ? 18 : 13} fill="#FFD700" />
-            <Text style={[styles.ratingText, isTV && styles.ratingTextTV]}>{item.rating}</Text>
+        {isTV ? (
+          <View style={styles.contentTV}>
+            <Text style={styles.titleTV} numberOfLines={2}>
+              {item.title}
+            </Text>
+            {genreRow}
+            {item.overview ? (
+              <Text style={styles.overviewTV} numberOfLines={3}>
+                {item.overview}
+              </Text>
+            ) : null}
+            <View style={styles.buttonRowTV}>
+              <TVFocusable
+                onPress={handlePlay}
+                onFocus={onButtonFocus}
+                hasTVPreferredFocus={hasTVPreferredFocus}
+                style={styles.playButtonTV}
+                accessibilityLabel={t('common.play')}
+              >
+                <Play color="#000000" size={24} fill="#000000" />
+                <Text style={styles.playTextTV}>{t('common.play')}</Text>
+              </TVFocusable>
+              <TVFocusable
+                onPress={toggleList}
+                onFocus={onButtonFocus}
+                style={styles.secondaryButtonTV}
+                accessibilityLabel={t('common.myList')}
+              >
+                {inList ? (
+                  <Check color={colors.text} size={24} strokeWidth={3} />
+                ) : (
+                  <Plus color={colors.text} size={24} />
+                )}
+                <Text style={styles.secondaryTextTV}>{t('common.myList')}</Text>
+              </TVFocusable>
+              <TVFocusable
+                onPress={handleInfo}
+                onFocus={onButtonFocus}
+                style={styles.secondaryButtonTV}
+                accessibilityLabel={t('common.moreInfo')}
+              >
+                <Info color={colors.text} size={24} />
+                <Text style={styles.secondaryTextTV}>{t('common.moreInfo')}</Text>
+              </TVFocusable>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.contentMobile}>
+            <Text style={styles.titleMobile} numberOfLines={2}>
+              {item.title}
+            </Text>
+            {genreRow}
+            <View style={styles.buttonRowMobile}>
+              <TVFocusable
+                onPress={toggleList}
+                onFocus={onButtonFocus}
+                style={styles.sideAction}
+                accessibilityLabel={t('common.myList')}
+              >
+                {inList ? (
+                  <Check color={colors.text} size={26} strokeWidth={2.6} />
+                ) : (
+                  <Plus color={colors.text} size={26} strokeWidth={2.6} />
+                )}
+                <Text style={styles.sideActionLabel}>{t('common.myList')}</Text>
+              </TVFocusable>
+
+              <TVFocusable
+                onPress={handlePlay}
+                onFocus={onButtonFocus}
+                hasTVPreferredFocus={hasTVPreferredFocus}
+                style={styles.playPill}
+                accessibilityLabel={t('common.play')}
+              >
+                <Play color="#000000" size={22} fill="#000000" />
+                <Text style={styles.playPillText}>{t('common.play')}</Text>
+              </TVFocusable>
+
+              <TVFocusable
+                onPress={handleInfo}
+                onFocus={onButtonFocus}
+                style={styles.sideAction}
+                accessibilityLabel={t('common.moreInfo')}
+              >
+                <Info color={colors.text} size={26} strokeWidth={2.2} />
+                <Text style={styles.sideActionLabel}>{t('common.moreInfo')}</Text>
+              </TVFocusable>
+            </View>
           </View>
         )}
+      </LinearGradient>
+    </ImageBackground>
+  );
+}
 
-        <LinearGradient
-          colors={[
-            'rgba(20,20,20,0)',
-            'rgba(20,20,20,0.10)',
-            'rgba(20,20,20,0.55)',
-            colors.background,
+export default function HeroBanner({ items = [], item, type = 'movie', hasTVPreferredFocus = true }) {
+  // Backward compat: if single item is passed but not items array
+  const heroItems = items.length > 0 ? items : (item ? [item] : []);
+
+  const flatListRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const { width, height } = useWindowDimensions();
+  const isTV = useIsTV();
+  const autoScrollTimer = useRef(null);
+  const isPaused = useRef(false);
+  const resumeTimeout = useRef(null);
+
+  const backdropHeight = isTV ? Math.round(height * 0.72) : Math.round(height * 0.56);
+
+  // Auto-advance every 8 seconds
+  useEffect(() => {
+    if (heroItems.length <= 1) return;
+
+    const startTimer = () => {
+      autoScrollTimer.current = setInterval(() => {
+        if (isPaused.current) return;
+        setActiveIndex((prev) => {
+          const next = (prev + 1) % heroItems.length;
+          flatListRef.current?.scrollToIndex({ index: next, animated: true });
+          return next;
+        });
+      }, 8000);
+    };
+
+    startTimer();
+    return () => {
+      clearInterval(autoScrollTimer.current);
+      if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
+    };
+  }, [heroItems.length]);
+
+  // Pause auto-scroll on interaction, resume after 12 seconds
+  const pauseAutoScroll = useCallback(() => {
+    isPaused.current = true;
+    if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
+    resumeTimeout.current = setTimeout(() => {
+      isPaused.current = false;
+    }, 12000);
+  }, []);
+
+  // Track page changes via onMomentumScrollEnd
+  const onMomentumScrollEnd = useCallback((e) => {
+    const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveIndex(newIndex);
+  }, [width]);
+
+  if (heroItems.length === 0) return null;
+
+  const renderSlide = ({ item: slideItem, index }) => {
+    return (
+      <View style={{ width }}>
+        <HeroSlide
+          item={slideItem}
+          type={type}
+          isTV={isTV}
+          hasTVPreferredFocus={hasTVPreferredFocus && index === activeIndex}
+          onButtonFocus={pauseAutoScroll}
+          height={backdropHeight}
+        />
+      </View>
+    );
+  };
+
+  const DotIndicators = () => (
+    <View style={styles.dotsContainer}>
+      {heroItems.map((_, idx) => (
+        <View
+          key={idx}
+          style={[
+            styles.dot,
+            idx === activeIndex && styles.dotActive,
           ]}
-          locations={[0, 0.4, 0.75, 1]}
-          style={styles.gradient}
-        >
-          {isTV ? (
-            <View style={styles.contentTV}>
-              <Text style={styles.titleTV} numberOfLines={2}>
-                {item.title}
-              </Text>
-              {genreRow}
-              {item.overview ? (
-                <Text style={styles.overviewTV} numberOfLines={3}>
-                  {item.overview}
-                </Text>
-              ) : null}
-              <View style={styles.buttonRowTV}>
-                <TVFocusable
-                  onPress={handlePlay}
-                  hasTVPreferredFocus={hasTVPreferredFocus}
-                  style={styles.playButtonTV}
-                  accessibilityLabel={t('common.play')}
-                >
-                  <Play color="#000000" size={24} fill="#000000" />
-                  <Text style={styles.playTextTV}>{t('common.play')}</Text>
-                </TVFocusable>
-                <TVFocusable
-                  onPress={toggleList}
-                  style={styles.secondaryButtonTV}
-                  accessibilityLabel={t('common.myList')}
-                >
-                  {inList ? (
-                    <Check color={colors.text} size={24} strokeWidth={3} />
-                  ) : (
-                    <Plus color={colors.text} size={24} />
-                  )}
-                  <Text style={styles.secondaryTextTV}>{t('common.myList')}</Text>
-                </TVFocusable>
-                <TVFocusable
-                  onPress={handleInfo}
-                  style={styles.secondaryButtonTV}
-                  accessibilityLabel={t('common.moreInfo')}
-                >
-                  <Info color={colors.text} size={24} />
-                  <Text style={styles.secondaryTextTV}>{t('common.moreInfo')}</Text>
-                </TVFocusable>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.contentMobile}>
-              <Text style={styles.titleMobile} numberOfLines={2}>
-                {item.title}
-              </Text>
-              {genreRow}
-              {/* Netflix billboard trio: My List · Play · More Info */}
-              <View style={styles.buttonRowMobile}>
-                <TVFocusable
-                  onPress={toggleList}
-                  style={styles.sideAction}
-                  accessibilityLabel={t('common.myList')}
-                >
-                  {inList ? (
-                    <Check color={colors.text} size={26} strokeWidth={2.6} />
-                  ) : (
-                    <Plus color={colors.text} size={26} strokeWidth={2.6} />
-                  )}
-                  <Text style={styles.sideActionLabel}>{t('common.myList')}</Text>
-                </TVFocusable>
+        />
+      ))}
+    </View>
+  );
 
-                <TVFocusable
-                  onPress={handlePlay}
-                  hasTVPreferredFocus={hasTVPreferredFocus}
-                  style={styles.playPill}
-                  accessibilityLabel={t('common.play')}
-                >
-                  <Play color="#000000" size={22} fill="#000000" />
-                  <Text style={styles.playPillText}>{t('common.play')}</Text>
-                </TVFocusable>
-
-                <TVFocusable
-                  onPress={handleInfo}
-                  style={styles.sideAction}
-                  accessibilityLabel={t('common.moreInfo')}
-                >
-                  <Info color={colors.text} size={26} strokeWidth={2.2} />
-                  <Text style={styles.sideActionLabel}>{t('common.moreInfo')}</Text>
-                </TVFocusable>
-              </View>
-            </View>
-          )}
-        </LinearGradient>
-      </ImageBackground>
+  return (
+    <View style={styles.container}>
+      <FlatList
+        ref={flatListRef}
+        data={heroItems}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(slideItem) => String(slideItem.id || slideItem.tmdb_id)}
+        renderItem={renderSlide}
+        onMomentumScrollEnd={onMomentumScrollEnd}
+        onScrollBeginDrag={pauseAutoScroll}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        style={{ height: backdropHeight }}
+        snapToAlignment="start"
+      />
+      {heroItems.length > 1 && <DotIndicators />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    // The gradient already resolves to the page background at its bottom edge,
-    // so no extra margin is needed — the first rail blends straight in.
     marginBottom: spacing.sm,
   },
   backdrop: {
@@ -218,6 +313,28 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+
+  // Dot indicators
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: 6,
+    marginTop: -spacing.lg,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  dotActive: {
+    backgroundColor: colors.primary,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 
   ratingBadge: {
