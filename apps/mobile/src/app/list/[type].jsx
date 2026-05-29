@@ -31,6 +31,16 @@ const LIST_CONFIG = {
     contentType: 'tv',
     fetcher: (page) => api.getAnimeTrending(page),
   },
+  'anime-ongoing': {
+    titleKey: ['common.ongoing', 'nav.anime'],
+    contentType: 'tv',
+    fetcher: (page) => api.getAnimeOngoing(page),
+  },
+  'anime-top-rated': {
+    titleKey: ['common.topRated', 'nav.anime'],
+    contentType: 'tv',
+    fetcher: (page) => api.getAnimeTopRated(page),
+  },
   'popular-movies': {
     titleKey: ['common.popular', 'nav.movies'],
     contentType: 'movie',

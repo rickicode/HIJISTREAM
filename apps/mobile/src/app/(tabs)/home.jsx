@@ -43,10 +43,16 @@ export default function HomeScreen() {
     queryFn: () => api.getAnimeTrending(1),
   });
 
+  const { data: animeOngoing, isLoading: animeOngoingLoading } = useQuery({
+    queryKey: ['anime-ongoing-home', locale],
+    queryFn: () => api.getAnimeOngoing(1),
+  });
+
   const movies = useMemo(() => trendingMovies?.items?.slice(0, 10) || [], [trendingMovies]);
   const tvShows = trendingTV?.items?.slice(0, 10) || [];
   const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
   const animeItems = animeTrending?.items?.slice(0, 10) || [];
+  const animeOngoingItems = animeOngoing?.items?.slice(0, 10) || [];
   const heroItem = useMemo(() => {
     if (movies.length === 0) return null;
     return movies[Math.floor(Math.random() * Math.min(movies.length, 5))];
@@ -64,6 +70,7 @@ export default function HomeScreen() {
   sections.push({ key: 'trending-tv', type: 'tv' });
   sections.push({ key: 'ongoing-series', type: 'ongoing-series' });
   sections.push({ key: 'trending-anime', type: 'trending-anime' });
+  sections.push({ key: 'ongoing-anime', type: 'ongoing-anime' });
 
   const goToList = (listType) => router.push(`/list/${listType}`);
 
@@ -127,6 +134,18 @@ export default function HomeScreen() {
           type="tv"
           isLoading={animeLoading}
           onSeeAll={() => goToList('anime-trending')}
+        />
+      );
+    }
+
+    if (section.type === 'ongoing-anime') {
+      return (
+        <ContentRail
+          title={`${t('common.ongoing')} ${t('nav.anime')}`}
+          items={animeOngoingItems}
+          type="tv"
+          isLoading={animeOngoingLoading}
+          onSeeAll={() => goToList('anime-ongoing')}
         />
       );
     }
