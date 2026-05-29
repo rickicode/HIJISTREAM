@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "Fix Android TV UI layout issues: remove language button from topbar (already in profile), add proper spacing/padding to Play and My List buttons in DetailHero, and improve overall D-pad focus management across all screens so the remote is fully usable with clear visual feedback of the current focus position.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "1. In apps/mobile/src/app/(tabs)/_layout.jsx: Remove the Globe/Language button from TVTopNav's actions section. The language setting already exists in the profile tab (apps/mobile/src/app/(tabs)/profile.jsx), so it is redundant in the top bar. Keep only the Search button in TVTopNav actions.",
     "2. In apps/mobile/src/components/DetailHero.jsx: Add proper spacing (padding/gap) to the actionRow containing the Play and My List buttons. Currently actionRow has gap: spacing.md (16) but the buttons themselves lack horizontal padding on TV. Add TV-specific styles: increase paddingVertical and paddingHorizontal on both buttons for TV. Use the isTV hook (import it) to apply conditional styles.",
@@ -27,5 +27,5 @@
     "Verify useIsTV is imported in DetailHero.jsx and EpisodeList.jsx"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 8 steps implemented successfully. Build verified via expo export --platform android. ESLint passes with no errors. Globe import kept in _layout.jsx since it is still used by the mobile headerRight section. ContentRail step 5 required no changes as gap was already spacing.md on TV."
 }
