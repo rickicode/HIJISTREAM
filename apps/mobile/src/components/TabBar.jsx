@@ -1,9 +1,44 @@
-import { ScrollView, Text, StyleSheet } from 'react-native';
+import { View, ScrollView, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import TVFocusable from './TVFocusable';
+import useIsTV from '../hooks/useIsTV';
 
 export default function TabBar({ tabs, activeTab, onTabChange, variant = 'default' }) {
   const isPill = variant === 'pill';
+  const isTV = useIsTV();
+
+  const content = tabs.map((tab, index) => {
+    const isActive = tab.id === activeTab;
+    const tabStyle = isPill
+      ? [styles.pillTab, isTV && styles.pillTabTV, isActive && styles.activePillTab]
+      : [styles.tab, isTV && styles.tabTV, isActive && styles.activeTab];
+    const textStyle = isPill
+      ? [styles.pillTabText, isTV && styles.pillTabTextTV, isActive && styles.activePillTabText]
+      : [styles.tabText, isTV && styles.tabTextTV, isActive && styles.activeTabText];
+    return (
+      <TVFocusable
+        key={tab.id}
+        onPress={() => onTabChange(tab.id)}
+        hasTVPreferredFocus={isTV && index === 0}
+        style={tabStyle}
+        accessibilityLabel={tab.label}
+        accessibilityRole="tab"
+      >
+        <Text style={textStyle}>
+          {tab.label}
+        </Text>
+      </TVFocusable>
+    );
+  });
+
+  // On TV, use a simple row (no ScrollView) so D-pad focus works natively
+  if (isTV) {
+    return (
+      <View style={[styles.container, styles.containerTV]}>
+        {content}
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -11,26 +46,7 @@ export default function TabBar({ tabs, activeTab, onTabChange, variant = 'defaul
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeTab;
-        const tabStyle = isPill
-          ? [styles.pillTab, isActive && styles.activePillTab]
-          : [styles.tab, isActive && styles.activeTab];
-        const textStyle = isPill
-          ? [styles.pillTabText, isActive && styles.activePillTabText]
-          : [styles.tabText, isActive && styles.activeTabText];
-        return (
-          <TVFocusable
-            key={tab.id}
-            onPress={() => onTabChange(tab.id)}
-            style={tabStyle}
-          >
-            <Text style={textStyle}>
-              {tab.label}
-            </Text>
-          </TVFocusable>
-        );
-      })}
+      {content}
     </ScrollView>
   );
 }
@@ -42,6 +58,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  containerTV: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
   tab: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -52,6 +73,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tabTV: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minWidth: 140,
+    minHeight: 56,
+  },
   activeTab: {
     borderBottomColor: colors.primary,
   },
@@ -59,6 +86,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     ...typography.subtitle,
     fontWeight: '400',
+  },
+  tabTextTV: {
+    fontSize: 20,
   },
   activeTabText: {
     color: colors.text,
@@ -73,6 +103,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pillTabTV: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    minHeight: 52,
+    borderRadius: 28,
+  },
   activePillTab: {
     backgroundColor: colors.primary,
   },
@@ -80,6 +116,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     ...typography.body,
     fontWeight: '500',
+  },
+  pillTabTextTV: {
+    fontSize: 18,
   },
   activePillTabText: {
     color: colors.text,

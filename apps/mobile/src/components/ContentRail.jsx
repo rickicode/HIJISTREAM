@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import { useTranslation } from '../i18n';
 import ContentCard from './ContentCard';
@@ -21,6 +21,17 @@ export default function ContentRail({
   // posters which is the size Netflix/Prime use on Google TV.
   const cardWidth = isTV ? 200 : 120;
 
+  const renderCard = ({ item, index }) => (
+    <View style={{ width: cardWidth }}>
+      <ContentCard
+        item={item}
+        type={item.type || type}
+        watchProgress={item.percentage || item.watchProgress}
+        hasTVPreferredFocus={hasTVPreferredFocus && index === 0}
+      />
+    </View>
+  );
+
   return (
     <View style={[styles.container, isTV && styles.containerTV]}>
       <View style={[styles.header, isTV && styles.headerTV]}>
@@ -35,16 +46,28 @@ export default function ContentRail({
       </View>
       {isLoading ? (
         <LoadingState type="card" />
+      ) : isTV ? (
+        // FlatList horizontal supports D-pad left/right focus navigation natively.
+        // ScrollView does not propagate focus events to children on Android TV.
+        <FlatList
+          horizontal
+          data={items}
+          keyExtractor={(item) => String(item.id || item.tmdb_id)}
+          renderItem={renderCard}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContentTV}
+          ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+        />
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, isTV && styles.scrollContentTV]}
+          contentContainerStyle={styles.scrollContent}
         >
           {items.map((item, idx) => (
             <View
               key={String(item.id || item.tmdb_id)}
-              style={[styles.cardWrapper, { width: cardWidth }]}
+              style={{ width: cardWidth, marginRight: spacing.sm }}
             >
               <ContentCard
                 item={item}
@@ -65,7 +88,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   containerTV: {
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -75,7 +98,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   headerTV: {
-    paddingHorizontal: spacing.xxl,
+    paddingHorizontal: spacing.xl,
     marginBottom: spacing.md,
   },
   title: {
@@ -83,7 +106,7 @@ const styles = StyleSheet.create({
     ...typography.title,
   },
   titleTV: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
   },
   seeAllButton: {
@@ -103,16 +126,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    gap: spacing.sm,
   },
   scrollContentTV: {
-    // Extra horizontal padding ensures the focus ring on the first/last card
-    // isn't clipped by the screen edge or sibling rails when the card scales.
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  cardWrapper: {
-    width: 120,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
   },
 });

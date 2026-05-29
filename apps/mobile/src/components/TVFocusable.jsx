@@ -1,18 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { TouchableOpacity, Animated, StyleSheet, Platform } from 'react-native';
+import { TouchableOpacity, Animated, StyleSheet, Platform, findNodeHandle } from 'react-native';
 import { colors } from '../theme';
 import useIsTV from '../hooks/useIsTV';
 
 /**
- * Focusable wrapper that renders a clearly visible focus state on Android TV.
+ * Focusable wrapper for Android TV D-pad navigation.
  *
- * Key differences from a plain TouchableOpacity:
- *  - Animated scale-up on focus (1.06 by default; configurable via `focusScale`).
- *  - Outer glow/border ring drawn OUTSIDE the child via a wrapping Animated.View
- *    so it doesn't shift child layout or get clipped by overflow:hidden cards.
- *  - Elevation lift on focus so the focused item visually rises above peers.
- *  - Falls back to a no-op visual state on phones (focus events never fire on
- *    touch devices anyway), keeping the mobile UI unchanged.
+ * Features:
+ *  - Animated scale-up on focus (1.06 default, configurable).
+ *  - High-contrast border ring + elevation when focused.
+ *  - Supports nextFocusDown/Up/Left/Right refs for explicit focus routing.
+ *  - Falls back to no-op on phones (focus events never fire on touch).
+ *  - Uses `focusable={true}` to ensure Android TV focus engine can find it.
  */
 export default function TVFocusable({
   children,
@@ -25,10 +24,17 @@ export default function TVFocusable({
   disabled = false,
   accessibilityLabel,
   accessibilityRole = 'button',
+  nextFocusDown,
+  nextFocusUp,
+  nextFocusLeft,
+  nextFocusRight,
+  onFocus,
+  onBlur,
 }) {
   const isTV = useIsTV();
   const [isFocused, setIsFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
+  const innerRef = useRef(null);
 
   useEffect(() => {
     Animated.spring(scale, {
@@ -39,7 +45,26 @@ export default function TVFocusable({
     }).start();
   }, [isFocused, isTV, focusScale, scale]);
 
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (onFocus) onFocus();
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    if (onBlur) onBlur();
+  };
+
   const showRing = isTV && showFocusRing && isFocused;
+
+  // Build nextFocus props for explicit D-pad routing
+  const focusProps = {};
+  if (isTV) {
+    if (nextFocusDown != null) focusProps.nextFocusDown = findNodeHandle(nextFocusDown);
+    if (nextFocusUp != null) focusProps.nextFocusUp = findNodeHandle(nextFocusUp);
+    if (nextFocusLeft != null) focusProps.nextFocusLeft = findNodeHandle(nextFocusLeft);
+    if (nextFocusRight != null) focusProps.nextFocusRight = findNodeHandle(nextFocusRight);
+  }
 
   return (
     <Animated.View
@@ -51,15 +76,18 @@ export default function TVFocusable({
       ]}
     >
       <TouchableOpacity
+        ref={innerRef}
         onPress={onPress}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         hasTVPreferredFocus={hasTVPreferredFocus}
-        activeOpacity={0.85}
+        activeOpacity={isTV ? 1 : 0.85}
         disabled={disabled}
+        focusable={!disabled}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole={accessibilityRole}
         style={[styles.inner, style, isFocused && focusStyle]}
+        {...focusProps}
       >
         {children}
       </TouchableOpacity>
@@ -69,15 +97,12 @@ export default function TVFocusable({
 
 const styles = StyleSheet.create({
   wrapper: {
-    // No padding/margin — the wrapper is invisible by default. Only the focus
-    // ring (drawn as a border on this wrapper) appears when focused, which
-    // surrounds the child without changing child dimensions.
     borderRadius: 6,
+    borderWidth: 3,
+    borderColor: 'transparent',
   },
   ringWrapper: {
-    // Drawn AROUND the child. Uses a thick high-contrast border + elevation
-    // so it's readable from 3 meters away on a 1080p TV.
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: colors.primary,
     elevation: 16,
   },
