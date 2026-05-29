@@ -118,8 +118,12 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
   const injectedJavaScript = useMemo(
     () => `
       (function() {
-        // Block popup ads - override window.open
-        window.open = function() { return null; };
+        // Block popup ads - override window.open completely
+        window.open = function() { return { closed: false }; };
+
+        // Block the popup/ad script that listens on mousedown
+        // The ad script uses form-based navigation trick, block form.submit
+        HTMLFormElement.prototype.submit = function() {};
 
         // Block popup via createElement trick
         var origCreate = document.createElement.bind(document);
@@ -129,10 +133,27 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
             el.setAttribute('target', '_self');
             return el;
           }
+          // Block ad/tracking scripts
+          if (tag === 'script') {
+            var el = origCreate(tag);
+            var origSrc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+            if (origSrc && origSrc.set) {
+              Object.defineProperty(el, 'src', {
+                set: function(v) {
+                  if (v && (v.includes('histats.com') || v.includes('s10.histats'))) {
+                    return; // block analytics/ad scripts
+                  }
+                  origSrc.set.call(el, v);
+                },
+                get: function() { return origSrc.get.call(el); }
+              });
+            }
+            return el;
+          }
           return origCreate(tag);
         };
 
-        // Prevent any click handlers that try to open new windows
+        // Prevent any click/mousedown handlers that try to open new windows
         document.addEventListener('click', function(e) {
           var target = e.target.closest('a[target="_blank"]');
           if (target) {
@@ -141,15 +162,12 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
           }
         }, true);
 
-        // Forward player events to React Native
-        var originalPostMessage = window.postMessage;
-        window.postMessage = function(data, origin) {
-          if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-            window.ReactNativeWebView.postMessage(typeof data === 'string' ? data : JSON.stringify(data));
-          }
-          originalPostMessage.call(window, data, origin);
-        };
+        // Block mousedown popup triggers (the ad script uses mousedown)
+        document.addEventListener('mousedown', function(e) {
+          e.stopImmediatePropagation();
+        }, true);
 
+        // Forward player events to React Native
         window.addEventListener('message', function(event) {
           if (window.ReactNativeWebView && event.data) {
             try {
@@ -159,68 +177,73 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
           }
         });
 
+        // Remove histats and ad tracking elements
+        setTimeout(function() {
+          var scripts = document.querySelectorAll('script[src*="histats"], noscript');
+          scripts.forEach(function(s) { s.remove(); });
+        }, 500);
+
         ${isTV ? `
-        // TV-specific: inject CSS to force player controls to always be visible on TV
+        // TV-specific: ensure player controls work with remote
         (function() {
+          var iframe = document.getElementById('pf');
+          if (!iframe) return;
+
+          // Inject CSS to hide any overlay ads in the outer page
           var style = document.createElement('style');
           style.textContent = [
-            // Force any common player control bar to stay visible
-            '.jw-controls, .plyr__controls, .vjs-control-bar, .player-controls, .controls-wrapper, [class*="controls"]  { opacity: 1 !important; visibility: visible !important; display: flex !important; }',
-            // Hide any overlay ads or click-catchers
-            '.overlay-ad, .ad-overlay, [class*="ad-overlay"], [class*="popup"] { display: none !important; }',
+            'iframe { width: 100% !important; height: 100% !important; }',
+            'body > *:not(iframe):not(script):not(style) { display: none !important; }',
           ].join('\\n');
           document.head.appendChild(style);
 
-          var iframe = document.getElementById('pf');
+          // Focus the iframe so it receives keyboard events from the remote
+          iframe.focus();
 
-          // Periodically simulate mouse activity to keep player controls visible
-          var keepAliveInterval = setInterval(function() {
-            if (iframe) {
-              try {
-                var rect = iframe.getBoundingClientRect();
-                var moveEvt = new MouseEvent('mousemove', {
-                  clientX: rect.width / 2,
-                  clientY: rect.height - 50,
-                  bubbles: true,
-                  cancelable: true
-                });
-                iframe.dispatchEvent(moveEvt);
-                document.dispatchEvent(moveEvt);
-              } catch(err) {}
-            }
-          }, 3000);
+          // Periodically simulate mouse movement on the iframe
+          // This keeps the inner player's controls visible
+          setInterval(function() {
+            try {
+              var rect = iframe.getBoundingClientRect();
+              var moveEvt = new MouseEvent('mousemove', {
+                clientX: rect.width / 2,
+                clientY: rect.height - 60,
+                bubbles: true,
+                cancelable: true
+              });
+              document.dispatchEvent(moveEvt);
+              iframe.dispatchEvent(moveEvt);
+            } catch(err) {}
+          }, 4000);
 
-          if (iframe) {
-            iframe.focus();
-            // Re-focus iframe whenever document gets focus
-            document.addEventListener('focus', function() {
-              setTimeout(function() {
-                if (iframe) iframe.focus();
-              }, 100);
-            }, true);
-          }
+          // Re-focus iframe on any interaction
+          document.addEventListener('focus', function() {
+            setTimeout(function() { if (iframe) iframe.focus(); }, 50);
+          }, true);
 
-          // Listen for key events from Android TV remote (forwarded by WebView)
+          // Forward key events to the iframe via postMessage
           document.addEventListener('keydown', function(e) {
             if (iframe && iframe.contentWindow) {
               try {
-                iframe.contentWindow.postMessage({type:'KEY_EVENT', key: e.key, keyCode: e.keyCode}, '*');
+                iframe.contentWindow.postMessage({
+                  type: 'KEY_EVENT',
+                  key: e.key,
+                  keyCode: e.keyCode,
+                  code: e.code
+                }, '*');
               } catch(err) {}
             }
 
-            // Also simulate mouse movement to show player controls in the inner player
-            if (iframe) {
-              try {
-                var rect = iframe.getBoundingClientRect();
-                var moveEvt = new MouseEvent('mousemove', {
-                  clientX: rect.width / 2,
-                  clientY: rect.height - 50,
-                  bubbles: true,
-                  cancelable: true
-                });
-                iframe.dispatchEvent(moveEvt);
-              } catch(err) {}
-            }
+            // Simulate mouse movement on key press to show controls
+            try {
+              var rect = iframe.getBoundingClientRect();
+              var moveEvt = new MouseEvent('mousemove', {
+                clientX: rect.width / 2,
+                clientY: rect.height - 60,
+                bubbles: true
+              });
+              iframe.dispatchEvent(moveEvt);
+            } catch(err) {}
           });
         })();
         ` : ''}
@@ -232,11 +255,16 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
   const handleShouldStartLoad = useCallback((request) => {
     const url = request.url || '';
-    // Only allow vaplayer.ru URLs and about:blank
-    if (url.startsWith('https://vaplayer.ru') || url.startsWith('about:blank') || url === '') {
+    // Allow the embed player domain and its inner player iframe
+    if (
+      url.startsWith('https://vaplayer.ru') ||
+      url.startsWith('https://brightpathsignals.com') ||
+      url.startsWith('about:blank') ||
+      url === ''
+    ) {
       return true;
     }
-    // Block all other URLs (ad redirects, popups, etc.)
+    // Block all other URLs (ad redirects, popups, analytics, etc.)
     return false;
   }, []);
 
