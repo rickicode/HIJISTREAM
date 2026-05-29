@@ -50,7 +50,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, metadata = {} 
       frameBorder="0"
       allowFullScreen
       allow="autoplay; encrypted-media; picture-in-picture"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+
       style={{ border: 'none', display: 'block' }}
     />
   );

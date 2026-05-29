@@ -97,10 +97,14 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
         var iframe = document.getElementById('pf');
         if (iframe) {
           iframe.focus();
+          // The inner player has a #ccBtn button - simulate click via postMessage
           iframe.contentWindow.postMessage({type:'PLAYER_COMMAND', action:'toggleCC'}, '*');
+          // Also try keyboard shortcut 'c' which many players use for CC
+          var evt = new KeyboardEvent('keydown', {key: 'c', code: 'KeyC', keyCode: 67, bubbles: true});
+          document.dispatchEvent(evt);
+          // Try clicking the CC button directly via iframe focus + dispatching click
+          iframe.contentWindow.postMessage({type:'UI_ACTION', target:'ccBtn', action:'click'}, '*');
         }
-        var evt = new KeyboardEvent('keydown', {key: 'c', code: 'KeyC', keyCode: 67, bubbles: true});
-        document.dispatchEvent(evt);
       })(); true;
     `);
   }, [injectCommand, resetHideTimer]);
