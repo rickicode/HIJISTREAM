@@ -92,18 +92,17 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
   const handleToggleCC = useCallback(() => {
     resetHideTimer();
+    // Hide native overlay so user can interact with the WebView CC menu directly
+    setShowTVControls(false);
     injectCommand(`
       (function() {
         var iframe = document.getElementById('pf');
         if (iframe) {
           iframe.focus();
-          // The inner player has a #ccBtn button - simulate click via postMessage
           iframe.contentWindow.postMessage({type:'PLAYER_COMMAND', action:'toggleCC'}, '*');
-          // Also try keyboard shortcut 'c' which many players use for CC
-          var evt = new KeyboardEvent('keydown', {key: 'c', code: 'KeyC', keyCode: 67, bubbles: true});
-          document.dispatchEvent(evt);
-          // Try clicking the CC button directly via iframe focus + dispatching click
           iframe.contentWindow.postMessage({type:'UI_ACTION', target:'ccBtn', action:'click'}, '*');
+          // Notify parent that menu is now open (pause mouse simulation)
+          window.postMessage({type:'MENU_STATE', open:true}, '*');
         }
       })(); true;
     `);
@@ -204,9 +203,18 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
           // Focus the iframe so it receives keyboard events from the remote
           iframe.focus();
 
+          // Track if a menu is open (CC/Settings) - pause mouse sim when open
+          var menuOpen = false;
+          window.addEventListener('message', function(ev) {
+            if (ev.data && ev.data.type === 'MENU_STATE') {
+              menuOpen = ev.data.open;
+            }
+          });
+
           // Periodically simulate mouse movement on the iframe
-          // This keeps the inner player's controls visible
+          // This keeps the inner player's controls visible (only when no menu open)
           setInterval(function() {
+            if (menuOpen) return;
             try {
               var rect = iframe.getBoundingClientRect();
               var moveEvt = new MouseEvent('mousemove', {
@@ -238,16 +246,18 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
               } catch(err) {}
             }
 
-            // Simulate mouse movement on key press to show controls
-            try {
-              var rect = iframe.getBoundingClientRect();
-              var moveEvt = new MouseEvent('mousemove', {
-                clientX: rect.width / 2,
-                clientY: rect.height - 60,
-                bubbles: true
-              });
-              iframe.dispatchEvent(moveEvt);
-            } catch(err) {}
+            // Simulate mouse movement on key press to show controls (only if no menu)
+            if (!menuOpen) {
+              try {
+                var rect = iframe.getBoundingClientRect();
+                var moveEvt = new MouseEvent('mousemove', {
+                  clientX: rect.width / 2,
+                  clientY: rect.height - 60,
+                  bubbles: true
+                });
+                iframe.dispatchEvent(moveEvt);
+              } catch(err) {}
+            }
           });
         })();
         ` : ''}
@@ -259,10 +269,22 @@ export default function VideoPlayer({ embedUrl, contentId, onBack, metadata = {}
 
   const handleShouldStartLoad = useCallback((request) => {
     const url = request.url || '';
-    // Allow the embed player domain and its inner player iframe
+    // Allow the embed player and all domains required for it to function:
+    // - vaplayer.ru: outer embed page
+    // - brightpathsignals.com: inner player iframe
+    // - streamdata.vaplayer.ru: video stream API (HLS manifest + segments)
+    // - cdn.jsdelivr.net: HLS.js, disable-devtool
+    // - code.jquery.com: jQuery (player dependency)
+    // - cdnjs.cloudflare.com: pako.js (subtitle decompression)
+    // - www.gstatic.com: Chromecast sender SDK
     if (
       url.startsWith('https://vaplayer.ru') ||
       url.startsWith('https://brightpathsignals.com') ||
+      url.startsWith('https://streamdata.vaplayer.ru') ||
+      url.startsWith('https://cdn.jsdelivr.net') ||
+      url.startsWith('https://code.jquery.com') ||
+      url.startsWith('https://cdnjs.cloudflare.com') ||
+      url.startsWith('https://www.gstatic.com') ||
       url.startsWith('about:blank') ||
       url === ''
     ) {
