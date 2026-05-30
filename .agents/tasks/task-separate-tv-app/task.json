@@ -1,0 +1,14 @@
+{
+  "task_id": "task-separate-tv-app",
+  "task_description": "Separate the TV app from mobile into its own apps/tv/ directory with react-native-tvos, create packages/shared/ for shared utilities and i18n, revert mobile to standard react-native, and redesign the TV UI for D-pad/remote navigation with native player overlay controls.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "skipped",
+    "docker_build": "skipped",
+    "summary": "bun install resolves all workspace deps (0 changes, 1236 packages). No useIsTV in TV app. No TV code in mobile app. Mobile uses standard react-native 0.76.7. TV uses react-native-tvos. Shared package exports all utilities with explicit exports field. TV VideoPlayer has native CC modal (20 languages) and Settings modal (6 speed options) with playback position preservation on subtitle change. Error state with Retry button on WebView failure. HeroBanner timer leak fixed with mountedRef guard."
+  }
+}

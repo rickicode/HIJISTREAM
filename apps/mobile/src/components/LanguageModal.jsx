@@ -1,22 +1,10 @@
 import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { useTranslation, SUPPORTED_LOCALES } from '../i18n';
-import { colors, spacing, typography, borderRadius } from '../theme';
-import TVFocusable from './TVFocusable';
-import useIsTV from '../hooks/useIsTV';
+import { useTranslation, SUPPORTED_LOCALES } from '@hijistream/shared/i18n';
+import { colors, spacing, typography, borderRadius } from '@hijistream/shared/theme';
 
-/**
- * Language picker.
- *
- * On phone: bottom-sheet with tap-outside-to-dismiss + drag handle.
- * On TV: centered card with focusable items so the D-pad can highlight a row
- *        and the Back button on the remote dismisses via onRequestClose.
- *        We intentionally don't use tap-outside-to-dismiss on TV because
- *        there's no concept of "tapping outside" with a remote.
- */
 export default function LanguageModal({ visible, onClose }) {
   const { locale, setLocale, t } = useTranslation();
-  const isTV = useIsTV();
 
   const handleSelect = (code) => {
     setLocale(code);
@@ -27,40 +15,38 @@ export default function LanguageModal({ visible, onClose }) {
     <Modal
       visible={visible}
       transparent
-      animationType={isTV ? 'fade' : 'slide'}
+      animationType="slide"
       onRequestClose={onClose}
     >
       <Pressable
-        style={[styles.overlay, isTV && styles.overlayTV]}
-        // Tap-outside is mobile-only; on TV the user dismisses with Back.
-        onPress={isTV ? undefined : onClose}
+        style={styles.overlay}
+        onPress={onClose}
       >
         <View
-          style={[styles.content, isTV && styles.contentTV]}
+          style={styles.content}
           onStartShouldSetResponder={() => true}
         >
-          {!isTV && <View style={styles.handle} />}
-          <Text style={[styles.title, isTV && styles.titleTV]}>
+          <View style={styles.handle} />
+          <Text style={styles.title}>
             {t('profile.selectLanguage')}
           </Text>
-          {SUPPORTED_LOCALES.map((lang, idx) => {
+          {SUPPORTED_LOCALES.map((lang) => {
             const isSelected = locale === lang.code;
             return (
-              <TVFocusable
+              <Pressable
                 key={lang.code}
                 onPress={() => handleSelect(lang.code)}
-                hasTVPreferredFocus={isTV && (isSelected || (idx === 0 && !SUPPORTED_LOCALES.some((l) => l.code === locale)))}
-                style={[styles.item, isTV && styles.itemTV]}
+                style={styles.item}
                 accessibilityLabel={lang.nativeName}
               >
-                <Text style={[styles.flag, isTV && styles.flagTV]}>{lang.flag}</Text>
-                <Text style={[styles.langName, isTV && styles.langNameTV]}>
+                <Text style={styles.flag}>{lang.flag}</Text>
+                <Text style={styles.langName}>
                   {lang.nativeName}
                 </Text>
                 {isSelected && (
-                  <Check color={colors.primary} size={isTV ? 28 : 20} />
+                  <Check color={colors.primary} size={20} />
                 )}
-              </TVFocusable>
+              </Pressable>
             );
           })}
         </View>
@@ -75,11 +61,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  overlayTV: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   content: {
     backgroundColor: '#1a1a1a',
     borderTopLeftRadius: borderRadius.xl,
@@ -87,13 +68,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
     paddingTop: spacing.md,
-  },
-  contentTV: {
-    width: 600,
-    maxHeight: '85%',
-    borderRadius: borderRadius.xl,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
   },
   handle: {
     width: 40,
@@ -108,11 +82,6 @@ const styles = StyleSheet.create({
     ...typography.title,
     marginBottom: spacing.md,
   },
-  titleTV: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: spacing.lg,
-  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -120,29 +89,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  itemTV: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 0,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
   flag: {
     fontSize: 20,
     marginRight: spacing.md,
-  },
-  flagTV: {
-    fontSize: 28,
-    marginRight: spacing.lg,
   },
   langName: {
     color: colors.text,
     ...typography.subtitle,
     flex: 1,
-  },
-  langNameTV: {
-    fontSize: 22,
-    fontWeight: '600',
   },
 });

@@ -1,7 +1,6 @@
-import { View, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, ImageBackground, StyleSheet, useWindowDimensions, Pressable } from 'react-native';
 import { Play } from 'lucide-react-native';
-import { colors, borderRadius } from '../theme';
-import TVFocusable from './TVFocusable';
+import { colors, borderRadius } from '@hijistream/shared/theme';
 
 export default function PlayerBox({ item, onPlay }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -18,9 +17,9 @@ export default function PlayerBox({ item, onPlay }) {
         <View style={styles.gradientOverlay1} />
         <View style={styles.gradientOverlay2} />
         <View style={styles.gradientOverlay3} />
-        <TVFocusable onPress={onPlay} style={styles.playButton}>
+        <Pressable onPress={onPlay} style={styles.playButton}>
           <Play color="#FFFFFF" size={32} fill="#FFFFFF" />
-        </TVFocusable>
+        </Pressable>
       </ImageBackground>
     </View>
   );

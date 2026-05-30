@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-004",
+  "type": "fix",
+  "description": "Address review feedback: fix subtitle reload losing playback position, add error state to TV player, fix HeroBanner timer leak, and add exports field to shared package.json.",
+  "status": "completed",
+  "steps": [
+    "Fix VideoPlayer.jsx buildUrl to accept currentTime parameter, pass progressRef.current.time when subtitle changes",
+    "Add error state (hasError) and onError/onHttpError handlers to WebView with Retry TVFocusable button",
+    "Fix HeroBanner.jsx timer leak by adding mountedRef guard to pauseTimeoutRef callback and startAutoSlide",
+    "Add exports field to packages/shared/package.json mapping all deep import paths"
+  ],
+  "acceptance_criteria": [
+    "handleSubtitleSelect passes current playback time to buildUrl so resumeAt is included in rebuilt URL",
+    "WebView has onError and onHttpError handlers that show error state with Retry button",
+    "HeroBanner pauseTimeoutRef callback checks mountedRef before calling startAutoSlide",
+    "packages/shared/package.json has exports field with all subpath mappings"
+  ],
+  "verification": [
+    "bun install succeeds without errors",
+    "bun build --no-bundle transpiles both JSX files without syntax errors"
+  ],
+  "blocked_reason": null,
+  "findings": "All 4 review fixes applied. buildUrl now accepts optional currentTime param used by handleSubtitleSelect and handleRetry. Error state shows when WebView fails with a TVFocusable Retry button. HeroBanner uses mountedRef to prevent state updates after unmount. Shared package exports field maps all 11 subpaths."
+}

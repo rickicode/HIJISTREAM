@@ -2,18 +2,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../utils/api';
-import { getAllWatchProgress } from '../../utils/player';
-import { useTranslation } from '../../i18n';
-import { colors } from '../../theme';
+import api from '@hijistream/shared/utils/api';
+import { getAllWatchProgress } from '@hijistream/shared/utils/player';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { colors } from '@hijistream/shared/theme';
 import HeroBanner from '../../components/HeroBanner';
 import ContentRail from '../../components/ContentRail';
-import useIsTV from '../../hooks/useIsTV';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t, locale } = useTranslation();
-  const isTV = useIsTV();
   const [watchProgress, setWatchProgress] = useState([]);
 
   const loadProgress = useCallback(async () => {
@@ -55,9 +53,9 @@ export default function HomeScreen() {
   const onTheAirItems = tvOnTheAir?.items?.slice(0, 10) || [];
   const animeItems = animeTrending?.items?.slice(0, 10) || [];
   const animeOngoingItems = animeOngoing?.items?.slice(0, 10) || [];
-  const heroItem = useMemo(() => {
-    if (movies.length === 0) return null;
-    return movies[Math.floor(Math.random() * Math.min(movies.length, 5))];
+  const heroItems = useMemo(() => {
+    if (movies.length === 0) return [];
+    return movies.slice(0, 5);
   }, [movies]);
 
   const sections = [];
@@ -78,7 +76,7 @@ export default function HomeScreen() {
 
   const renderSection = ({ item: section }) => {
     if (section.type === 'hero') {
-      return <HeroBanner item={heroItem} type="movie" />;
+      return <HeroBanner items={heroItems} type="movie" />;
     }
 
     if (section.type === 'progress') {
@@ -88,7 +86,6 @@ export default function HomeScreen() {
           items={watchProgress}
           type="movie"
           onSeeAll={() => goToList('continue-watching')}
-          hasTVPreferredFocus={isTV}
         />
       );
     }
@@ -101,7 +98,6 @@ export default function HomeScreen() {
           type="movie"
           isLoading={moviesLoading}
           onSeeAll={() => goToList('trending-movies')}
-          hasTVPreferredFocus={isTV && watchProgress.length === 0}
         />
       );
     }

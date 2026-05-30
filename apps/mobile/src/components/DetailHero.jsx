@@ -1,18 +1,15 @@
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Heart } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
-import { useTranslation } from '../i18n';
-import TVFocusable from './TVFocusable';
-import useMyList from '../hooks/useMyList';
-import useIsTV from '../hooks/useIsTV';
-import { findGenreId } from '../utils/genres';
+import { Play, Plus, Check } from 'lucide-react-native';
+import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
+import useMyList from '@hijistream/shared/hooks/useMyList';
+import { findGenreId } from '@hijistream/shared/utils/genres';
 
 export default function DetailHero({ item, type = 'movie', onPlay }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { inList, toggle: toggleList } = useMyList(item, type);
-  const isTV = useIsTV();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
 
   const handleGenrePress = (genreName) => {
@@ -47,15 +44,15 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
           </View>
         </View>
         {genres.length > 0 && (
-          <View style={[styles.genreRow, isTV && styles.genreRowTV]}>
+          <View style={styles.genreRow}>
             {genres.map((genre) => (
-              <TVFocusable
+              <Pressable
                 key={genre}
                 onPress={() => handleGenrePress(genre)}
                 style={styles.genrePill}
               >
                 <Text style={styles.genreText}>{genre}</Text>
-              </TVFocusable>
+              </Pressable>
             ))}
           </View>
         )}
@@ -64,27 +61,41 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
             {item.overview}
           </Text>
         )}
-        <View style={[styles.actionRow, isTV && styles.actionRowTV]}>
+        <View style={styles.actionRow}>
           {onPlay && (
-            <TVFocusable onPress={onPlay} style={[styles.playButton, isTV && styles.playButtonTV]}>
-              <Play color="#000000" size={isTV ? 24 : 20} fill="#000000" />
-              <Text style={[styles.playText, isTV && styles.playTextTV]}>{t('common.play')}</Text>
-            </TVFocusable>
+            <Pressable
+              onPress={onPlay}
+              style={styles.playBtn}
+            >
+              <View style={styles.playIconWrap}>
+                <Play color="#000000" size={18} fill="#000000" />
+              </View>
+              <Text style={styles.playLabel}>
+                {t('common.play')}
+              </Text>
+            </Pressable>
           )}
-          <TVFocusable
+          <Pressable
             onPress={toggleList}
-            style={[styles.listButton, inList && styles.listButtonActive, isTV && styles.listButtonTV]}
+            style={[
+              styles.myListBtn,
+              inList && styles.myListBtnActive,
+            ]}
           >
-            <Heart
-              color={inList ? colors.primary : colors.text}
-              fill={inList ? colors.primary : 'transparent'}
-              size={isTV ? 24 : 20}
-              strokeWidth={2.2}
-            />
-            <Text style={[styles.listText, inList && styles.listTextActive, isTV && styles.listTextTV]}>
+            {inList ? (
+              <Check color={colors.primary} size={18} strokeWidth={3} />
+            ) : (
+              <Plus color={colors.text} size={18} strokeWidth={2.5} />
+            )}
+            <Text
+              style={[
+                styles.myListLabel,
+                inList && styles.myListLabelActive,
+              ]}
+            >
               {t('common.myList')}
             </Text>
-          </TVFocusable>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -166,78 +177,61 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  playButton: {
-    flex: 1.4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.text,
-    paddingVertical: 14,
-    borderRadius: borderRadius.lg,
-    minHeight: 52,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  playText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  listButton: {
+  playBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 14,
-    borderRadius: borderRadius.lg,
-    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minHeight: 48,
+    elevation: 4,
   },
-  listButtonActive: {
-    backgroundColor: 'rgba(229,9,20,0.18)',
+  playIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playLabel: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  myListBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    minHeight: 48,
+  },
+  myListBtnActive: {
+    backgroundColor: 'rgba(229,9,20,0.12)',
     borderColor: colors.primary,
   },
-  listText: {
+  myListLabel: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
   },
-  listTextActive: {
+  myListLabelActive: {
     color: colors.primary,
-  },
-  actionRowTV: {
-    gap: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  playButtonTV: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-  },
-  listButtonTV: {
-    minHeight: 60,
-    paddingVertical: 18,
-    paddingHorizontal: 28,
-  },
-  playTextTV: {
-    fontSize: 20,
-  },
-  listTextTV: {
-    fontSize: 18,
-  },
-  genreRowTV: {
-    marginTop: spacing.lg,
-    gap: spacing.md,
   },
 });

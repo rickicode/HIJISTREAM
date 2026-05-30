@@ -1,0 +1,42 @@
+{
+  "id": "FEAT-003",
+  "type": "refactor",
+  "description": "Revert mobile app to standard react-native (remove tvos fork) and strip all TV-specific code/conditionals from mobile. Update GitHub Actions to build TV APK separately.",
+  "status": "completed",
+  "steps": [
+    "Update apps/mobile/package.json: change 'react-native': 'npm:react-native-tvos@0.76.7-0' to 'react-native': '0.76.7' (standard).",
+    "Remove apps/mobile/src/hooks/useIsTV.js entirely.",
+    "Remove apps/mobile/src/components/TVFocusable.jsx entirely.",
+    "Update apps/mobile/src/components/ContentCard.jsx: remove all isTV conditionals, remove useIsTV import, replace TVFocusable with Pressable. Remove TV-specific styles (ratingBadgeTV, progressBarTV, infoTV, titleTV, yearTV). Keep only mobile UI.",
+    "Update apps/mobile/src/components/ContentRail.jsx: remove isTV conditionals, remove useIsTV import, remove TVFocusable import. Always use ScrollView (mobile). Remove TV-specific styles. Keep only mobile UI.",
+    "Update apps/mobile/src/components/HeroBanner.jsx: remove all isTV conditionals and TV-specific code (contentTV, titleTV, buttonRowTV, etc). Remove useIsTV import, remove TVFocusable usage from the action buttons (use Pressable instead). Keep only the mobile billboard layout (centered title, play pill, side actions). HeroSlide still uses auto-scroll carousel for mobile but with Pressable instead of TVFocusable.",
+    "Update apps/mobile/src/components/VideoPlayer.jsx: remove all TV overlay code (the entire isTVDevice conditional block, the TV focus trigger, the subtitle modal, the settings modal). Remove useIsTV/isTV imports, remove TVFocusable import. The mobile player is just a fullscreen WebView with injected JS for popup blocking. Touch users interact with the embedded player's built-in controls directly via WebView touch. Keep the WebView, injected JS for popup blocking, domain whitelist, watch progress saving, and handleMessage. Remove TV-specific injected JS section (the isTV block in the template literal).",
+    "Update apps/mobile/src/app/(tabs)/_layout.jsx: remove TVTopNav component entirely, remove useIsTV import, remove TVFocusable import. Always show bottom tab bar (remove the isTV conditional on tabBarStyle). Remove the isTV conditional on headerShown and headerRight. Always show header with search/globe buttons.",
+    "Update apps/mobile/src/app/(tabs)/home.jsx: remove useIsTV import and isTV usage. Remove hasTVPreferredFocus props from ContentRail calls.",
+    "Update apps/mobile/src/app/(tabs)/browse.jsx: remove useIsTV import and isTV conditionals. Always use numColumns=2. Remove TV-specific styles (cardTV, cardTextTV, flagTextTV, gridContainerTV). Remove hasTVPreferredFocus from TVFocusable (replace with Pressable).",
+    "Update apps/mobile/src/app/(tabs)/profile.jsx: remove useIsTV import and isTV conditionals. Remove TV-specific styles. Replace TVFocusable with Pressable (or TouchableOpacity).",
+    "Update apps/mobile/src/app/player.jsx: remove isTV import (isTVStatic). The screen orientation lock should always apply on mobile. Remove the 'if (isTVStatic) return undefined' guard.",
+    "Update apps/mobile/app.json: remove the LEANBACK_LAUNCHER intent-filter and the withAndroidTV.js plugin. This app is phone-only now. Remove the plugins entry for './plugins/withAndroidTV.js'. Keep 'expo-router' plugin.",
+    "Delete apps/mobile/plugins/withAndroidTV.js (not needed for mobile-only app).",
+    "Update remaining components that import TVFocusable (DetailHero.jsx, EpisodeList.jsx, LanguageModal.jsx, SearchBar.jsx, TabBar.jsx) - replace TVFocusable with Pressable/TouchableOpacity, remove useIsTV usage and TV conditionals.",
+    "Update .github/workflows/build-apk.yml: rename the existing job/workflow or add clarity that it builds the mobile APK. Add a new workflow file .github/workflows/build-tv-apk.yml that builds the TV APK from apps/tv/ with the same pattern (expo prebuild, gradle assembleRelease) but working-directory apps/tv.",
+    "Verify no remaining references to 'useIsTV', 'TVFocusable', 'react-native-tvos', or 'Platform.isTV' exist in apps/mobile/src/."
+  ],
+  "acceptance_criteria": [
+    "apps/mobile/package.json has 'react-native': '0.76.7' (standard, not tvos fork)",
+    "No file in apps/mobile/src/ references useIsTV, TVFocusable, or Platform.isTV",
+    "apps/mobile/app.json has no LEANBACK_LAUNCHER intent-filter and no withAndroidTV plugin",
+    "apps/mobile/src/components/VideoPlayer.jsx has no TV overlay (just WebView with popup blocking)",
+    ".github/workflows/build-tv-apk.yml exists and builds from apps/tv/",
+    "bun install from root resolves without errors"
+  ],
+  "verification": [
+    "Run 'bun install' from /projects/sandbox/HIJISTREAM and verify exit code 0",
+    "Run 'grep -r \"useIsTV\\|TVFocusable\\|react-native-tvos\\|Platform\\.isTV\" apps/mobile/src/' returns no results",
+    "Run 'grep -r \"LEANBACK_LAUNCHER\\|withAndroidTV\" apps/mobile/app.json' returns no results",
+    "Verify .github/workflows/build-tv-apk.yml exists",
+    "Verify apps/mobile/package.json contains '\"react-native\": \"0.76.7\"'"
+  ],
+  "blocked_reason": null,
+  "findings": "All TV code successfully stripped from mobile app. 26 files changed: 391 insertions, 1871 deletions. react-native changed from tvos fork to standard 0.76.7. bun install resolves without errors. No remaining references to useIsTV, TVFocusable, react-native-tvos, or Platform.isTV in apps/mobile/src/. TVFocusable replaced with Pressable throughout. VideoPlayer simplified to pure WebView with popup-blocking JS. TV CI workflow created at .github/workflows/build-tv-apk.yml targeting apps/tv/ with arm64-v8a and x86_64 matrix."
+}

@@ -1,0 +1,53 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Create apps/tv/ as a dedicated Android TV Expo app using react-native-tvos, with complete TV-optimized UI (top nav, hero carousel, content rails, browse grid, detail screen, player with native overlay controls for CC/Settings, profile). All screens designed for D-pad/remote navigation with no touch/mouse assumptions.",
+  "status": "completed",
+  "steps": [
+    "Create apps/tv/package.json: name 'hijistream-tv', main 'expo-router/entry'. Dependencies: react-native as 'npm:react-native-tvos@0.76.7-0', expo ~52.0.0, expo-router ~4.0.0, @tanstack/react-query ^5.62.0, react-native-webview 13.12.5, lucide-react-native ^0.468.0, react 18.3.1, react-native-safe-area-context 4.12.0, react-native-screens ~4.4.0, react-native-svg 15.8.0, react-native-gesture-handler ~2.20.2, expo-linear-gradient ~14.0.2, expo-constants ~17.0.0, expo-font ~13.0.0, expo-splash-screen ~0.29.24, expo-status-bar ~2.0.0, expo-localization ~16.0.1, @expo-google-fonts/inter ^0.2.3, @react-native-async-storage/async-storage 1.23.1, @hijistream/shared workspace:*. DevDependencies: @babel/core ^7.25.0, typescript ^5.3.0.",
+    "Create apps/tv/app.json with: name 'HIJISTREAM TV', slug 'hijistream-tv', platforms ['android'], android.package 'com.hijistream.tv', android.minSdkVersion 24, LEANBACK_LAUNCHER intent-filter, plugins: ['expo-router', './plugins/withAndroidTV.js'], scheme 'hijistream-tv'.",
+    "Create apps/tv/plugins/withAndroidTV.js - copy from apps/mobile/plugins/withAndroidTV.js (identical logic).",
+    "Create apps/tv/metro.config.js that resolves @hijistream/shared from packages/shared and sets watchFolders to include the monorepo root and packages/shared.",
+    "Create apps/tv/tsconfig.json (basic expo typescript config, extends expo/tsconfig.base).",
+    "Create apps/tv/src/app/_layout.jsx - Root layout with QueryClientProvider, LanguageProvider (from @hijistream/shared), SafeAreaProvider, Stack navigator. Import theme from @hijistream/shared.",
+    "Create apps/tv/src/app/index.jsx - Redirect to /(tabs)/home.",
+    "Create apps/tv/src/app/(tabs)/_layout.jsx - TV layout with TVTopNav (horizontal top navigation bar with HIJISTREAM logo, menu items: Home, Browse, My List, Profile, Search). NO bottom tab bar. Uses Stack or Tabs with tabBarStyle display:none. The top nav uses Pressable with onFocus/onBlur/hasTVPreferredFocus for D-pad navigation. Active item gets red underline + bold text. Search icon on the right side.",
+    "Create apps/tv/src/components/TVFocusable.jsx - Focusable wrapper identical to mobile version but without the useIsTV conditional (everything IS TV). Always shows focus ring, always animates scale on focus. Uses Pressable from react-native-tvos with hasTVPreferredFocus, onFocus, onBlur props.",
+    "Create apps/tv/src/app/(tabs)/home.jsx - TV home screen: Hero carousel (auto-sliding FlatList horizontal pagingEnabled, 72% screen height backdrop, 8s auto-advance, left-aligned content with title/overview/genre/Play+MyList+Info buttons) + Content rails (FlatList horizontal with 200dp wide cards). Content sections: Continue Watching, Trending Movies, Trending TV, On Air, Trending Anime, Ongoing Anime. All using data from @hijistream/shared api.",
+    "Create apps/tv/src/components/HeroBanner.jsx - TV-specific hero carousel. Full backdrop image, LinearGradient overlay, left-aligned content area (max 65% width): large title (56px), overview (18px), genre tags, action buttons row (Play white bg, My List secondary, More Info secondary). Auto-slides every 8 seconds. Dot indicators at bottom. All buttons are TVFocusable. Focus on any button pauses auto-scroll for 12 seconds.",
+    "Create apps/tv/src/components/ContentRail.jsx - TV-specific horizontal content rail. Title (24px bold) + See All button. FlatList horizontal with 200dp wide ContentCards separated by 16dp. D-pad left/right navigates between cards.",
+    "Create apps/tv/src/components/ContentCard.jsx - TV-specific card. Poster image (2:3 aspect ratio), rating badge top-right, progress bar at bottom if applicable, title below poster (16px), year below title. TVFocusable wrapper with focusScale 1.1. No heart button (TV uses detail screen for My List).",
+    "Create apps/tv/src/app/(tabs)/browse.jsx - TV browse screen: Tab selector (Genre/Country) at top using TVFocusable buttons. Grid of cards (5 columns for genres, 5 columns for countries) using FlatList with numColumns=5. Each card is a large TVFocusable tile with genre name or country flag+name. Cards are 140dp min height.",
+    "Create apps/tv/src/app/(tabs)/mylist.jsx - TV my list screen: Grid of saved content cards (5 columns FlatList). Empty state message if no items. Uses useMyListItems hook from @hijistream/shared.",
+    "Create apps/tv/src/app/(tabs)/profile.jsx - TV profile screen: centered large avatar icon, Language selection row (TVFocusable, shows current language name), Clear Cache row (TVFocusable). Version label at bottom. Language modal opens on press.",
+    "Create apps/tv/src/app/movie/[id].jsx - Movie detail screen: full backdrop, info section (title, year, rating, genres, overview), Play and My List buttons (TVFocusable), recommendations grid below. Pattern same as mobile app/movie/[id].jsx but with TV-sized typography and layout.",
+    "Create apps/tv/src/app/tv/[id].jsx - TV show detail screen: full backdrop, info section, Play button for S1E1, episode list with season selector, recommendations grid. Same pattern as mobile.",
+    "Create apps/tv/src/app/player.jsx - Player screen: fullscreen WebView with native overlay controls. No screen orientation lock needed (TV is always landscape). Build embed URL with skin=netflix and ds_lang from locale.",
+    "Create apps/tv/src/components/VideoPlayer.jsx - TV-specific video player with WebView + native overlay. Overlay has: top bar (Back button + title), bottom bar (SeekBack, Play/Pause, SeekForward, CC button, Settings button). Auto-hides after 6 seconds. Hidden focus trigger to re-show overlay. CC button opens native Modal with subtitle language list (20 languages, TVFocusable items, checkmark on selected). Settings button opens native Modal with playback speed options. All modals use TVFocusable for D-pad navigation. Inject JS: block popups (window.open override), block form.submit, block histats scripts, block mousedown propagation, forward iframe to fill screen, forward key events to iframe. Domain whitelist: vaplayer.ru, brightpathsignals.com, streamdata.vaplayer.ru, cdn.jsdelivr.net, code.jquery.com, cdnjs.cloudflare.com, www.gstatic.com. Subtitle selection rebuilds URL with ds_lang param. Speed selection injects postMessage to iframe.",
+    "Create apps/tv/src/app/search.jsx - TV search screen: text input (auto-focused for TV keyboard), results grid below. Uses api.search from @hijistream/shared.",
+    "Create apps/tv/src/app/genre/[id].jsx - Genre listing screen: grid of content cards filtered by genre. Uses api.getDiscoverByGenre.",
+    "Create apps/tv/src/app/country/[id].jsx - Country listing screen: grid of content cards filtered by country. Uses api.getDiscoverByCountry.",
+    "Create apps/tv/src/app/list/[type].jsx - List screen for see-all pages (trending-movies, trending-tv, etc). Grid layout with pagination.",
+    "Create apps/tv/src/components/LanguageModal.jsx - Native Modal for language selection on TV. List of supported locales with flags, TVFocusable items, checkmark on current. On select calls setLocale from i18n context.",
+    "Create apps/tv/assets/ directory with placeholder icon.png, splash-icon.png, adaptive-icon-foreground.png, adaptive-icon-background.png (can be simple colored squares - same as mobile or copy from mobile)."
+  ],
+  "acceptance_criteria": [
+    "apps/tv/package.json exists with react-native-tvos as the react-native dependency",
+    "apps/tv/app.json declares LEANBACK_LAUNCHER intent filter and withAndroidTV plugin",
+    "apps/tv/src/app/(tabs)/_layout.jsx renders a top navigation bar (no bottom tabs)",
+    "apps/tv/src/components/VideoPlayer.jsx has native overlay with CC modal and Settings modal",
+    "All TVFocusable wrappers use Pressable with hasTVPreferredFocus for D-pad navigation",
+    "No mouse simulation or touch-dependent interactions in any TV component",
+    "All imports from shared code use @hijistream/shared",
+    "bun install from root resolves without errors"
+  ],
+  "verification": [
+    "Run 'bun install' from /projects/sandbox/HIJISTREAM and verify exit code 0",
+    "Verify apps/tv/src/app/(tabs)/_layout.jsx contains TVTopNav or top navigation implementation",
+    "Verify apps/tv/src/components/VideoPlayer.jsx contains Modal components for subtitles and settings",
+    "Verify no occurrence of 'useIsTV' in apps/tv/src/ (everything is TV, no conditional needed)",
+    "Verify apps/tv/package.json contains 'react-native-tvos' in dependencies"
+  ],
+  "blocked_reason": null,
+  "findings": "Created all 27 files for apps/tv/ dedicated Android TV app. bun install resolves correctly (workspace:* link to @hijistream/shared works). No useIsTV conditionals anywhere - everything is TV. VideoPlayer component has native overlay with CC Modal (20 subtitle languages) and Settings Modal (playback speed). All interactive elements use TVFocusable (Pressable with hasTVPreferredFocus/onFocus/onBlur). Domain whitelist applied for WebView. The withAndroidTV.js plugin is identical to apps/mobile version. Top navigation bar instead of bottom tabs. Player uses hidden focus trigger to re-show overlay when hidden."
+}

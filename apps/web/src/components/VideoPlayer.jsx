@@ -8,7 +8,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, metadata = {} 
 
   const handleMessage = useCallback(
     (event) => {
-      if (event.origin !== 'https://vaplayer.ru') return;
+      if (event.origin !== 'https://vaplayer.ru' && event.origin !== 'https://brightpathsignals.com') return;
       if (!event.data || typeof event.data !== 'object') return;
 
       const data = event.data;
@@ -50,6 +50,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, metadata = {} 
       frameBorder="0"
       allowFullScreen
       allow="autoplay; encrypted-media; picture-in-picture"
+
       style={{ border: 'none', display: 'block' }}
     />
   );

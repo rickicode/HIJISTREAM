@@ -1,9 +1,9 @@
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import api from '../../utils/api';
-import { useTranslation } from '../../i18n';
-import { colors, spacing } from '../../theme';
+import api from '@hijistream/shared/utils/api';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { colors, spacing } from '@hijistream/shared/theme';
 import DetailHero from '../../components/DetailHero';
 import ContentCard from '../../components/ContentCard';
 import LoadingState from '../../components/LoadingState';

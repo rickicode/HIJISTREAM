@@ -4,10 +4,10 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import api from '../../utils/api';
-import { getAllWatchProgress } from '../../utils/player';
-import { useTranslation } from '../../i18n';
-import { colors, spacing } from '../../theme';
+import api from '@hijistream/shared/utils/api';
+import { getAllWatchProgress } from '@hijistream/shared/utils/player';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { colors, spacing } from '@hijistream/shared/theme';
 import ContentGrid from '../../components/ContentGrid';
 
 const LIST_CONFIG = {

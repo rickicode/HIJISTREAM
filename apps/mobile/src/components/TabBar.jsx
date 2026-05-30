@@ -1,9 +1,31 @@
-import { ScrollView, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
-import TVFocusable from './TVFocusable';
+import { View, ScrollView, Text, StyleSheet, Pressable } from 'react-native';
+import { colors, spacing, typography } from '@hijistream/shared/theme';
 
 export default function TabBar({ tabs, activeTab, onTabChange, variant = 'default' }) {
   const isPill = variant === 'pill';
+
+  const content = tabs.map((tab) => {
+    const isActive = tab.id === activeTab;
+    const tabStyle = isPill
+      ? [styles.pillTab, isActive && styles.activePillTab]
+      : [styles.tab, isActive && styles.activeTab];
+    const textStyle = isPill
+      ? [styles.pillTabText, isActive && styles.activePillTabText]
+      : [styles.tabText, isActive && styles.activeTabText];
+    return (
+      <Pressable
+        key={tab.id}
+        onPress={() => onTabChange(tab.id)}
+        style={tabStyle}
+        accessibilityLabel={tab.label}
+        accessibilityRole="tab"
+      >
+        <Text style={textStyle}>
+          {tab.label}
+        </Text>
+      </Pressable>
+    );
+  });
 
   return (
     <ScrollView
@@ -11,26 +33,7 @@ export default function TabBar({ tabs, activeTab, onTabChange, variant = 'defaul
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
     >
-      {tabs.map((tab) => {
-        const isActive = tab.id === activeTab;
-        const tabStyle = isPill
-          ? [styles.pillTab, isActive && styles.activePillTab]
-          : [styles.tab, isActive && styles.activeTab];
-        const textStyle = isPill
-          ? [styles.pillTabText, isActive && styles.activePillTabText]
-          : [styles.tabText, isActive && styles.activeTabText];
-        return (
-          <TVFocusable
-            key={tab.id}
-            onPress={() => onTabChange(tab.id)}
-            style={tabStyle}
-          >
-            <Text style={textStyle}>
-              {tab.label}
-            </Text>
-          </TVFocusable>
-        );
-      })}
+      {content}
     </ScrollView>
   );
 }

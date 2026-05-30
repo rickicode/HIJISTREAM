@@ -27,8 +27,6 @@ const TV_USES_FEATURES = [
 
 const BANNER_META = {
   name: 'android.app.banner',
-  // Falls back to the launcher icon if no dedicated banner drawable exists.
-  // Replace with `@drawable/tv_banner` once a 320x180 banner asset is added.
   resource: '@mipmap/ic_launcher',
 };
 

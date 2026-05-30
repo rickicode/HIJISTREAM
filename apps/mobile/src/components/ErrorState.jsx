@@ -1,8 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
-import TVFocusable from './TVFocusable';
-import { useTranslation } from '../i18n';
+import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
 
 export default function ErrorState({ error, onRetry }) {
   const { t } = useTranslation();
@@ -15,9 +14,9 @@ export default function ErrorState({ error, onRetry }) {
         {error?.message || t('common.error')}
       </Text>
       {onRetry && (
-        <TVFocusable onPress={onRetry} style={styles.button}>
+        <Pressable onPress={onRetry} style={styles.button}>
           <Text style={styles.buttonText}>{t('common.retry')}</Text>
-        </TVFocusable>
+        </Pressable>
       )}
     </View>
   );

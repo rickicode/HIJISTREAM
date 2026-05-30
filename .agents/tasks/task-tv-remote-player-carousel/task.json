@@ -1,0 +1,18 @@
+{
+  "task_id": "task-tv-remote-player-carousel",
+  "task_description": "Fix Android TV / Google TV remote navigation (D-pad does nothing, no focus visible), fix video player controls not appearing on TV (CC/subtitle/settings buttons invisible), and convert HeroBanner to Netflix-style auto-sliding carousel.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null,
+  "review_fixes_applied": {
+    "review_file": "2025-01-20-150000-review.md",
+    "commit": "6ca7ae0",
+    "fixes": [
+      "Moved scrollToIndex outside state updater using activeIndexRef pattern",
+      "Removed hasTVPreferredFocus from focus trigger (set to false) to avoid competing hints",
+      "Added isPlaying state sync from PLAYER_EVENT messages in handleMessage",
+      "Added scrollEnabled={!isTV} to FlatList to prevent D-pad focus trap on TV",
+      "Improved injected JS: CSS injection for visible controls, periodic mouse-move keep-alive"
+    ]
+  }
+}
