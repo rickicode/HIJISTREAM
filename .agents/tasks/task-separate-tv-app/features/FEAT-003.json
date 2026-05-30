@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "refactor",
   "description": "Revert mobile app to standard react-native (remove tvos fork) and strip all TV-specific code/conditionals from mobile. Update GitHub Actions to build TV APK separately.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Update apps/mobile/package.json: change 'react-native': 'npm:react-native-tvos@0.76.7-0' to 'react-native': '0.76.7' (standard).",
     "Remove apps/mobile/src/hooks/useIsTV.js entirely.",
@@ -38,5 +38,5 @@
     "Verify apps/mobile/package.json contains '\"react-native\": \"0.76.7\"'"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All TV code successfully stripped from mobile app. 26 files changed: 391 insertions, 1871 deletions. react-native changed from tvos fork to standard 0.76.7. bun install resolves without errors. No remaining references to useIsTV, TVFocusable, react-native-tvos, or Platform.isTV in apps/mobile/src/. TVFocusable replaced with Pressable throughout. VideoPlayer simplified to pure WebView with popup-blocking JS. TV CI workflow created at .github/workflows/build-tv-apk.yml targeting apps/tv/ with arm64-v8a and x86_64 matrix."
 }
