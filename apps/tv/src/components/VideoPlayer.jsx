@@ -164,22 +164,25 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
   const [ccModalVisible, setCcModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [embedUrl, setEmbedUrl] = useState('');
+  const [hasError, setHasError] = useState(false);
 
   // Build initial URL
   useEffect(() => {
     buildUrl('');
   }, []);
 
-  const buildUrl = useCallback(async (dsLang) => {
+  const buildUrl = useCallback(async (dsLang, currentTime) => {
     const lang = dsLang || await getDsLang();
     const options = { skin: 'netflix', dsLang: lang || undefined };
+    const time = currentTime !== undefined ? currentTime : resumeAt;
     let url;
     if (type === 'tv') {
-      url = getTVEmbedUrl(id, season, episode, resumeAt, options);
+      url = getTVEmbedUrl(id, season, episode, time, options);
     } else {
-      url = getMovieEmbedUrl(id, resumeAt, options);
+      url = getMovieEmbedUrl(id, time, options);
     }
     setEmbedUrl(url);
+    setHasError(false);
   }, [id, type, season, episode, resumeAt]);
 
   // Auto-hide overlay
@@ -263,8 +266,9 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
   const handleSubtitleSelect = (code) => {
     setSubtitleLang(code);
     setCcModalVisible(false);
-    // Rebuild URL with new ds_lang
-    buildUrl(code);
+    // Rebuild URL with new ds_lang, preserving current playback position
+    const currentTime = progressRef.current.time || 0;
+    buildUrl(code, currentTime > 0 ? currentTime : undefined);
   };
 
   const handleSpeedSelect = (value) => {
@@ -293,10 +297,21 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
     }
   };
 
+  const handleWebViewError = () => {
+    setHasError(true);
+  };
+
+  const handleRetry = () => {
+    setHasError(false);
+    // Rebuild URL to force WebView to reload
+    const currentTime = progressRef.current.time || 0;
+    buildUrl(subtitleLang, currentTime > 0 ? currentTime : undefined);
+  };
+
   return (
     <View style={styles.container}>
       {/* WebView Player */}
-      {embedUrl ? (
+      {embedUrl && !hasError ? (
         <WebView
           ref={webViewRef}
           source={{ uri: embedUrl }}
@@ -308,9 +323,27 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
           injectedJavaScript={INJECTED_JS}
           onMessage={handleMessage}
           onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
+          onError={handleWebViewError}
+          onHttpError={handleWebViewError}
           allowsFullscreenVideo
         />
       ) : null}
+
+      {/* Error State */}
+      {hasError && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load player. Press to retry.</Text>
+          <TVFocusable
+            onPress={handleRetry}
+            style={styles.retryButton}
+            focusScale={1.08}
+            hasTVPreferredFocus
+            accessibilityLabel="Retry"
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TVFocusable>
+        </View>
+      )}
 
       {/* Hidden focus trigger - full screen transparent pressable to show overlay */}
       {!overlayVisible && (
@@ -586,6 +619,29 @@ const styles = StyleSheet.create({
   modalCloseText: {
     fontSize: 18,
     fontWeight: '600',
+    color: colors.text,
+  },
+  errorContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000',
+  },
+  errorText: {
+    fontSize: 22,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+  },
+  retryText: {
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.text,
   },
 });

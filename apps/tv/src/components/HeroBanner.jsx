@@ -17,10 +17,12 @@ export default function HeroBanner({ items }) {
   const flatListRef = useRef(null);
   const intervalRef = useRef(null);
   const pauseTimeoutRef = useRef(null);
+  const mountedRef = useRef(true);
   const router = useRouter();
 
   const startAutoSlide = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!mountedRef.current) return;
     intervalRef.current = setInterval(() => {
       setActiveIndex((prev) => {
         const next = (prev + 1) % items.length;
@@ -35,14 +37,17 @@ export default function HeroBanner({ items }) {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
     pauseTimeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current) return;
       setIsPaused(false);
       startAutoSlide();
     }, PAUSE_DURATION);
   }, [startAutoSlide]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (!isPaused) startAutoSlide();
     return () => {
+      mountedRef.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
     };

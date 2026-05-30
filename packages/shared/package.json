@@ -2,6 +2,19 @@
   "name": "@hijistream/shared",
   "version": "1.0.0",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./utils/api": "./utils/api.js",
+    "./utils/cache": "./utils/cache.js",
+    "./utils/storage": "./utils/storage.js",
+    "./utils/player": "./utils/player.js",
+    "./utils/genres": "./utils/genres.js",
+    "./utils/language": "./utils/language.js",
+    "./utils/myList": "./utils/myList.js",
+    "./hooks/useMyList": "./hooks/useMyList.js",
+    "./i18n": "./i18n/index.js",
+    "./theme": "./theme.js"
+  },
   "peerDependencies": {
     "@react-native-async-storage/async-storage": ">=1.0.0",
     "expo-localization": ">=16.0.0"
