@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Create apps/tv/ as a dedicated Android TV Expo app using react-native-tvos, with complete TV-optimized UI (top nav, hero carousel, content rails, browse grid, detail screen, player with native overlay controls for CC/Settings, profile). All screens designed for D-pad/remote navigation with no touch/mouse assumptions.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create apps/tv/package.json: name 'hijistream-tv', main 'expo-router/entry'. Dependencies: react-native as 'npm:react-native-tvos@0.76.7-0', expo ~52.0.0, expo-router ~4.0.0, @tanstack/react-query ^5.62.0, react-native-webview 13.12.5, lucide-react-native ^0.468.0, react 18.3.1, react-native-safe-area-context 4.12.0, react-native-screens ~4.4.0, react-native-svg 15.8.0, react-native-gesture-handler ~2.20.2, expo-linear-gradient ~14.0.2, expo-constants ~17.0.0, expo-font ~13.0.0, expo-splash-screen ~0.29.24, expo-status-bar ~2.0.0, expo-localization ~16.0.1, @expo-google-fonts/inter ^0.2.3, @react-native-async-storage/async-storage 1.23.1, @hijistream/shared workspace:*. DevDependencies: @babel/core ^7.25.0, typescript ^5.3.0.",
     "Create apps/tv/app.json with: name 'HIJISTREAM TV', slug 'hijistream-tv', platforms ['android'], android.package 'com.hijistream.tv', android.minSdkVersion 24, LEANBACK_LAUNCHER intent-filter, plugins: ['expo-router', './plugins/withAndroidTV.js'], scheme 'hijistream-tv'.",
@@ -49,5 +49,5 @@
     "Verify apps/tv/package.json contains 'react-native-tvos' in dependencies"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Created all 27 files for apps/tv/ dedicated Android TV app. bun install resolves correctly (workspace:* link to @hijistream/shared works). No useIsTV conditionals anywhere - everything is TV. VideoPlayer component has native overlay with CC Modal (20 subtitle languages) and Settings Modal (playback speed). All interactive elements use TVFocusable (Pressable with hasTVPreferredFocus/onFocus/onBlur). Domain whitelist applied for WebView. The withAndroidTV.js plugin is identical to apps/mobile version. Top navigation bar instead of bottom tabs. Player uses hidden focus trigger to re-show overlay when hidden."
 }
