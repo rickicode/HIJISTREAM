@@ -10,7 +10,6 @@ import { useTranslation } from '@hijistream/shared/i18n';
 import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 import SearchBar from '../components/SearchBar';
 import ContentGrid from '../components/ContentGrid';
-import TVFocusable from '../components/TVFocusable';
 
 const RECENT_KEY = 'recent_searches';
 const RECENT_MAX = 8;
@@ -114,13 +113,13 @@ export default function SearchScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TVFocusable
+        <Pressable
           onPress={() => router.back()}
           style={styles.backButton}
           accessibilityLabel={t('common.closeSearch')}
         >
           <ChevronLeft color={colors.text} size={26} />
-        </TVFocusable>
+        </Pressable>
         <View style={styles.searchWrapper}>
           <SearchBar
             value={input}

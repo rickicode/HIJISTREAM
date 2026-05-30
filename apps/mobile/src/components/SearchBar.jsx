@@ -1,15 +1,9 @@
 import { useState } from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
+import { View, TextInput, StyleSheet, Pressable } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 import { useTranslation } from '@hijistream/shared/i18n';
-import TVFocusable from './TVFocusable';
 
-/**
- * Controlled search input. The parent owns the text value (so it can be set
- * from a tapped recent search / suggestion) and any debouncing. This component
- * is purely presentational + emits onChangeText / onClear.
- */
 export default function SearchBar({
   value = '',
   onChangeText,
@@ -39,9 +33,9 @@ export default function SearchBar({
         onBlur={() => setFocused(false)}
       />
       {value.length > 0 && (
-        <TVFocusable onPress={onClear} style={styles.clearButton} accessibilityLabel={t('common.closeSearch')}>
+        <Pressable onPress={onClear} style={styles.clearButton} accessibilityLabel={t('common.closeSearch')}>
           <X color={colors.text} size={15} strokeWidth={2.6} />
-        </TVFocusable>
+        </Pressable>
       )}
     </View>
   );
@@ -75,8 +69,6 @@ const styles = StyleSheet.create({
   clearButton: {
     width: 24,
     height: 24,
-    minWidth: 24,
-    minHeight: 24,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',

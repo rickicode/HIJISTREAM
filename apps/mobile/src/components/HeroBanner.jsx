@@ -1,17 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ImageBackground, StyleSheet, useWindowDimensions, FlatList } from 'react-native';
+import { View, Text, ImageBackground, StyleSheet, useWindowDimensions, FlatList, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Play, Plus, Check, Info, Star } from 'lucide-react-native';
 import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 import { useTranslation } from '@hijistream/shared/i18n';
-import TVFocusable from './TVFocusable';
 import useMyList from '@hijistream/shared/hooks/useMyList';
-import useIsTV from '../hooks/useIsTV';
 import { findGenreId } from '@hijistream/shared/utils/genres';
 
-// Inner component that renders a single slide (billboard UI for one item)
-function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, height: backdropHeight }) {
+function HeroSlide({ item, type, height: backdropHeight }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { inList, toggle: toggleList } = useMyList(item, type);
@@ -62,20 +59,17 @@ function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, heigh
 
   const genreRow =
     genres.length > 0 ? (
-      <View style={[styles.genreRow, isTV ? styles.genreRowTV : styles.genreRowMobile]}>
+      <View style={styles.genreRow}>
         {genres.map((genre, idx) => (
           <View key={genre} style={styles.genreItem}>
-            {idx > 0 && <Text style={[styles.genreDot, isTV && styles.genreDotTV]}>•</Text>}
-            <TVFocusable
+            {idx > 0 && <Text style={styles.genreDot}>&#8226;</Text>}
+            <Pressable
               onPress={() => handleGenrePress(genre)}
-              onFocus={onButtonFocus}
               style={styles.genreTouch}
-              focusScale={isTV ? 1.06 : 1.0}
-              showFocusRing={isTV}
               accessibilityLabel={genre}
             >
-              <Text style={[styles.genreText, isTV && styles.genreTextTV]}>{genre}</Text>
-            </TVFocusable>
+              <Text style={styles.genreText}>{genre}</Text>
+            </Pressable>
           </View>
         ))}
       </View>
@@ -88,9 +82,9 @@ function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, heigh
       resizeMode="cover"
     >
       {showRating && (
-        <View style={[styles.ratingBadge, isTV && styles.ratingBadgeTV]}>
-          <Star color="#FFD700" size={isTV ? 18 : 13} fill="#FFD700" />
-          <Text style={[styles.ratingText, isTV && styles.ratingTextTV]}>{item.rating}</Text>
+        <View style={styles.ratingBadge}>
+          <Star color="#FFD700" size={13} fill="#FFD700" />
+          <Text style={styles.ratingText}>{item.rating}</Text>
         </View>
       )}
 
@@ -104,114 +98,60 @@ function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, heigh
         locations={[0, 0.4, 0.75, 1]}
         style={styles.gradient}
       >
-        {isTV ? (
-          <View style={styles.contentTV}>
-            <Text style={styles.titleTV} numberOfLines={2}>
-              {item.title}
-            </Text>
-            {genreRow}
-            {item.overview ? (
-              <Text style={styles.overviewTV} numberOfLines={3}>
-                {item.overview}
-              </Text>
-            ) : null}
-            <View style={styles.buttonRowTV}>
-              <TVFocusable
-                onPress={handlePlay}
-                onFocus={onButtonFocus}
-                hasTVPreferredFocus={hasTVPreferredFocus}
-                style={styles.playButtonTV}
-                accessibilityLabel={t('common.play')}
-              >
-                <Play color="#000000" size={24} fill="#000000" />
-                <Text style={styles.playTextTV}>{t('common.play')}</Text>
-              </TVFocusable>
-              <TVFocusable
-                onPress={toggleList}
-                onFocus={onButtonFocus}
-                style={styles.secondaryButtonTV}
-                accessibilityLabel={t('common.myList')}
-              >
-                {inList ? (
-                  <Check color={colors.text} size={24} strokeWidth={3} />
-                ) : (
-                  <Plus color={colors.text} size={24} />
-                )}
-                <Text style={styles.secondaryTextTV}>{t('common.myList')}</Text>
-              </TVFocusable>
-              <TVFocusable
-                onPress={handleInfo}
-                onFocus={onButtonFocus}
-                style={styles.secondaryButtonTV}
-                accessibilityLabel={t('common.moreInfo')}
-              >
-                <Info color={colors.text} size={24} />
-                <Text style={styles.secondaryTextTV}>{t('common.moreInfo')}</Text>
-              </TVFocusable>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.contentMobile}>
-            <Text style={styles.titleMobile} numberOfLines={2}>
-              {item.title}
-            </Text>
-            {genreRow}
-            <View style={styles.buttonRowMobile}>
-              <TVFocusable
-                onPress={toggleList}
-                onFocus={onButtonFocus}
-                style={styles.sideAction}
-                accessibilityLabel={t('common.myList')}
-              >
-                {inList ? (
-                  <Check color={colors.text} size={26} strokeWidth={2.6} />
-                ) : (
-                  <Plus color={colors.text} size={26} strokeWidth={2.6} />
-                )}
-                <Text style={styles.sideActionLabel}>{t('common.myList')}</Text>
-              </TVFocusable>
+        <View style={styles.contentMobile}>
+          <Text style={styles.titleMobile} numberOfLines={2}>
+            {item.title}
+          </Text>
+          {genreRow}
+          <View style={styles.buttonRowMobile}>
+            <Pressable
+              onPress={toggleList}
+              style={styles.sideAction}
+              accessibilityLabel={t('common.myList')}
+            >
+              {inList ? (
+                <Check color={colors.text} size={26} strokeWidth={2.6} />
+              ) : (
+                <Plus color={colors.text} size={26} strokeWidth={2.6} />
+              )}
+              <Text style={styles.sideActionLabel}>{t('common.myList')}</Text>
+            </Pressable>
 
-              <TVFocusable
-                onPress={handlePlay}
-                onFocus={onButtonFocus}
-                hasTVPreferredFocus={hasTVPreferredFocus}
-                style={styles.playPill}
-                accessibilityLabel={t('common.play')}
-              >
-                <Play color="#000000" size={22} fill="#000000" />
-                <Text style={styles.playPillText}>{t('common.play')}</Text>
-              </TVFocusable>
+            <Pressable
+              onPress={handlePlay}
+              style={styles.playPill}
+              accessibilityLabel={t('common.play')}
+            >
+              <Play color="#000000" size={22} fill="#000000" />
+              <Text style={styles.playPillText}>{t('common.play')}</Text>
+            </Pressable>
 
-              <TVFocusable
-                onPress={handleInfo}
-                onFocus={onButtonFocus}
-                style={styles.sideAction}
-                accessibilityLabel={t('common.moreInfo')}
-              >
-                <Info color={colors.text} size={26} strokeWidth={2.2} />
-                <Text style={styles.sideActionLabel}>{t('common.moreInfo')}</Text>
-              </TVFocusable>
-            </View>
+            <Pressable
+              onPress={handleInfo}
+              style={styles.sideAction}
+              accessibilityLabel={t('common.moreInfo')}
+            >
+              <Info color={colors.text} size={26} strokeWidth={2.2} />
+              <Text style={styles.sideActionLabel}>{t('common.moreInfo')}</Text>
+            </Pressable>
           </View>
-        )}
+        </View>
       </LinearGradient>
     </ImageBackground>
   );
 }
 
-export default function HeroBanner({ items = [], item, type = 'movie', hasTVPreferredFocus = true }) {
-  // Backward compat: if single item is passed but not items array
+export default function HeroBanner({ items = [], item, type = 'movie' }) {
   const heroItems = items.length > 0 ? items : (item ? [item] : []);
 
   const flatListRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const { width, height } = useWindowDimensions();
-  const isTV = useIsTV();
   const autoScrollTimer = useRef(null);
   const isPaused = useRef(false);
   const resumeTimeout = useRef(null);
 
-  const backdropHeight = isTV ? Math.round(height * 0.72) : Math.round(height * 0.56);
+  const backdropHeight = Math.round(height * 0.56);
   const activeIndexRef = useRef(0);
 
   // Auto-advance every 8 seconds
@@ -235,7 +175,6 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
     };
   }, [heroItems.length]);
 
-  // Pause auto-scroll on interaction, resume after 12 seconds
   const pauseAutoScroll = useCallback(() => {
     isPaused.current = true;
     if (resumeTimeout.current) clearTimeout(resumeTimeout.current);
@@ -244,7 +183,6 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
     }, 12000);
   }, []);
 
-  // Track page changes via onMomentumScrollEnd
   const onMomentumScrollEnd = useCallback((e) => {
     const newIndex = Math.round(e.nativeEvent.contentOffset.x / width);
     activeIndexRef.current = newIndex;
@@ -253,15 +191,12 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
 
   if (heroItems.length === 0) return null;
 
-  const renderSlide = ({ item: slideItem, index }) => {
+  const renderSlide = ({ item: slideItem }) => {
     return (
       <View style={{ width }}>
         <HeroSlide
           item={slideItem}
           type={type}
-          isTV={isTV}
-          hasTVPreferredFocus={hasTVPreferredFocus && index === activeIndex}
-          onButtonFocus={pauseAutoScroll}
           height={backdropHeight}
         />
       </View>
@@ -289,7 +224,6 @@ export default function HeroBanner({ items = [], item, type = 'movie', hasTVPref
         data={heroItems}
         horizontal
         pagingEnabled
-        scrollEnabled={!isTV}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(slideItem) => String(slideItem.id || slideItem.tmdb_id)}
         renderItem={renderSlide}
@@ -352,23 +286,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     zIndex: 2,
   },
-  ratingBadgeTV: {
-    top: 32,
-    right: 32,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    gap: 6,
-  },
   ratingText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
-  ratingTextTV: {
-    fontSize: 18,
-  },
 
-  // ---- Mobile (centered billboard) ----
+  // Mobile (centered billboard)
   contentMobile: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.lg,
@@ -428,83 +352,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  // ---- TV (left-aligned billboard) ----
-  contentTV: {
-    paddingHorizontal: spacing.xxl + spacing.md,
-    paddingBottom: spacing.xxl,
-    maxWidth: '65%',
-  },
-  titleTV: {
-    color: colors.text,
-    fontSize: 56,
-    fontWeight: '800',
-    lineHeight: 64,
-    marginBottom: spacing.md,
-    textShadowColor: 'rgba(0,0,0,0.6)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
-  },
-  overviewTV: {
-    color: colors.textSecondary,
-    fontSize: 18,
-    lineHeight: 26,
-    marginBottom: spacing.lg,
-  },
-  buttonRowTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  playButtonTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.text,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    minWidth: 180,
-    minHeight: 56,
-    borderRadius: 6,
-  },
-  playTextTV: {
-    color: '#000000',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  secondaryButtonTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    minHeight: 56,
-    borderRadius: 6,
-  },
-  secondaryTextTV: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-
-  // ---- Genres (shared) ----
+  // Genres
   genreRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-  },
-  genreRowMobile: {
     justifyContent: 'center',
     marginBottom: spacing.xs,
-  },
-  genreRowTV: {
-    justifyContent: 'flex-start',
-    marginBottom: spacing.lg,
   },
   genreItem: {
     flexDirection: 'row',
@@ -513,24 +367,15 @@ const styles = StyleSheet.create({
   genreTouch: {
     paddingVertical: 4,
     paddingHorizontal: 2,
-    minWidth: 0,
-    minHeight: 0,
   },
   genreText: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 13,
     fontWeight: '600',
   },
-  genreTextTV: {
-    fontSize: 17,
-  },
   genreDot: {
     color: 'rgba(255,255,255,0.55)',
     fontSize: 13,
     marginHorizontal: 7,
-  },
-  genreDotTV: {
-    fontSize: 17,
-    marginHorizontal: 10,
   },
 });

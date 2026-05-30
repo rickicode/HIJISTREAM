@@ -1,18 +1,15 @@
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Play, Plus, Check } from 'lucide-react-native';
 import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
 import { useTranslation } from '@hijistream/shared/i18n';
-import TVFocusable from './TVFocusable';
 import useMyList from '@hijistream/shared/hooks/useMyList';
-import useIsTV from '../hooks/useIsTV';
 import { findGenreId } from '@hijistream/shared/utils/genres';
 
 export default function DetailHero({ item, type = 'movie', onPlay }) {
   const router = useRouter();
   const { t } = useTranslation();
   const { inList, toggle: toggleList } = useMyList(item, type);
-  const isTV = useIsTV();
   const genres = item.genre ? item.genre.split(',').map((g) => g.trim()) : [];
 
   const handleGenrePress = (genreName) => {
@@ -47,15 +44,15 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
           </View>
         </View>
         {genres.length > 0 && (
-          <View style={[styles.genreRow, isTV && styles.genreRowTV]}>
+          <View style={styles.genreRow}>
             {genres.map((genre) => (
-              <TVFocusable
+              <Pressable
                 key={genre}
                 onPress={() => handleGenrePress(genre)}
                 style={styles.genrePill}
               >
                 <Text style={styles.genreText}>{genre}</Text>
-              </TVFocusable>
+              </Pressable>
             ))}
           </View>
         )}
@@ -64,43 +61,41 @@ export default function DetailHero({ item, type = 'movie', onPlay }) {
             {item.overview}
           </Text>
         )}
-        {/* Action Buttons - redesigned */}
-        <View style={[styles.actionRow, isTV && styles.actionRowTV]}>
+        <View style={styles.actionRow}>
           {onPlay && (
-            <TVFocusable
+            <Pressable
               onPress={onPlay}
-              style={isTV ? styles.playBtnTV : styles.playBtn}
-              hasTVPreferredFocus={true}
+              style={styles.playBtn}
             >
-              <View style={isTV ? styles.playIconWrapTV : styles.playIconWrap}>
-                <Play color="#000000" size={isTV ? 28 : 18} fill="#000000" />
+              <View style={styles.playIconWrap}>
+                <Play color="#000000" size={18} fill="#000000" />
               </View>
-              <Text style={isTV ? styles.playLabelTV : styles.playLabel}>
+              <Text style={styles.playLabel}>
                 {t('common.play')}
               </Text>
-            </TVFocusable>
+            </Pressable>
           )}
-          <TVFocusable
+          <Pressable
             onPress={toggleList}
             style={[
-              isTV ? styles.myListBtnTV : styles.myListBtn,
-              inList && (isTV ? styles.myListBtnActiveTV : styles.myListBtnActive),
+              styles.myListBtn,
+              inList && styles.myListBtnActive,
             ]}
           >
             {inList ? (
-              <Check color={colors.primary} size={isTV ? 26 : 18} strokeWidth={3} />
+              <Check color={colors.primary} size={18} strokeWidth={3} />
             ) : (
-              <Plus color={colors.text} size={isTV ? 26 : 18} strokeWidth={2.5} />
+              <Plus color={colors.text} size={18} strokeWidth={2.5} />
             )}
             <Text
               style={[
-                isTV ? styles.myListLabelTV : styles.myListLabel,
+                styles.myListLabel,
                 inList && styles.myListLabelActive,
               ]}
             >
               {t('common.myList')}
             </Text>
-          </TVFocusable>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -159,10 +154,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  genreRowTV: {
-    marginTop: spacing.lg,
-    gap: spacing.md,
-  },
   genrePill: {
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: borderRadius.sm,
@@ -184,20 +175,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: spacing.md,
   },
-
-  // --- Action Row ---
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  actionRowTV: {
-    gap: spacing.xl,
-    marginTop: spacing.xl,
-  },
-
-  // --- Play Button (Mobile) ---
   playBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -225,37 +208,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-
-  // --- Play Button (TV) ---
-  playBtnTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 20,
-    paddingHorizontal: 48,
-    borderRadius: borderRadius.lg,
-    minHeight: 68,
-    minWidth: 220,
-    elevation: 6,
-  },
-  playIconWrapTV: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playLabelTV: {
-    color: '#000000',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-
-  // --- My List Button (Mobile) ---
   myListBtn: {
     flex: 1,
     flexDirection: 'row',
@@ -281,30 +233,5 @@ const styles = StyleSheet.create({
   },
   myListLabelActive: {
     color: colors.primary,
-  },
-
-  // --- My List Button (TV) ---
-  myListBtnTV: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    borderRadius: borderRadius.lg,
-    minHeight: 68,
-    minWidth: 200,
-  },
-  myListBtnActiveTV: {
-    backgroundColor: 'rgba(229,9,20,0.15)',
-    borderColor: colors.primary,
-  },
-  myListLabelTV: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '700',
   },
 });

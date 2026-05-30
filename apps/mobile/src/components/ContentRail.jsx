@@ -1,10 +1,8 @@
-import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { colors, spacing, typography } from '@hijistream/shared/theme';
 import { useTranslation } from '@hijistream/shared/i18n';
 import ContentCard from './ContentCard';
-import TVFocusable from './TVFocusable';
 import LoadingState from './LoadingState';
-import useIsTV from '../hooks/useIsTV';
 
 export default function ContentRail({
   title,
@@ -12,59 +10,31 @@ export default function ContentRail({
   type = 'movie',
   isLoading = false,
   onSeeAll,
-  hasTVPreferredFocus = false,
 }) {
   const { t } = useTranslation();
-  const isTV = useIsTV();
-
-  // Cards on TV need to be readable at 3 m: ~200dp wide gives ~300dp tall
-  // posters which is the size Netflix/Prime use on Google TV.
-  const cardWidth = isTV ? 200 : 120;
-
-  const renderCard = ({ item, index }) => (
-    <View style={{ width: cardWidth }}>
-      <ContentCard
-        item={item}
-        type={item.type || type}
-        watchProgress={item.percentage || item.watchProgress}
-        hasTVPreferredFocus={hasTVPreferredFocus && index === 0}
-      />
-    </View>
-  );
+  const cardWidth = 120;
 
   return (
-    <View style={[styles.container, isTV && styles.containerTV]}>
-      <View style={[styles.header, isTV && styles.headerTV]}>
-        <Text style={[styles.title, isTV && styles.titleTV]}>{title}</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{title}</Text>
         {onSeeAll && (
-          <TVFocusable onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={[styles.seeAllText, isTV && styles.seeAllTextTV]}>
+          <Pressable onPress={onSeeAll} style={styles.seeAllButton}>
+            <Text style={styles.seeAllText}>
               {t('common.viewAll')} &gt;
             </Text>
-          </TVFocusable>
+          </Pressable>
         )}
       </View>
       {isLoading ? (
         <LoadingState type="card" />
-      ) : isTV ? (
-        // FlatList horizontal supports D-pad left/right focus navigation natively.
-        // ScrollView does not propagate focus events to children on Android TV.
-        <FlatList
-          horizontal
-          data={items}
-          keyExtractor={(item) => String(item.id || item.tmdb_id)}
-          renderItem={renderCard}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContentTV}
-          ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
-        />
       ) : (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {items.map((item, idx) => (
+          {items.map((item) => (
             <View
               key={String(item.id || item.tmdb_id)}
               style={{ width: cardWidth, marginRight: spacing.sm }}
@@ -73,7 +43,6 @@ export default function ContentRail({
                 item={item}
                 type={item.type || type}
                 watchProgress={item.percentage || item.watchProgress}
-                hasTVPreferredFocus={hasTVPreferredFocus && idx === 0}
               />
             </View>
           ))}
@@ -87,9 +56,6 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.lg,
   },
-  containerTV: {
-    marginBottom: spacing.xl,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -97,17 +63,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
   },
-  headerTV: {
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.md,
-  },
   title: {
     color: colors.text,
     ...typography.title,
-  },
-  titleTV: {
-    fontSize: 24,
-    fontWeight: '700',
   },
   seeAllButton: {
     paddingVertical: spacing.xs,
@@ -121,14 +79,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     ...typography.body,
   },
-  seeAllTextTV: {
-    fontSize: 16,
-  },
   scrollContent: {
     paddingHorizontal: spacing.md,
-  },
-  scrollContentTV: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
   },
 });

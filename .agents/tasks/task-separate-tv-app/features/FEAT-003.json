@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "refactor",
   "description": "Revert mobile app to standard react-native (remove tvos fork) and strip all TV-specific code/conditionals from mobile. Update GitHub Actions to build TV APK separately.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Update apps/mobile/package.json: change 'react-native': 'npm:react-native-tvos@0.76.7-0' to 'react-native': '0.76.7' (standard).",
     "Remove apps/mobile/src/hooks/useIsTV.js entirely.",

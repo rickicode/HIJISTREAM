@@ -1,12 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, Animated } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Animated, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@hijistream/shared/i18n';
 import { GENRE_IDS, TMDB_COUNTRIES } from '@hijistream/shared/utils/api';
 import { colors, spacing, typography, borderRadius } from '@hijistream/shared/theme';
 import TabBar from '../../components/TabBar';
-import TVFocusable from '../../components/TVFocusable';
-import useIsTV from '../../hooks/useIsTV';
 
 function SkeletonCard() {
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -32,7 +30,6 @@ function SkeletonCard() {
 export default function BrowseScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const isTV = useIsTV();
   const [activeTab, setActiveTab] = useState('genre');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,40 +43,35 @@ export default function BrowseScreen() {
     { id: 'country', label: t('browse.countryTab') },
   ];
 
-  // TV uses 5 columns of larger cards; phone keeps 2 columns. The grid has
-  // to fit comfortably in the focus-ring scale so we leave room for the 1.06
-  // zoom plus padding around each card.
-  const numColumns = isTV ? 5 : 2;
+  const numColumns = 2;
   const genreKeys = Object.keys(GENRE_IDS);
 
-  const renderGenreCard = ({ item: genreKey, index }) => {
+  const renderGenreCard = ({ item: genreKey }) => {
     const genreId = GENRE_IDS[genreKey];
     return (
-      <TVFocusable
+      <Pressable
         onPress={() => router.push(`/genre/${genreId}`)}
-        hasTVPreferredFocus={isTV && index === 0}
-        style={[styles.card, isTV && styles.cardTV]}
+        style={styles.card}
         accessibilityLabel={t(`genres.${genreKey}`)}
       >
-        <Text style={[styles.cardText, isTV && styles.cardTextTV]}>
+        <Text style={styles.cardText}>
           {t(`genres.${genreKey}`)}
         </Text>
-      </TVFocusable>
+      </Pressable>
     );
   };
 
-  const renderCountryCard = ({ item: country, index }) => (
-    <TVFocusable
+  const renderCountryCard = ({ item: country }) => (
+    <Pressable
       onPress={() => router.push(`/country/${country.iso}`)}
-      hasTVPreferredFocus={isTV && index === 0}
-      style={[styles.card, isTV && styles.cardTV]}
+      style={styles.card}
       accessibilityLabel={t(`countries.${country.code}`)}
     >
-      <Text style={[styles.flagText, isTV && styles.flagTextTV]}>{country.flag}</Text>
-      <Text style={[styles.cardText, isTV && styles.cardTextTV]}>
+      <Text style={styles.flagText}>{country.flag}</Text>
+      <Text style={styles.cardText}>
         {t(`countries.${country.code}`)}
       </Text>
-    </TVFocusable>
+    </Pressable>
   );
 
   const renderSkeletonGrid = () => (
@@ -90,7 +82,7 @@ export default function BrowseScreen() {
       keyExtractor={(item) => item.id}
       renderItem={() => <SkeletonCard />}
       columnWrapperStyle={styles.row}
-      contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
+      contentContainerStyle={styles.gridContainer}
     />
   );
 
@@ -114,7 +106,7 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item}
           renderItem={renderGenreCard}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
+          contentContainerStyle={styles.gridContainer}
         />
       ) : (
         <FlatList
@@ -124,7 +116,7 @@ export default function BrowseScreen() {
           keyExtractor={(item) => item.iso}
           renderItem={renderCountryCard}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={[styles.gridContainer, isTV && styles.gridContainerTV]}
+          contentContainerStyle={styles.gridContainer}
         />
       )}
     </View>
@@ -139,9 +131,6 @@ const styles = StyleSheet.create({
   gridContainer: {
     padding: spacing.md,
   },
-  gridContainerTV: {
-    padding: spacing.xxl,
-  },
   row: {
     gap: spacing.sm,
     marginBottom: spacing.sm,
@@ -155,28 +144,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 80,
   },
-  cardTV: {
-    minHeight: 140,
-    padding: spacing.lg,
-    marginHorizontal: spacing.xs,
-    marginVertical: spacing.sm,
-  },
   cardText: {
     color: colors.text,
     ...typography.subtitle,
     textAlign: 'center',
   },
-  cardTextTV: {
-    fontSize: 22,
-    fontWeight: '600',
-  },
   flagText: {
     fontSize: 24,
     marginBottom: spacing.xs,
-  },
-  flagTextTV: {
-    fontSize: 44,
-    marginBottom: spacing.sm,
   },
   skeletonText: {
     width: '60%',
