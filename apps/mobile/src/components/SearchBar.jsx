@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme';
-import { useTranslation } from '../i18n';
+import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
 import TVFocusable from './TVFocusable';
 
 /**

@@ -3,12 +3,12 @@ import { View, Text, ImageBackground, StyleSheet, useWindowDimensions, FlatList 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Play, Plus, Check, Info, Star } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '../theme';
-import { useTranslation } from '../i18n';
+import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
 import TVFocusable from './TVFocusable';
-import useMyList from '../hooks/useMyList';
+import useMyList from '@hijistream/shared/hooks/useMyList';
 import useIsTV from '../hooks/useIsTV';
-import { findGenreId } from '../utils/genres';
+import { findGenreId } from '@hijistream/shared/utils/genres';
 
 // Inner component that renders a single slide (billboard UI for one item)
 function HeroSlide({ item, type, isTV, hasTVPreferredFocus, onButtonFocus, height: backdropHeight }) {

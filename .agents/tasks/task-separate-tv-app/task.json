@@ -1,0 +1,7 @@
+{
+  "task_id": "task-separate-tv-app",
+  "task_description": "Separate the TV app from mobile into its own apps/tv/ directory with react-native-tvos, create packages/shared/ for shared utilities and i18n, revert mobile to standard react-native, and redesign the TV UI for D-pad/remote navigation with native player overlay controls.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003"],
+  "blocked_reason": null
+}

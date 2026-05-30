@@ -1,6 +1,6 @@
 import { View, Text, FlatList, ScrollView, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
-import { useTranslation } from '../i18n';
+import { colors, spacing, typography } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
 import ContentCard from './ContentCard';
 import TVFocusable from './TVFocusable';
 import LoadingState from './LoadingState';

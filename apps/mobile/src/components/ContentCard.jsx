@@ -1,9 +1,9 @@
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Heart } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
-import useMyList from '../hooks/useMyList';
+import useMyList from '@hijistream/shared/hooks/useMyList';
 import useIsTV from '../hooks/useIsTV';
 
 export default function ContentCard({ item, type = 'movie', watchProgress = null, hasTVPreferredFocus = false }) {

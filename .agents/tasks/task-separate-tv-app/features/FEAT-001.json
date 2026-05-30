@@ -1,0 +1,42 @@
+{
+  "id": "FEAT-001",
+  "type": "refactor",
+  "description": "Create packages/shared/ with all reusable utilities, hooks, i18n, and theme extracted from apps/mobile/src/. Update root package.json workspaces to include packages/*. Update apps/mobile imports to point to @hijistream/shared.",
+  "status": "in_progress",
+  "steps": [
+    "Create packages/shared/package.json with name '@hijistream/shared', main 'index.js'. Dependencies: @react-native-async-storage/async-storage (peer), expo-localization (peer). No build step needed - raw JS consumed by metro bundler.",
+    "Create packages/shared/index.js that re-exports all modules from sub-paths.",
+    "Copy apps/mobile/src/utils/storage.js to packages/shared/utils/storage.js (unchanged).",
+    "Copy apps/mobile/src/utils/cache.js to packages/shared/utils/cache.js (unchanged).",
+    "Copy apps/mobile/src/utils/api.js to packages/shared/utils/api.js (unchanged).",
+    "Copy apps/mobile/src/utils/player.js to packages/shared/utils/player.js (unchanged).",
+    "Copy apps/mobile/src/utils/genres.js to packages/shared/utils/genres.js (unchanged).",
+    "Copy apps/mobile/src/utils/language.js to packages/shared/utils/language.js (unchanged).",
+    "Copy apps/mobile/src/utils/myList.js to packages/shared/utils/myList.js (unchanged).",
+    "Copy apps/mobile/src/hooks/useMyList.js to packages/shared/hooks/useMyList.js. Update import path for myList to '../utils/myList'.",
+    "Copy apps/mobile/src/i18n/index.js to packages/shared/i18n/index.js. Update import path for storage to '../utils/storage'.",
+    "Copy all locale files from apps/mobile/src/i18n/locales/ to packages/shared/i18n/locales/.",
+    "Copy apps/mobile/src/theme.js to packages/shared/theme.js (unchanged).",
+    "Update root package.json: change workspaces from ['apps/*'] to ['apps/*', 'packages/*'].",
+    "Update apps/mobile/package.json: add '@hijistream/shared': 'workspace:*' to dependencies.",
+    "Update ALL files in apps/mobile/src/ that import from '../utils/api', '../utils/player', '../utils/storage', '../utils/cache', '../utils/genres', '../utils/language', '../utils/myList', '../hooks/useMyList', '../i18n', '../theme' (or deeper relative paths like '../../utils/api') to instead import from '@hijistream/shared'. Specifically update: components/VideoPlayer.jsx, components/ContentRail.jsx, components/HeroBanner.jsx, components/ContentCard.jsx, components/DetailHero.jsx, components/EpisodeList.jsx, components/LanguageModal.jsx, components/SearchBar.jsx, components/TVFocusable.jsx, app/_layout.jsx, app/(tabs)/_layout.jsx, app/(tabs)/home.jsx, app/(tabs)/browse.jsx, app/(tabs)/profile.jsx, app/(tabs)/mylist.jsx, app/player.jsx, app/search.jsx, app/index.jsx, app/tv/[id].jsx, app/movie/[id].jsx (if exists), app/genre/[id].jsx (if exists), app/country/[id].jsx (if exists), app/list/[type].jsx (if exists).",
+    "Keep the original files in apps/mobile/src/utils/, apps/mobile/src/hooks/useMyList.js, apps/mobile/src/i18n/, and apps/mobile/src/theme.js but make them thin re-exports from @hijistream/shared for backward compatibility during migration (e.g. export { default } from '@hijistream/shared/utils/api'). Actually no - just delete them once all imports are updated to @hijistream/shared directly. Cleaner.",
+    "Create packages/shared/metro-resolver.js - a file documenting that consuming apps need to add packages/shared to their metro.config.js watchFolders and nodeModulesPaths. Create metro.config.js in apps/mobile if not present, or update it to resolve @hijistream/shared from the monorepo."
+  ],
+  "acceptance_criteria": [
+    "packages/shared/package.json exists with correct name and exports",
+    "All utility files exist in packages/shared/ with correct relative imports between them",
+    "apps/mobile/src/ files import from @hijistream/shared instead of relative paths to utils/hooks/i18n/theme",
+    "Root package.json workspaces includes 'packages/*'",
+    "apps/mobile/package.json depends on @hijistream/shared workspace:*",
+    "bun install from root resolves without errors"
+  ],
+  "verification": [
+    "Run 'bun install' from /projects/sandbox/HIJISTREAM and verify exit code 0",
+    "Run 'grep -r \"from.*\\.\\./utils\" apps/mobile/src/' returns no results (all imports migrated)",
+    "Run 'grep -r \"from.*\\.\\./hooks/useMyList\" apps/mobile/src/' returns no results",
+    "Verify packages/shared/utils/api.js exists and contains fetchWithCache function"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

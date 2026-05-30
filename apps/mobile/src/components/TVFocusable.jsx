@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Pressable, Animated, StyleSheet, Platform } from 'react-native';
-import { colors } from '../theme';
+import { colors } from '@hijistream/shared/theme';
 import useIsTV from '../hooks/useIsTV';
 
 /**

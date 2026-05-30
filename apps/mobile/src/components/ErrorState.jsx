@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
+import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
-import { useTranslation } from '../i18n';
+import { useTranslation } from '@hijistream/shared/i18n';
 
 export default function ErrorState({ error, onRetry }) {
   const { t } = useTranslation();

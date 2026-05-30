@@ -1,6 +1,6 @@
 import { View, ImageBackground, StyleSheet, useWindowDimensions } from 'react-native';
 import { Play } from 'lucide-react-native';
-import { colors, borderRadius } from '../theme';
+import { colors, borderRadius } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 
 export default function PlayerBox({ item, onPlay }) {

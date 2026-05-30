@@ -1,5 +1,5 @@
 import { View, ScrollView, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { colors, spacing, typography } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 import useIsTV from '../hooks/useIsTV';
 

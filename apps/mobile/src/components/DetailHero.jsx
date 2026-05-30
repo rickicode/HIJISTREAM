@@ -1,12 +1,12 @@
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Play, Plus, Check } from 'lucide-react-native';
-import { colors, spacing, borderRadius, typography } from '../theme';
-import { useTranslation } from '../i18n';
+import { colors, spacing, borderRadius, typography } from '@hijistream/shared/theme';
+import { useTranslation } from '@hijistream/shared/i18n';
 import TVFocusable from './TVFocusable';
-import useMyList from '../hooks/useMyList';
+import useMyList from '@hijistream/shared/hooks/useMyList';
 import useIsTV from '../hooks/useIsTV';
-import { findGenreId } from '../utils/genres';
+import { findGenreId } from '@hijistream/shared/utils/genres';
 
 export default function DetailHero({ item, type = 'movie', onPlay }) {
   const router = useRouter();

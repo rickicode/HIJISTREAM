@@ -1,5 +1,5 @@
 import { FlatList, StyleSheet, useWindowDimensions } from 'react-native';
-import { colors, spacing } from '../theme';
+import { colors, spacing } from '@hijistream/shared/theme';
 import ContentCard from './ContentCard';
 import LoadingState from './LoadingState';
 import ErrorState from './ErrorState';

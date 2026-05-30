@@ -1,7 +1,7 @@
 import { Modal, View, Text, StyleSheet, Pressable } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { useTranslation, SUPPORTED_LOCALES } from '../i18n';
-import { colors, spacing, typography, borderRadius } from '../theme';
+import { useTranslation, SUPPORTED_LOCALES } from '@hijistream/shared/i18n';
+import { colors, spacing, typography, borderRadius } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 import useIsTV from '../hooks/useIsTV';
 

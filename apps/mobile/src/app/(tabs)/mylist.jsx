@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { useTranslation } from '../../i18n';
-import { colors, spacing } from '../../theme';
-import { useMyListItems } from '../../hooks/useMyList';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { colors, spacing } from '@hijistream/shared/theme';
+import { useMyListItems } from '@hijistream/shared/hooks/useMyList';
 import ContentGrid from '../../components/ContentGrid';
 
 export default function MyListScreen() {

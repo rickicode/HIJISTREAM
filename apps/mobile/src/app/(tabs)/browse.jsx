@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTranslation } from '../../i18n';
-import { GENRE_IDS, TMDB_COUNTRIES } from '../../utils/api';
-import { colors, spacing, typography, borderRadius } from '../../theme';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { GENRE_IDS, TMDB_COUNTRIES } from '@hijistream/shared/utils/api';
+import { colors, spacing, typography, borderRadius } from '@hijistream/shared/theme';
 import TabBar from '../../components/TabBar';
 import TVFocusable from '../../components/TVFocusable';
 import useIsTV from '../../hooks/useIsTV';

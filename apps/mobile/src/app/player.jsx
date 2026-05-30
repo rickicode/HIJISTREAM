@@ -3,8 +3,8 @@ import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '../utils/player';
-import { useTranslation } from '../i18n';
+import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '@hijistream/shared/utils/player';
+import { useTranslation } from '@hijistream/shared/i18n';
 import VideoPlayer from '../components/VideoPlayer';
 import { isTV as isTVStatic } from '../hooks/useIsTV';
 

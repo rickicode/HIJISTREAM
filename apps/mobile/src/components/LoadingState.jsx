@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 
 function PulseBox({ style }) {
   const opacity = useRef(new Animated.Value(0.3)).current;

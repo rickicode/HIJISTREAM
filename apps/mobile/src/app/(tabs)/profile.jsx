@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import Constants from 'expo-constants';
 import { User, Globe, Trash2 } from 'lucide-react-native';
-import { useTranslation } from '../../i18n';
-import { colors, spacing, typography, borderRadius } from '../../theme';
+import { useTranslation } from '@hijistream/shared/i18n';
+import { colors, spacing, typography, borderRadius } from '@hijistream/shared/theme';
 import TVFocusable from '../../components/TVFocusable';
 import LanguageModal from '../../components/LanguageModal';
-import cacheManager from '../../utils/cache';
+import cacheManager from '@hijistream/shared/utils/cache';
 import useIsTV from '../../hooks/useIsTV';
 
 /**

@@ -2,10 +2,10 @@ import { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 import { View, StyleSheet, Text, Modal, ScrollView, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Play, Pause, SkipBack, SkipForward, Captions, ArrowLeft, Settings, Check } from 'lucide-react-native';
-import { saveWatchProgress } from '../utils/player';
+import { saveWatchProgress } from '@hijistream/shared/utils/player';
 import TVFocusable from './TVFocusable';
 import useIsTV, { isTV } from '../hooks/useIsTV';
-import { colors, spacing, borderRadius } from '../theme';
+import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 
 const TV_CONTROLS_HIDE_DELAY = 6000;
 
