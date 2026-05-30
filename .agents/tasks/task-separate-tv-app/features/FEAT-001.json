@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "refactor",
   "description": "Create packages/shared/ with all reusable utilities, hooks, i18n, and theme extracted from apps/mobile/src/. Update root package.json workspaces to include packages/*. Update apps/mobile imports to point to @hijistream/shared.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create packages/shared/package.json with name '@hijistream/shared', main 'index.js'. Dependencies: @react-native-async-storage/async-storage (peer), expo-localization (peer). No build step needed - raw JS consumed by metro bundler.",
     "Create packages/shared/index.js that re-exports all modules from sub-paths.",
@@ -38,5 +38,5 @@
     "Verify packages/shared/utils/api.js exists and contains fetchWithCache function"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "bun install resolves workspace correctly. Git detected the file moves as renames. All 7 locale JSONs, all utils, hooks/useMyList, i18n/index.js, and theme.js are now in packages/shared/. apps/mobile/src/ retains only hooks/useIsTV.js, components/, and app/ routes. metro.config.js updated with monorepo watchFolders and nodeModulesPaths."
 }
