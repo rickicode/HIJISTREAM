@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, Image, StyleSheet, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Play, Plus, Info } from 'lucide-react-native';
+import { Play, Info } from 'lucide-react-native';
 import { colors, spacing } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 
@@ -98,16 +98,7 @@ export default function HeroBanner({ items }) {
               <Play size={22} color="#000" fill="#000" />
               <Text style={styles.playText}>Play</Text>
             </TVFocusable>
-            <TVFocusable
-              onPress={() => {}}
-              onFocus={pauseAutoSlide}
-              style={styles.secondaryButton}
-              focusScale={1.08}
-              accessibilityLabel="My List"
-            >
-              <Plus size={22} color={colors.text} />
-              <Text style={styles.secondaryText}>My List</Text>
-            </TVFocusable>
+
             <TVFocusable
               onPress={() => handleMoreInfo(item)}
               onFocus={pauseAutoSlide}
