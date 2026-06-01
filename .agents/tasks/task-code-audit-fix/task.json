@@ -1,0 +1,7 @@
+{
+  "task_id": "task-code-audit-fix",
+  "task_description": "Full code audit of HIJISTREAM web app against PRD with autofix for all CRITICAL/HIGH/MEDIUM/LOW findings with confidence PASTI or DUGAAN KUAT, followed by verification and re-audit",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
