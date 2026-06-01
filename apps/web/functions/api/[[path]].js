@@ -157,6 +157,16 @@ export async function onRequest(context) {
     const page = url.searchParams.get('page') || '1';
     const language = url.searchParams.get('language') || '';
     const langParam = language ? { language } : {};
+
+    // Validate page parameter
+    const pageNum = Number(page);
+    if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > 1000) {
+      return new Response(JSON.stringify({ error: 'Invalid page parameter. Must be an integer between 1 and 1000.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
     let result;
     let cacheControl = 'public, s-maxage=300, stale-while-revalidate=600';
 
@@ -205,7 +215,14 @@ export async function onRequest(context) {
     // Route: /search
     else if (pathname === '/search') {
       const query = url.searchParams.get('query') || '';
-      const data = await fetchTMDB(TMDB_API_KEY, '/3/search/multi', { query, page, ...langParam });
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery || trimmedQuery.length > 200) {
+        return new Response(JSON.stringify({ error: 'Invalid query parameter. Must be non-empty and at most 200 characters.' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      const data = await fetchTMDB(TMDB_API_KEY, '/3/search/multi', { query: trimmedQuery, page, ...langParam });
       result = transformSearchResults(data);
       cacheControl = 'public, s-maxage=120, stale-while-revalidate=300';
     }
@@ -273,24 +290,24 @@ export async function onRequest(context) {
       result = { genres: data.genres || [] };
     }
     // Route: /movies/:id/recommendations
-    else if (pathname.match(/^\/movies\/([\w]+)\/recommendations$/)) {
-      const match = pathname.match(/^\/movies\/([\w]+)\/recommendations$/);
+    else if (pathname.match(/^\/movies\/([\w]{1,20})\/recommendations$/)) {
+      const match = pathname.match(/^\/movies\/([\w]{1,20})\/recommendations$/);
       const movieId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/:id/recommendations
-    else if (pathname.match(/^\/tv\/([\w]+)\/recommendations$/)) {
-      const match = pathname.match(/^\/tv\/([\w]+)\/recommendations$/);
+    else if (pathname.match(/^\/tv\/([\w]{1,20})\/recommendations$/)) {
+      const match = pathname.match(/^\/tv\/([\w]{1,20})\/recommendations$/);
       const tvId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/:id/season/:season
-    else if (pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/)) {
-      const match = pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/);
+    else if (pathname.match(/^\/tv\/([\w]{1,20})\/season\/(\d+)$/)) {
+      const match = pathname.match(/^\/tv\/([\w]{1,20})\/season\/(\d+)$/);
       const tmdbId = match[1];
       const seasonNum = match[2];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
@@ -298,8 +315,8 @@ export async function onRequest(context) {
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
     // Route: /movie/:id
-    else if (pathname.match(/^\/movie\/([\w]+)$/)) {
-      const match = pathname.match(/^\/movie\/([\w]+)$/);
+    else if (pathname.match(/^\/movie\/([\w]{1,20})$/)) {
+      const match = pathname.match(/^\/movie\/([\w]{1,20})$/);
       const movieId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language
@@ -311,8 +328,8 @@ export async function onRequest(context) {
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
     // Route: /tv/:id
-    else if (pathname.match(/^\/tv\/([\w]+)$/)) {
-      const match = pathname.match(/^\/tv\/([\w]+)$/);
+    else if (pathname.match(/^\/tv\/([\w]{1,20})$/)) {
+      const match = pathname.match(/^\/tv\/([\w]{1,20})$/);
       const tvId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language

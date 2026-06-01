@@ -40,11 +40,12 @@ function getCached(key) {
 
 function setCache(key, data, ttl) {
   if (cache.size >= MAX_CACHE_SIZE) {
-    // Evict oldest entries by creation time
-    const entries = [...cache.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
-    const deleteCount = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1)); // Remove 10%
-    for (let i = 0; i < deleteCount && i < entries.length; i++) {
-      cache.delete(entries[i][0]);
+    // Evict oldest entries using Map insertion order (O(k) where k = 10% of max)
+    const deleteCount = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1));
+    const iterator = cache.keys();
+    for (let i = 0; i < deleteCount; i++) {
+      const oldKey = iterator.next().value;
+      if (oldKey) cache.delete(oldKey);
     }
   }
   cache.set(key, { data, expiresAt: Date.now() + ttl, createdAt: Date.now() });
@@ -385,24 +386,24 @@ const server = Bun.serve({
         result = { genres: data.genres || [] };
       }
       // Route: GET /api/movies/:id/recommendations
-      else if (pathname.match(/^\/api\/movies\/([\w]+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/movies\/([\w]+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/movies\/([\w]{1,20})\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/movies\/([\w]{1,20})\/recommendations$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/recommendations
-      else if (pathname.match(/^\/api\/tv\/([\w]+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/tv\/([\w]+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})\/recommendations$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/season/:season
-      else if (pathname.match(/^\/api\/tv\/([\w]+)\/season\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/([\w]+)\/season\/(\d+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})\/season\/(\d+)$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})\/season\/(\d+)$/);
         const tmdbId = match[1];
         const seasonNum = match[2];
         const data = await fetchTMDB(`/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
@@ -410,8 +411,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/movie/:id
-      else if (pathname.match(/^\/api\/movie\/([\w]+)$/)) {
-        const match = pathname.match(/^\/api\/movie\/([\w]+)$/);
+      else if (pathname.match(/^\/api\/movie\/([\w]{1,20})$/)) {
+        const match = pathname.match(/^\/api\/movie\/([\w]{1,20})$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
@@ -423,8 +424,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/tv/:id
-      else if (pathname.match(/^\/api\/tv\/([\w]+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/([\w]+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
