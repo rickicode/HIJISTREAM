@@ -132,6 +132,13 @@ function transformTVDetail(show) {
     overview: show.overview || '',
     number_of_seasons: show.number_of_seasons || 0,
     number_of_episodes: show.number_of_episodes || 0,
+    seasons: show.seasons?.filter(s => s.season_number > 0).map(s => ({
+      season_number: s.season_number,
+      name: s.name || `Season ${s.season_number}`,
+      episode_count: s.episode_count || 0,
+      air_date: s.air_date || '',
+      poster_path: s.poster_path ? `https://image.tmdb.org/t/p/w300${s.poster_path}` : '',
+    })) || [],
     credits: show.credits?.cast?.slice(0, 10).map(c => ({ name: c.name, character: c.character, profile_path: c.profile_path })) || [],
     type: 'tv',
     embed_url: `https://vaplayer.ru/embed/tv/${show.id}`,
