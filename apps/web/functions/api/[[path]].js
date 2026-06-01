@@ -118,7 +118,9 @@ async function fetchTMDB(apiKey, path, queryParams = {}) {
   const url = `${TMDB_BASE}${path}?${params.toString()}`;
   const res = await fetch(url, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
   if (!res.ok) {
-    throw new Error(`TMDB API error: ${res.status}`);
+    const err = new Error(`TMDB API error: ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -271,24 +273,24 @@ export async function onRequest(context) {
       result = { genres: data.genres || [] };
     }
     // Route: /movies/:id/recommendations
-    else if (pathname.match(/^\/movies\/(\d+)\/recommendations$/)) {
-      const match = pathname.match(/^\/movies\/(\d+)\/recommendations$/);
+    else if (pathname.match(/^\/movies\/([\w]+)\/recommendations$/)) {
+      const match = pathname.match(/^\/movies\/([\w]+)\/recommendations$/);
       const movieId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformMovieListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/:id/recommendations
-    else if (pathname.match(/^\/tv\/(\d+)\/recommendations$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)\/recommendations$/);
+    else if (pathname.match(/^\/tv\/([\w]+)\/recommendations$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)\/recommendations$/);
       const tvId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}/recommendations`, { page, ...langParam });
       const items = (data.results || []).map(transformTVListItem);
       result = wrapPaginatedList(data, items);
     }
     // Route: /tv/:id/season/:season
-    else if (pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/);
+    else if (pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/);
       const tmdbId = match[1];
       const seasonNum = match[2];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
@@ -296,8 +298,8 @@ export async function onRequest(context) {
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
     // Route: /movie/:id
-    else if (pathname.match(/^\/movie\/(\d+)$/)) {
-      const match = pathname.match(/^\/movie\/(\d+)$/);
+    else if (pathname.match(/^\/movie\/([\w]+)$/)) {
+      const match = pathname.match(/^\/movie\/([\w]+)$/);
       const movieId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language
@@ -309,8 +311,8 @@ export async function onRequest(context) {
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
     }
     // Route: /tv/:id
-    else if (pathname.match(/^\/tv\/(\d+)$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)$/);
+    else if (pathname.match(/^\/tv\/([\w]+)$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)$/);
       const tvId = match[1];
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language
@@ -342,6 +344,15 @@ export async function onRequest(context) {
       },
     });
   } catch (error) {
+    if (error.status === 404) {
+      return new Response(JSON.stringify({ error: 'Content not found' }), {
+        status: 404,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
     return new Response(JSON.stringify({ error: 'Bad Gateway', message: error.message }), {
       status: 502,
       headers: {

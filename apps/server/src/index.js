@@ -175,7 +175,9 @@ async function fetchTMDB(path, queryParams = {}) {
   const url = `${TMDB_BASE}${path}?${params.toString()}`;
   const res = await fetch(url, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
   if (!res.ok) {
-    throw new Error(`TMDB API error: ${res.status}`);
+    const err = new Error(`TMDB API error: ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -383,24 +385,24 @@ const server = Bun.serve({
         result = { genres: data.genres || [] };
       }
       // Route: GET /api/movies/:id/recommendations
-      else if (pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/movies\/([\w]+)\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/movies\/([\w]+)\/recommendations$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/recommendations
-      else if (pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]+)\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]+)\/recommendations$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/season/:season
-      else if (pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]+)\/season\/(\d+)$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]+)\/season\/(\d+)$/);
         const tmdbId = match[1];
         const seasonNum = match[2];
         const data = await fetchTMDB(`/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
@@ -408,8 +410,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/movie/:id
-      else if (pathname.match(/^\/api\/movie\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/movie\/(\d+)$/);
+      else if (pathname.match(/^\/api\/movie\/([\w]+)$/)) {
+        const match = pathname.match(/^\/api\/movie\/([\w]+)$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
@@ -421,8 +423,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/tv/:id
-      else if (pathname.match(/^\/api\/tv\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]+)$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]+)$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
@@ -451,6 +453,14 @@ const server = Bun.serve({
         headers: { 'Content-Type': 'application/json', ...corsHeaders() },
       });
     } catch (err) {
+      if (err.status === 404) {
+        const body = JSON.stringify({ error: 'Content not found' });
+        console.log(`[${new Date().toISOString()}] ${method} ${pathname} 404 TMDB_NOT_FOUND ${Date.now() - requestStart}ms`);
+        return new Response(body, {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
       const body = JSON.stringify({ error: 'Bad Gateway', detail: err.message });
       console.log(`[${new Date().toISOString()}] ${method} ${pathname} 502 ERROR ${Date.now() - requestStart}ms`);
       return new Response(body, {

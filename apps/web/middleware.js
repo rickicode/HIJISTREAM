@@ -118,7 +118,9 @@ async function fetchTMDB(apiKey, path, queryParams = {}) {
   const url = `${TMDB_BASE}${path}?${params.toString()}`;
   const res = await fetch(url, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
   if (!res.ok) {
-    throw new Error(`TMDB API error: ${res.status}`);
+    const err = new Error(`TMDB API error: ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -225,21 +227,21 @@ export default async function middleware(request) {
     } else if (pathname === '/genres/tv') {
       const data = await fetchTMDB(TMDB_API_KEY, '/3/genre/tv/list', { ...langParam });
       result = { genres: data.genres || [] };
-    } else if (pathname.match(/^\/movies\/(\d+)\/recommendations$/)) {
-      const match = pathname.match(/^\/movies\/(\d+)\/recommendations$/);
+    } else if (pathname.match(/^\/movies\/([\w]+)\/recommendations$/)) {
+      const match = pathname.match(/^\/movies\/([\w]+)\/recommendations$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${match[1]}/recommendations`, { page, ...langParam });
       result = wrapPaginatedList(data, (data.results || []).map(transformMovieListItem));
-    } else if (pathname.match(/^\/tv\/(\d+)\/recommendations$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)\/recommendations$/);
+    } else if (pathname.match(/^\/tv\/([\w]+)\/recommendations$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)\/recommendations$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${match[1]}/recommendations`, { page, ...langParam });
       result = wrapPaginatedList(data, (data.results || []).map(transformTVListItem));
-    } else if (pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)\/season\/(\d+)$/);
+    } else if (pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)\/season\/(\d+)$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${match[1]}/season/${match[2]}`, { ...langParam });
       result = transformSeason(data, match[1]);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
-    } else if (pathname.match(/^\/movie\/(\d+)$/)) {
-      const match = pathname.match(/^\/movie\/(\d+)$/);
+    } else if (pathname.match(/^\/movie\/([\w]+)$/)) {
+      const match = pathname.match(/^\/movie\/([\w]+)$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/movie/${match[1]}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language
       if (!data.overview && language && language !== 'en-US') {
@@ -248,8 +250,8 @@ export default async function middleware(request) {
       }
       result = transformMovieDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
-    } else if (pathname.match(/^\/tv\/(\d+)$/)) {
-      const match = pathname.match(/^\/tv\/(\d+)$/);
+    } else if (pathname.match(/^\/tv\/([\w]+)$/)) {
+      const match = pathname.match(/^\/tv\/([\w]+)$/);
       const data = await fetchTMDB(TMDB_API_KEY, `/3/tv/${match[1]}`, { append_to_response: 'credits,external_ids', ...langParam });
       // Fallback to English if overview is missing in selected language
       if (!data.overview && language && language !== 'en-US') {
@@ -274,6 +276,12 @@ export default async function middleware(request) {
       },
     });
   } catch (error) {
+    if (error.status === 404) {
+      return new Response(JSON.stringify({ error: 'Content not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
     return new Response(JSON.stringify({ error: 'Bad Gateway', message: error.message }), {
       status: 502,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },

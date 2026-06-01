@@ -23,6 +23,9 @@ function fetchWithCache(endpoint, cacheKey, ttl) {
 
   return fetch(url).then(response => {
     if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error('Content not found or has been removed');
+      }
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
     return response.json();
