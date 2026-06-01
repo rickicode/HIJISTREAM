@@ -40,9 +40,11 @@ function getCached(key) {
 
 function setCache(key, data, ttl) {
   if (cache.size >= MAX_CACHE_SIZE) {
-    const keysToDelete = [...cache.keys()].slice(0, cache.size - MAX_CACHE_SIZE + 1);
-    for (const k of keysToDelete) {
-      cache.delete(k);
+    // Evict oldest entries by creation time
+    const entries = [...cache.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt);
+    const deleteCount = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1)); // Remove 10%
+    for (let i = 0; i < deleteCount && i < entries.length; i++) {
+      cache.delete(entries[i][0]);
     }
   }
   cache.set(key, { data, expiresAt: Date.now() + ttl, createdAt: Date.now() });
@@ -244,6 +246,18 @@ const server = Bun.serve({
       const page = url.searchParams.get('page') || '1';
       const language = url.searchParams.get('language') || '';
       const langParam = language ? { language } : {};
+
+      // Validate page parameter
+      const pageNum = Number(page);
+      if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > 1000) {
+        const body = JSON.stringify({ error: 'Invalid page parameter. Must be an integer between 1 and 1000.' });
+        console.log(`[${new Date().toISOString()}] ${method} ${pathname} 400 - ${Date.now() - requestStart}ms`);
+        return new Response(body, {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
+
       let result;
       let ttl = TTL.LIST;
 
@@ -292,7 +306,16 @@ const server = Bun.serve({
       // Route: GET /api/search
       else if (pathname === '/api/search') {
         const query = url.searchParams.get('query') || '';
-        const data = await fetchTMDB('/3/search/multi', { query, page, ...langParam });
+        const trimmedQuery = query.trim();
+        if (!trimmedQuery || trimmedQuery.length > 200) {
+          const body = JSON.stringify({ error: 'Invalid query parameter. Must be non-empty and at most 200 characters.' });
+          console.log(`[${new Date().toISOString()}] ${method} ${pathname} 400 - ${Date.now() - requestStart}ms`);
+          return new Response(body, {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+          });
+        }
+        const data = await fetchTMDB('/3/search/multi', { query: trimmedQuery, page, ...langParam });
         result = transformSearchResults(data);
         ttl = TTL.SEARCH;
       }

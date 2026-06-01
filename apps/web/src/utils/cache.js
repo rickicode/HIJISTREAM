@@ -1,10 +1,11 @@
 import storage from './storage';
 
+// TTL values per PRD specification
 export const TTL = {
-  CONTENT_LIST: 300,       // 5 minutes
-  CONTENT_DETAIL: 600,     // 10 minutes
-  IMAGES: 3600,            // 1 hour
-  SEARCH: 120,             // 2 minutes
+  CONTENT_LIST: 86400,     // 24 hours
+  CONTENT_DETAIL: 604800,  // 7 days
+  IMAGES: 2592000,         // 30 days
+  SEARCH: 3600,            // 1 hour
 };
 
 const CACHE_PREFIX = 'cache_';

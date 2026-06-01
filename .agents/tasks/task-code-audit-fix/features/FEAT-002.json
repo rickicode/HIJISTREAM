@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "fix",
   "description": "Fix all audit findings from PRD compliance and code quality analysis (D1-D9 dimensions). Key findings: (1) Cache TTL values deviate from PRD specification - code uses 5min/10min instead of PRD-mandated 24h/7d/30d, (2) Server has no input validation on page/query params leading to potential TMDB errors, (3) VideoPlayer accepts messages from undocumented origin 'brightpathsignals.com', (4) Server cache eviction uses naive FIFO when hitting MAX_CACHE_SIZE - first entries are deleted regardless of recency, (5) Missing Content-Security-Policy connect-src for the actual backend API endpoint, (6) useMemo dependency issue in Home.jsx - heroItem recalculates on every render due to random selection pattern inside useMemo",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "Step 1 - Fix Cache TTL mismatch (D9 HIGH): In apps/web/src/utils/cache.js, update TTL values to match PRD: CONTENT_LIST should be 86400 (24 hours), CONTENT_DETAIL should be 604800 (7 days), IMAGES should be 2592000 (30 days), SEARCH should be 3600 (1 hour). Add a comment referencing the PRD specification.",
     "Step 2 - Fix server input validation (D3 MEDIUM): In apps/server/src/index.js, add validation for the 'page' query parameter - ensure it is a positive integer between 1 and 1000. For the search query, ensure it is not empty and has a reasonable max length (200 chars). Return 400 with descriptive error for invalid input.",
