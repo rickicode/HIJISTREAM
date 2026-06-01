@@ -45,7 +45,6 @@ const SPEED_OPTIONS = [
 
 const ALLOWED_DOMAINS = [
   'vaplayer.ru',
-  'brightpathsignals.com',
   'streamdata.vaplayer.ru',
   'cdn.jsdelivr.net',
   'code.jquery.com',

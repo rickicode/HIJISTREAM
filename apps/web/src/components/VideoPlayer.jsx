@@ -8,7 +8,7 @@ export default function VideoPlayer({ embedUrl, title, contentId, metadata = {} 
 
   const handleMessage = useCallback(
     (event) => {
-      if (event.origin !== 'https://vaplayer.ru' && event.origin !== 'https://brightpathsignals.com') return;
+      if (event.origin !== 'https://vaplayer.ru') return;
       if (!event.data || typeof event.data !== 'object') return;
 
       const data = event.data;

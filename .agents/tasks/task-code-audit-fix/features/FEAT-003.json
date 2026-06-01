@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-003",
+  "type": "fix",
+  "description": "Fix the user-reported bug: clicking a movie/TV series after APK update returns 'Something went wrong - API Error 404'. Root causes: (1) The Cloudflare Pages function and middleware regex routes only match numeric IDs (\\d+), but the mobile 'My List' feature can store items that persist across APK updates and may have stale or non-numeric IDs. (2) More importantly, the TMDB API itself can return 404 for individual movies/shows that have been removed, but the error message is generic and doesn't help the user. (3) The functions file has no /tv/on-the-air, /anime/*, or /discover/* routes, causing 404 for those endpoints when deployed to Cloudflare Pages.",
+  "status": "completed",
+  "steps": [
+    "Step 1 - Fix functions/api/[[path]].js: Add missing routes that exist in middleware.js but not in the functions file: /tv/on-the-air, /anime/trending, /anime/ongoing, /anime/top-rated, /discover/movie, /discover/tv. Copy the route handler logic from the middleware.js to the functions file for consistency.",
+    "Step 2 - Fix ID regex patterns: In both functions/api/[[path]].js and middleware.js, change the movie/tv detail route regex from (\\d+) to ([\\w]+) to also handle alphanumeric IDs. This allows IDs like 'tt1234567' (IMDB) to pass through to TMDB - TMDB will return 404 for invalid IDs which we then handle gracefully.",
+    "Step 3 - Improve TMDB 404 error handling: In both functions/api/[[path]].js, middleware.js, and apps/server/src/index.js, when fetchTMDB throws with status 404, return a user-friendly 404 response with message 'Content not found' instead of the generic 502 'Bad Gateway'. Update fetchTMDB to distinguish between 404 (content not found) and other errors.",
+    "Step 4 - Improve frontend error display: In apps/web/src/utils/api.js (web) and packages/shared/utils/api.js (mobile shared), when the API returns 404, throw a more descriptive error message like 'Content not found or has been removed' instead of the generic 'API Error: 404 Not Found'.",
+    "Step 5 - Verify all changes pass lint/typecheck/build/test."
+  ],
+  "acceptance_criteria": [
+    "functions/api/[[path]].js has parity with middleware.js for all API routes",
+    "Non-numeric IDs in detail routes return 404 with clear message instead of falling to catch-all",
+    "TMDB 404 errors return 404 (not 502) with user-friendly message",
+    "Frontend shows 'Content not found or has been removed' for 404 responses",
+    "All verification commands (lint, typecheck, build, test) pass"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run typecheck",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run test"
+  ],
+  "blocked_reason": null,
+  "findings": "All missing routes were already present in functions/api/[[path]].js (likely added in a previous commit). Applied regex fix from (\\d+) to ([\\w]+) across all 3 API handlers, added err.status propagation in fetchTMDB, added 404-specific catch handling, and improved frontend error messages. All verification commands pass: lint, typecheck, build, and 42 tests."
+}

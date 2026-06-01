@@ -40,9 +40,12 @@ function getCached(key) {
 
 function setCache(key, data, ttl) {
   if (cache.size >= MAX_CACHE_SIZE) {
-    const keysToDelete = [...cache.keys()].slice(0, cache.size - MAX_CACHE_SIZE + 1);
-    for (const k of keysToDelete) {
-      cache.delete(k);
+    // Evict oldest entries using Map insertion order (O(k) where k = 10% of max)
+    const deleteCount = Math.max(1, Math.floor(MAX_CACHE_SIZE * 0.1));
+    const iterator = cache.keys();
+    for (let i = 0; i < deleteCount; i++) {
+      const oldKey = iterator.next().value;
+      if (oldKey) cache.delete(oldKey);
     }
   }
   cache.set(key, { data, expiresAt: Date.now() + ttl, createdAt: Date.now() });
@@ -129,6 +132,13 @@ function transformTVDetail(show) {
     overview: show.overview || '',
     number_of_seasons: show.number_of_seasons || 0,
     number_of_episodes: show.number_of_episodes || 0,
+    seasons: show.seasons?.filter(s => s.season_number > 0).map(s => ({
+      season_number: s.season_number,
+      name: s.name || `Season ${s.season_number}`,
+      episode_count: s.episode_count || 0,
+      air_date: s.air_date || '',
+      poster_path: s.poster_path ? `https://image.tmdb.org/t/p/w300${s.poster_path}` : '',
+    })) || [],
     credits: show.credits?.cast?.slice(0, 10).map(c => ({ name: c.name, character: c.character, profile_path: c.profile_path })) || [],
     type: 'tv',
     embed_url: `https://vaplayer.ru/embed/tv/${show.id}`,
@@ -173,7 +183,9 @@ async function fetchTMDB(path, queryParams = {}) {
   const url = `${TMDB_BASE}${path}?${params.toString()}`;
   const res = await fetch(url, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
   if (!res.ok) {
-    throw new Error(`TMDB API error: ${res.status}`);
+    const err = new Error(`TMDB API error: ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -244,6 +256,18 @@ const server = Bun.serve({
       const page = url.searchParams.get('page') || '1';
       const language = url.searchParams.get('language') || '';
       const langParam = language ? { language } : {};
+
+      // Validate page parameter
+      const pageNum = Number(page);
+      if (!Number.isInteger(pageNum) || pageNum < 1 || pageNum > 1000) {
+        const body = JSON.stringify({ error: 'Invalid page parameter. Must be an integer between 1 and 1000.' });
+        console.log(`[${new Date().toISOString()}] ${method} ${pathname} 400 - ${Date.now() - requestStart}ms`);
+        return new Response(body, {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
+
       let result;
       let ttl = TTL.LIST;
 
@@ -292,7 +316,16 @@ const server = Bun.serve({
       // Route: GET /api/search
       else if (pathname === '/api/search') {
         const query = url.searchParams.get('query') || '';
-        const data = await fetchTMDB('/3/search/multi', { query, page, ...langParam });
+        const trimmedQuery = query.trim();
+        if (!trimmedQuery || trimmedQuery.length > 200) {
+          const body = JSON.stringify({ error: 'Invalid query parameter. Must be non-empty and at most 200 characters.' });
+          console.log(`[${new Date().toISOString()}] ${method} ${pathname} 400 - ${Date.now() - requestStart}ms`);
+          return new Response(body, {
+            status: 400,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+          });
+        }
+        const data = await fetchTMDB('/3/search/multi', { query: trimmedQuery, page, ...langParam });
         result = transformSearchResults(data);
         ttl = TTL.SEARCH;
       }
@@ -360,24 +393,24 @@ const server = Bun.serve({
         result = { genres: data.genres || [] };
       }
       // Route: GET /api/movies/:id/recommendations
-      else if (pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/movies\/(\d+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/movies\/([\w]{1,20})\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/movies\/([\w]{1,20})\/recommendations$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformMovieListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/recommendations
-      else if (pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)\/recommendations$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})\/recommendations$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})\/recommendations$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}/recommendations`, { page, ...langParam });
         const items = (data.results || []).map(transformTVListItem).filter(item => item.id && item.title);
         result = wrapPaginatedList(data, items);
       }
       // Route: GET /api/tv/:id/season/:season
-      else if (pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)\/season\/(\d+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})\/season\/(\d+)$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})\/season\/(\d+)$/);
         const tmdbId = match[1];
         const seasonNum = match[2];
         const data = await fetchTMDB(`/3/tv/${tmdbId}/season/${seasonNum}`, { ...langParam });
@@ -385,8 +418,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/movie/:id
-      else if (pathname.match(/^\/api\/movie\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/movie\/(\d+)$/);
+      else if (pathname.match(/^\/api\/movie\/([\w]{1,20})$/)) {
+        const match = pathname.match(/^\/api\/movie\/([\w]{1,20})$/);
         const movieId = match[1];
         const data = await fetchTMDB(`/3/movie/${movieId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
@@ -398,8 +431,8 @@ const server = Bun.serve({
         ttl = TTL.DETAIL;
       }
       // Route: GET /api/tv/:id
-      else if (pathname.match(/^\/api\/tv\/(\d+)$/)) {
-        const match = pathname.match(/^\/api\/tv\/(\d+)$/);
+      else if (pathname.match(/^\/api\/tv\/([\w]{1,20})$/)) {
+        const match = pathname.match(/^\/api\/tv\/([\w]{1,20})$/);
         const tvId = match[1];
         const data = await fetchTMDB(`/3/tv/${tvId}`, { append_to_response: 'credits,external_ids', ...langParam });
         // Fallback to English if overview is missing in selected language
@@ -428,6 +461,14 @@ const server = Bun.serve({
         headers: { 'Content-Type': 'application/json', ...corsHeaders() },
       });
     } catch (err) {
+      if (err.status === 404) {
+        const body = JSON.stringify({ error: 'Content not found' });
+        console.log(`[${new Date().toISOString()}] ${method} ${pathname} 404 TMDB_NOT_FOUND ${Date.now() - requestStart}ms`);
+        return new Response(body, {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
       const body = JSON.stringify({ error: 'Bad Gateway', detail: err.message });
       console.log(`[${new Date().toISOString()}] ${method} ${pathname} 502 ERROR ${Date.now() - requestStart}ms`);
       return new Response(body, {

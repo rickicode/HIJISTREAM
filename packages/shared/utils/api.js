@@ -21,6 +21,9 @@ async function fetchWithCache(endpoint, cacheKey, ttl) {
 
   const response = await fetch(url);
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Content not found or has been removed');
+    }
     throw new Error(`API Error: ${response.status} ${response.statusText}`);
   }
 

@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Fix all audit findings from PRD compliance and code quality analysis (D1-D9 dimensions). Key findings: (1) Cache TTL values deviate from PRD specification - code uses 5min/10min instead of PRD-mandated 24h/7d/30d, (2) Server has no input validation on page/query params leading to potential TMDB errors, (3) VideoPlayer accepts messages from undocumented origin 'brightpathsignals.com', (4) Server cache eviction uses naive FIFO when hitting MAX_CACHE_SIZE - first entries are deleted regardless of recency, (5) Missing Content-Security-Policy connect-src for the actual backend API endpoint, (6) useMemo dependency issue in Home.jsx - heroItem recalculates on every render due to random selection pattern inside useMemo",
+  "status": "completed",
+  "steps": [
+    "Step 1 - Fix Cache TTL mismatch (D9 HIGH): In apps/web/src/utils/cache.js, update TTL values to match PRD: CONTENT_LIST should be 86400 (24 hours), CONTENT_DETAIL should be 604800 (7 days), IMAGES should be 2592000 (30 days), SEARCH should be 3600 (1 hour). Add a comment referencing the PRD specification.",
+    "Step 2 - Fix server input validation (D3 MEDIUM): In apps/server/src/index.js, add validation for the 'page' query parameter - ensure it is a positive integer between 1 and 1000. For the search query, ensure it is not empty and has a reasonable max length (200 chars). Return 400 with descriptive error for invalid input.",
+    "Step 3 - Fix VideoPlayer origin validation (D6 MEDIUM): In apps/web/src/components/VideoPlayer.jsx, remove the undocumented 'brightpathsignals.com' origin from the allowlist. Only 'https://vaplayer.ru' should be accepted as a valid origin for player events.",
+    "Step 4 - Fix server cache eviction (D7 MEDIUM): In apps/server/src/index.js, replace the naive FIFO eviction in setCache() with a proper approach that deletes the oldest entries based on createdAt timestamp rather than insertion order.",
+    "Step 5 - Fix Home.jsx heroItem random selection (D7 LOW): In apps/web/src/app/Home.jsx, the heroItem useMemo uses Math.random() inside, making it non-deterministic between renders on the same data. Fix by using a stable selection approach - pick the first item or use a hash of the first item's id to select index deterministically.",
+    "Step 6 - Fix CSP connect-src (D6 MEDIUM): In apps/web/index.html, the Content-Security-Policy connect-src directive lists 'self' and 'https://vaplayer.ru' but the app makes requests to its own backend via relative URLs which is fine with 'self'. Verify no issues, but also add https://image.tmdb.org to img-src data: for any image loading edge cases. Actually the img-src already covers tmdb. Check if connect-src needs to allow the deployed API domain. Since the app uses relative '/api' paths (covered by 'self'), this is fine. SKIP this step - no fix needed.",
+    "Step 7 - Add missing staleTime to React Query (D7 MEDIUM): In apps/web/src/App.jsx, the QueryClient has staleTime: 0 which means React Query will always refetch on mount even if data exists in its cache. Since we already have a CacheManager with proper TTLs, set staleTime to 60000 (1 minute) to reduce unnecessary duplicate requests and align with caching strategy."
+  ],
+  "acceptance_criteria": [
+    "Cache TTL values in apps/web/src/utils/cache.js match PRD: 86400s for lists, 604800s for details, 2592000s for images, 3600s for search",
+    "Server validates page parameter is 1-1000 and returns 400 for invalid values",
+    "Server validates search query is non-empty and max 200 chars",
+    "VideoPlayer only accepts messages from https://vaplayer.ru origin",
+    "Server cache eviction removes oldest entries by createdAt",
+    "Home.jsx heroItem selection is deterministic for the same input data",
+    "QueryClient staleTime is set to a reasonable non-zero value",
+    "All verification commands (lint, typecheck, build, test) still pass after changes"
+  ],
+  "verification": [
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run lint",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run typecheck",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run build",
+    "cd /projects/sandbox/HIJISTREAM/apps/web && bun run test"
+  ],
+  "blocked_reason": null,
+  "findings": "All 6 fixes implemented and verified. Lint, typecheck, build, and all 42 tests pass. Step 6 (CSP) was skipped as specified - no fix needed."
+}

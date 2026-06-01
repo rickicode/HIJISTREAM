@@ -42,7 +42,9 @@ export default function Home() {
   const animeItems = animeTrending?.items?.slice(0, 10) || [];
   const heroItem = useMemo(() => {
     if (movieItems.length === 0) return null;
-    return movieItems[Math.floor(Math.random() * Math.min(movieItems.length, 5))];
+    const pool = movieItems.slice(0, 5);
+    const stableIndex = (pool[0]?.id || 0) % pool.length;
+    return pool[stableIndex];
   }, [movieItems]);
 
   return (

@@ -18,7 +18,7 @@ const CountryDetail = lazy(() => import('./app/CountryDetail'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,
+      staleTime: 60000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
