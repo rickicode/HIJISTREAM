@@ -1,3 +1,5 @@
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData } from '../../src/utils/subtitle.js';
+
 const TMDB_BASE = 'https://api.themoviedb.org';
 
 const GENRE_MAP = {
@@ -132,6 +134,97 @@ async function fetchTMDB(apiKey, path, queryParams = {}) {
   return res.json();
 }
 
+/**
+ * Handle subtitle requests: fetch subtitles from R2 cache or OpenSubtitles API.
+ */
+/**
+ * Check admin authentication against ADMIN_USERNAME / ADMIN_PASSWORD env vars.
+ */
+function checkAdminAuth(env, request) {
+  const username = env.ADMIN_USERNAME;
+  const password = env.ADMIN_PASSWORD;
+  if (!username || !password) {
+    return new Response(JSON.stringify({ error: 'Admin not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD env vars.' }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+
+  const authHeader = request.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('Basic ')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'WWW-Authenticate': 'Basic realm="Admin"' },
+    });
+  }
+
+  try {
+    const base64 = authHeader.slice(6);
+    const decoded = atob(base64);
+    const colonIdx = decoded.indexOf(':');
+    const user = decoded.slice(0, colonIdx);
+    const pass = decoded.slice(colonIdx + 1);
+    if (user !== username || pass !== password) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid authorization header' }), {
+      status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
+  return null; // authenticated
+}
+
+async function handleSubtitles(env, url) {
+  const type = url.searchParams.get('type'); // 'movie' or 'tv'
+  const tmdbId = url.searchParams.get('tmdb_id');
+  const lang = url.searchParams.get('lang') || 'en';
+  const season = url.searchParams.get('season');
+  const episode = url.searchParams.get('episode');
+  const imdbId = url.searchParams.get('imdb_id');
+
+  if (!type || !tmdbId) {
+    return { error: 'Missing required params: type, tmdb_id', subtitles: [] };
+  }
+
+  if (type !== 'movie' && type !== 'tv') {
+    return { error: 'type must be movie or tv', subtitles: [] };
+  }
+
+  // Check if all required env vars are configured
+  const requiredVars = [
+    'OPENSUBTITLES_API_KEY', 'OPENSUBTITLES_USERNAME', 'OPENSUBTITLES_PASSWORD',
+    'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL',
+  ];
+  const missing = requiredVars.filter((v) => !env[v]);
+  if (missing.length > 0) {
+    console.log(`[Subtitle] Missing env vars: ${missing.join(', ')}`);
+    return { error: 'Subtitle service not configured', subtitles: [], missing };
+  }
+
+  try {
+    const options = {};
+    if (season) options.season = Number(season);
+    if (episode) options.episode = Number(episode);
+    if (imdbId) options.imdbId = imdbId;
+
+    const languages = lang.split(',').map((l) => l.trim()).filter(Boolean);
+    const results = [];
+
+    for (const l of languages) {
+      const sub = await getOrFetchSubtitle(env, type, tmdbId, l, options);
+      if (sub) results.push(sub);
+    }
+
+    return { subtitles: results };
+  } catch (err) {
+    console.error('[Subtitle] Error:', err.message);
+    return { error: err.message, subtitles: [] };
+  }
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   const pathname = url.pathname.replace(/^\/api/, '');
@@ -143,7 +236,7 @@ export async function onRequest(context) {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
   }
@@ -346,6 +439,137 @@ export async function onRequest(context) {
       }
       result = transformTVDetail(data);
       cacheControl = 'public, s-maxage=600, stale-while-revalidate=1200';
+    }
+    // Route: /subtitles
+    else if (pathname === '/subtitles') {
+      result = await handleSubtitles(context.env, url);
+      cacheControl = 'public, s-maxage=3600, stale-while-revalidate=7200';
+    }
+    // Admin routes
+    else if (pathname.startsWith('/admin/')) {
+      const authResult = checkAdminAuth(context.env, context.request);
+      if (authResult) return authResult;
+
+      if (pathname === '/admin/monitoring') {
+        if (context.request.method === 'GET') {
+          const data = await getMonitoringData(context.env);
+          return new Response(JSON.stringify(data), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/subtitles') {
+        if (context.request.method === 'GET') {
+          const metadata = await readMetadata(context.env);
+          result = metadata;
+        } else if (context.request.method === 'DELETE') {
+          const body = await context.request.json().catch(() => ({}));
+          const { id } = body;
+          if (!id) {
+            return new Response(JSON.stringify({ error: 'Missing subtitle id' }), {
+              status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const metadata = await readMetadata(context.env);
+          const entry = metadata.subtitles.find((s) => s.id === id);
+          if (entry) {
+            await deleteSubtitleFile(context.env, entry.key);
+            await removeFromMetadata(context.env, id);
+          }
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/subtitles/refresh') {
+        if (context.request.method === 'POST') {
+          const body = await context.request.json().catch(() => ({}));
+          const { id } = body;
+          if (!id) {
+            return new Response(JSON.stringify({ error: 'Missing subtitle id' }), {
+              status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const metadata = await readMetadata(context.env);
+          const entry = metadata.subtitles.find((s) => s.id === id);
+          if (!entry) {
+            return new Response(JSON.stringify({ error: 'Subtitle not found' }), {
+              status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const result = await refreshSubtitle(context.env, entry);
+          if (!result) {
+            return new Response(JSON.stringify({ error: 'Failed to refresh subtitle' }), {
+              status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          return new Response(JSON.stringify({ success: true, subtitle: result }), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/subtitles/refresh-all') {
+        if (context.request.method === 'POST') {
+          const result = await refreshAllSubtitles(context.env);
+          return new Response(JSON.stringify(result), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/subtitles/edit') {
+        if (context.request.method === 'POST') {
+          const body = await context.request.json().catch(() => ({}));
+          const { id, title, imdbId } = body;
+          if (!id) {
+            return new Response(JSON.stringify({ error: 'Missing subtitle id' }), {
+              status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const updates = {};
+          if (title !== undefined) updates.title = title;
+          if (imdbId !== undefined) updates.imdbId = imdbId;
+          if (Object.keys(updates).length === 0) {
+            return new Response(JSON.stringify({ error: 'No fields to update' }), {
+              status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const ok = await updateMetadataEntry(context.env, id, updates);
+          if (!ok) {
+            return new Response(JSON.stringify({ error: 'Subtitle not found' }), {
+              status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/subtitles/upload') {
+        if (context.request.method === 'POST') {
+          const body = await context.request.json().catch(() => ({}));
+          const { type, tmdb_id, lang, content, imdb_id, title, season, episode } = body;
+          if (!type || !tmdb_id || !lang || !content) {
+            return new Response(JSON.stringify({ error: 'Missing required fields: type, tmdb_id, lang, content' }), {
+              status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          const result = await handleUploadSubtitle(context.env, {
+            type, tmdbId: tmdb_id, lang, content,
+            imdbId: imdb_id, title, season, episode,
+          });
+          if (!result) {
+            return new Response(JSON.stringify({ error: 'Failed to upload subtitle' }), {
+              status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          return new Response(JSON.stringify({ success: true, subtitle: result }), {
+            status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      return new Response(JSON.stringify({ error: 'Admin route not found' }), {
+        status: 404, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
     }
     // 404
     else {

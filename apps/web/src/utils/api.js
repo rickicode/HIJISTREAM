@@ -138,6 +138,189 @@ const api = {
       TTL.CONTENT_LIST
     );
   },
+
+  /**
+   * Fetch subtitle URLs for a movie or TV episode.
+   * @param {object} params
+   * @param {'movie'|'tv'} params.type
+   * @param {string|number} params.tmdbId
+   * @param {string} params.lang - Language code(s), comma-separated
+   * @param {number} [params.season] - For TV
+   * @param {number} [params.episode] - For TV
+   * @param {string} [params.imdbId] - Optional IMDB ID for better matching
+   * @returns {Promise<{subtitles: Array<{url:string, lang:string, format:string, cached:boolean}>}>}
+   */
+  getSubtitles({ type, tmdbId, lang = 'id', season, episode, imdbId }) {
+    const params = new URLSearchParams({ type, tmdb_id: String(tmdbId), lang });
+    if (season !== undefined) params.set('season', String(season));
+    if (episode !== undefined) params.set('episode', String(episode));
+    if (imdbId) params.set('imdb_id', imdbId);
+
+    const cacheKey = `subtitles_${type}_${tmdbId}_${lang}${season ? `_s${season}` : ''}${episode ? `_e${episode}` : ''}`;
+    return fetchWithCache(`/subtitles?${params}`, cacheKey, TTL.CONTENT_DETAIL);
+  },
+
+  // ============================================================
+  // Admin API
+  // ============================================================
+
+  /**
+   * Get stored admin auth header from localStorage.
+   */
+  _getAdminAuth() {
+    const stored = localStorage.getItem('hijistream_admin_auth');
+    return stored || '';
+  },
+
+  /**
+   * Save admin credentials to localStorage.
+   */
+  setAdminAuth(username, password) {
+    const encoded = btoa(`${username}:${password}`);
+    localStorage.setItem('hijistream_admin_auth', `Basic ${encoded}`);
+  },
+
+  /**
+   * Clear stored admin auth.
+   */
+  clearAdminAuth() {
+    localStorage.removeItem('hijistream_admin_auth');
+  },
+
+  /**
+   * Check if admin is authenticated.
+   */
+  isAdminAuthenticated() {
+    return !!localStorage.getItem('hijistream_admin_auth');
+  },
+
+  /**
+   * Fetch all subtitle metadata from admin API.
+   */
+  getAdminSubtitles() {
+    return fetch(`${BASE_URL}/admin/subtitles`, {
+      headers: { Authorization: this._getAdminAuth() },
+    }).then((res) => {
+      if (res.status === 401 || res.status === 403) {
+        this.clearAdminAuth();
+        throw new Error('Unauthorized');
+      }
+      if (!res.ok) throw new Error('Failed to fetch subtitles');
+      return res.json();
+    });
+  },
+
+  /**
+   * Delete a subtitle by ID.
+   */
+  deleteAdminSubtitle(id) {
+    return fetch(`${BASE_URL}/admin/subtitles`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+      body: JSON.stringify({ id }),
+    }).then((res) => {
+      if (!res.ok) throw new Error('Failed to delete subtitle');
+      return res.json();
+    });
+  },
+
+  /**
+   * Refresh (re-download) a subtitle from OpenSubtitles.
+   */
+  refreshAdminSubtitle(id) {
+    return fetch(`${BASE_URL}/admin/subtitles/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+      body: JSON.stringify({ id }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Refresh failed'); });
+      return res.json();
+    });
+  },
+
+  /**
+   * Refresh ALL OpenSubtitles-sourced subtitles at once.
+   */
+  refreshAllAdminSubtitles() {
+    return fetch(`${BASE_URL}/admin/subtitles/refresh-all`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+    }).then((res) => {
+      if (!res.ok) throw new Error('Bulk refresh failed');
+      return res.json();
+    });
+  },
+
+  /**
+   * Edit subtitle metadata (title, imdbId).
+   */
+  editAdminSubtitle(id, updates) {
+    return fetch(`${BASE_URL}/admin/subtitles/edit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+      body: JSON.stringify({ id, ...updates }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Edit failed'); });
+      return res.json();
+    });
+  },
+
+  /**
+   * Upload a subtitle file manually.
+   */
+  /**
+   * Get monitoring dashboard data.
+   */
+  getAdminMonitoring() {
+    return fetch(`${BASE_URL}/admin/monitoring`, {
+      headers: { Authorization: this._getAdminAuth() },
+    }).then((res) => {
+      if (res.status === 401 || res.status === 403) {
+        this.clearAdminAuth();
+        throw new Error('Unauthorized');
+      }
+      if (!res.ok) throw new Error('Failed to fetch monitoring data');
+      return res.json();
+    });
+  },
+
+  /**
+   * Upload a subtitle file manually.
+   */
+  uploadAdminSubtitle({ type, tmdbId, lang, content, imdbId, title, season, episode }) {
+    return fetch(`${BASE_URL}/admin/subtitles/upload`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+      body: JSON.stringify({
+        type,
+        tmdb_id: String(tmdbId),
+        lang,
+        content,
+        imdb_id: imdbId || null,
+        title: title || null,
+        season: season || null,
+        episode: episode || null,
+      }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Upload failed'); });
+      return res.json();
+    });
+  },
 };
 
 export default api;
