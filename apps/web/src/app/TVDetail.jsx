@@ -13,7 +13,9 @@ import SubtitlePicker from '../components/SubtitlePicker';
 import SubtitleSearchModal from '../components/SubtitleSearchModal';
 import { getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import { getCurrentLanguage } from '../utils/language';
-import { Search } from 'lucide-react';
+import { Search, Globe } from 'lucide-react';
+
+const LANG_FLAGS = { id: '🇮🇩', en: '🇺🇸', es: '🇪🇸', pt: '🇧🇷', hi: '🇮🇳', ja: '🇯🇵', ko: '🇰🇷' };
 
 // All supported subtitle languages — fetched in parallel so user can pick
 const ALL_SUBTITLE_LANGS = ['id', 'en', 'ja', 'ko', 'es', 'pt', 'hi'].join(',');
@@ -215,11 +217,27 @@ export default function TVDetail() {
         metadata={metadata}
       />
 
-      {/* Subtitle picker — shown between player and detail content */}
+      {/* Subtitle picker */}
       {!isPlaying && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-2 mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[#666] font-medium uppercase tracking-wider">Subtitles</span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-1 mb-4">
+          <div className="bg-[#111] border border-[#222] rounded-xl px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Globe size={13} className="text-[#808080]" />
+                <span className="text-[11px] text-[#808080] font-medium">Subtitle</span>
+                {selectedSubtitle && (
+                  <span className="text-[10px] text-green-400/80 bg-green-400/10 px-1.5 py-0.5 rounded-full">
+                    {LANG_FLAGS[selectedSubtitle.lang] || '🌐'} Active
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium text-[#808080] border border-[#333] rounded-lg hover:border-[#E50914] hover:text-[#E50914] hover:bg-[#E50914]/5 transition-all duration-150"
+              >
+                <Search size={11} /> Cari & Download
+              </button>
+            </div>
             {availableSubtitles.length > 0 ? (
               <SubtitlePicker
                 subtitles={availableSubtitles}
@@ -228,19 +246,16 @@ export default function TVDetail() {
                 disabled={isPlaying}
               />
             ) : (
-              <span className="text-[10px] text-[#555]">Belum ada subtitle</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#555]">Belum ada subtitle tersedia</span>
+                <button
+                  onClick={() => setShowSearchModal(true)}
+                  className="text-[11px] text-[#E50914] hover:underline"
+                >
+                  Cari sekarang
+                </button>
+              </div>
             )}
-            {selectedSubtitle && (
-              <span className="text-[10px] text-green-400/70 bg-green-400/5 px-1.5 py-0.5 rounded">
-                Auto-loaded
-              </span>
-            )}
-            <button
-              onClick={() => setShowSearchModal(true)}
-              className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-[#808080] border border-[#333] rounded-md hover:border-[#E50914] hover:text-[#E50914] hover:bg-[#E50914]/5 transition-colors"
-            >
-              <Search size={10} /> Cari Subtitle
-            </button>
           </div>
         </div>
       )}
