@@ -4,11 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 
-const CARD_WIDTH = 200;
-const CARD_IMAGE_HEIGHT = CARD_WIDTH * 1.5;
-
-export default function ContentCard({ item, type }) {
+export default function ContentCard({ item, type, width }) {
   const router = useRouter();
+  const cardWidth = width || 140;
 
   const handlePress = () => {
     const mediaType = item.type || item.media_type || type || 'movie';
@@ -28,21 +26,22 @@ export default function ContentCard({ item, type }) {
   return (
     <TVFocusable
       onPress={handlePress}
-      focusScale={1.1}
+      focusScale={1.08}
       showFocusRing={false}
-      style={styles.wrapper}
-      accessibilityLabel={item.title}
+      style={[styles.wrapper, { width: cardWidth }]}
+      accessibilityLabel={item.title || item.name}
     >
       {({ isFocused }) => (
         <View style={[
           styles.imageContainer,
+          { width: '100%', aspectRatio: 2 / 3 },
           isFocused && styles.imageContainerFocused
         ]}>
           {item.poster_url ? (
             <Image source={{ uri: item.poster_url }} style={styles.image} resizeMode="cover" />
           ) : (
             <View style={[styles.image, styles.placeholder]}>
-              <Text style={styles.placeholderText}>{item.title?.[0] || '?'}</Text>
+              <Text style={styles.placeholderText}>{(item.title || item.name)?.[0] || '?'}</Text>
             </View>
           )}
 
@@ -54,11 +53,11 @@ export default function ContentCard({ item, type }) {
 
           {/* Premium Text Overlay Inside Poster */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.95)']}
+            colors={['transparent', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.9)']}
             style={styles.textOverlay}
           >
             <Text style={[styles.title, isFocused && styles.titleFocused]} numberOfLines={2}>
-              {item.title}
+              {item.title || item.name}
             </Text>
             {year && <Text style={styles.year}>{year}</Text>}
           </LinearGradient>
@@ -76,11 +75,9 @@ export default function ContentCard({ item, type }) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: CARD_WIDTH,
+    borderRadius: borderRadius.md,
   },
   imageContainer: {
-    width: CARD_WIDTH,
-    height: CARD_IMAGE_HEIGHT,
     borderRadius: borderRadius.md,
     overflow: 'hidden',
     backgroundColor: colors.card,
@@ -89,12 +86,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   imageContainerFocused: {
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
+    borderColor: '#E50914',
+    shadowColor: '#E50914',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
   },
   image: {
     width: '100%',
@@ -106,23 +103,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundElevated,
   },
   placeholderText: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.textMuted,
   },
   ratingBadge: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    top: spacing.xs,
+    right: spacing.xs,
     backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 3,
     zIndex: 10,
   },
   ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: colors.rating,
   },
   textOverlay: {
@@ -131,38 +128,38 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: spacing.sm,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm + 4,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs + 2,
     justifyContent: 'flex-end',
     zIndex: 5,
   },
   title: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.85)',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   titleFocused: {
-    color: colors.primary,
+    color: '#E50914',
   },
   year: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 2,
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 1,
   },
   progressBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 4,
+    height: 3,
     backgroundColor: 'rgba(255,255,255,0.3)',
     zIndex: 10,
   },
   progressFill: {
-    height: 4,
-    backgroundColor: colors.primary,
+    height: 3,
+    backgroundColor: '#E50914',
   },
 });

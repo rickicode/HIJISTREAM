@@ -44,34 +44,34 @@ export default function ContentRail({ title, data, type, listId }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: spacing.lg,
+    marginTop: spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    paddingHorizontal: 48,
+    marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.text,
   },
   seeAllButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
     borderRadius: 4,
   },
   seeAllText: {
-    fontSize: 16,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   list: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
+    paddingHorizontal: 48,
+    paddingVertical: 12,
   },
   separator: {
-    width: spacing.md,
+    width: 12,
   },
 });

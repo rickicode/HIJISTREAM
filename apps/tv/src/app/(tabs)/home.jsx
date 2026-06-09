@@ -15,6 +15,7 @@ import api from '@hijistream/shared/utils/api';
 import { getAllWatchProgress } from '@hijistream/shared/utils/player';
 import HeroBanner from '../../components/HeroBanner';
 import ContentRail from '../../components/ContentRail';
+import TVTopNav from '../../components/TVTopNav';
 
 export default function HomeScreen() {
   const [sections, setSections] = useState([]);
@@ -140,11 +141,16 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderSection}
         ListHeaderComponent={
-          heroItems.length > 0 ? (
-            <View style={styles.heroContainer}>
-              <HeroBanner items={heroItems} />
+          <View style={styles.headerContainer}>
+            {heroItems.length > 0 && (
+              <View style={styles.heroContainer}>
+                <HeroBanner items={heroItems} />
+              </View>
+            )}
+            <View style={styles.topNavWrapper}>
+              <TVTopNav />
             </View>
-          ) : null
+          </View>
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -163,7 +169,18 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 48,
   },
+  headerContainer: {
+    position: 'relative',
+    width: '100%',
+  },
   heroContainer: {
-    marginBottom: 0,
+    width: '100%',
+  },
+  topNavWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
   },
 });

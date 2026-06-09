@@ -18,6 +18,7 @@ import { useTranslation, SUPPORTED_LOCALES } from '@hijistream/shared/i18n';
 import cacheManager from '@hijistream/shared/utils/cache';
 import TVFocusable from '../../components/TVFocusable';
 import LanguageModal from '../../components/LanguageModal';
+import TVTopNav from '../../components/TVTopNav';
 
 const SETTINGS_ITEMS = [
   {
@@ -72,60 +73,63 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerSection}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>R</Text>
+      <TVTopNav />
+      <View style={styles.contentWrapper}>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarText}>R</Text>
+          </View>
+          <View>
+            <Text style={styles.pageTitle}>Settings</Text>
+            <Text style={styles.pageSubtitle}>Customize your HIJISTREAM experience</Text>
+          </View>
         </View>
-        <View>
-          <Text style={styles.pageTitle}>Settings</Text>
-          <Text style={styles.pageSubtitle}>Customize your HIJISTREAM experience</Text>
+
+        {/* Settings list */}
+        <View style={styles.menuList}>
+          {SETTINGS_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const value = item.getValue ? item.getValue(locale) : null;
+            return (
+              <TVFocusable
+                key={item.key}
+                onPress={() => handleItemPress(item)}
+                style={styles.menuItem}
+                focusStyle={[styles.menuItemFocused, { borderColor: item.color }]}
+                focusScale={1.05}
+                hasTVPreferredFocus={item.key === 'language'}
+                accessibilityLabel={item.label}
+              >
+                {/* Icon container */}
+                <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                  <Icon size={20} color={item.color} strokeWidth={1.8} />
+                </View>
+
+                {/* Content */}
+                <View style={styles.menuContent}>
+                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  {item.subtitle && (
+                    <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
+                  )}
+                  {value && (
+                    <Text style={styles.menuValue}>{value}</Text>
+                  )}
+                </View>
+
+                {/* Arrow */}
+                <ChevronRight size={18} color="#666" strokeWidth={2} />
+              </TVFocusable>
+            );
+          })}
         </View>
-      </View>
 
-      {/* Settings list */}
-      <View style={styles.menuList}>
-        {SETTINGS_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const value = item.getValue ? item.getValue(locale) : null;
-          return (
-            <TVFocusable
-              key={item.key}
-              onPress={() => handleItemPress(item)}
-              style={styles.menuItem}
-              focusStyle={[styles.menuItemFocused, { borderColor: item.color }]}
-              focusScale={1.05}
-              hasTVPreferredFocus={item.key === 'language'}
-              accessibilityLabel={item.label}
-            >
-              {/* Icon container */}
-              <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
-                <Icon size={26} color={item.color} strokeWidth={1.8} />
-              </View>
-
-              {/* Content */}
-              <View style={styles.menuContent}>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-                {item.subtitle && (
-                  <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-                )}
-                {value && (
-                  <Text style={styles.menuValue}>{value}</Text>
-                )}
-              </View>
-
-              {/* Arrow */}
-              <ChevronRight size={24} color="#666" strokeWidth={2} />
-            </TVFocusable>
-          );
-        })}
-      </View>
-
-      {/* Version footer */}
-      <View style={styles.footer}>
-        <View style={styles.divider} />
-        <Text style={styles.version}>HIJISTREAM TV v1.0.0</Text>
-        <Text style={styles.versionSub}>Built for Android TV</Text>
+        {/* Version footer */}
+        <View style={styles.footer}>
+          <View style={styles.divider} />
+          <Text style={styles.version}>HIJISTREAM TV v1.0.0</Text>
+          <Text style={styles.versionSub}>Built for Android TV</Text>
+        </View>
       </View>
 
       <LanguageModal
@@ -140,40 +144,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingLeft: 56,
-    paddingRight: 56,
-    paddingTop: 24,
-    paddingBottom: 48,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingLeft: 48,
+    paddingRight: 48,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
 
   /* ── Header ── */
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    marginBottom: 40,
+    gap: 16,
+    marginBottom: 24,
   },
   avatarPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#E50914',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
   },
   pageTitle: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
   },
   pageSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#808080',
     marginTop: 4,
   },
@@ -181,27 +188,28 @@ const styles = StyleSheet.create({
   /* ── Settings list ── */
   menuList: {
     width: '100%',
-    maxWidth: 700,
-    gap: 10,
+    gap: 12,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    padding: 22,
-    borderRadius: 12,
+    backgroundColor: '#1e1e1e',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 8,
     gap: 20,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   menuItemFocused: {
-    backgroundColor: '#222',
+    backgroundColor: '#2a2a2a',
     borderWidth: 1.5,
+    borderColor: '#E50914',
   },
   iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -209,37 +217,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   menuLabel: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
   },
   menuSubtitle: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#808080',
     marginTop: 3,
   },
   menuValue: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#b3b3b3',
     marginTop: 3,
   },
 
   /* ── Footer ── */
   footer: {
-    marginTop: 48,
+    marginTop: 24,
   },
   divider: {
     height: 1,
     backgroundColor: '#2a2a2a',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   version: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '600',
     color: '#555',
   },
   versionSub: {
-    fontSize: 13,
+    fontSize: 10,
     color: '#444',
     marginTop: 2,
   },

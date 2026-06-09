@@ -11,8 +11,8 @@
  * - Back button handling
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { View, Text, Image, FlatList, ScrollView, StyleSheet, Dimensions, BackHandler } from 'react-native';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, Image, FlatList, ScrollView, StyleSheet, Dimensions, BackHandler, ActivityIndicator, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Play, Plus, Check, Star, ArrowLeft } from 'lucide-react-native';
@@ -48,14 +48,22 @@ export default function MovieDetailScreen() {
 
   const loadMovie = useCallback(async () => {
     try {
-      const [detail, recs, wp] = await Promise.all([
-        api.getMovieDetails(id),
-        api.getMovieRecommendations(id),
-        loadWatchProgress(`movie_${id}`),
-      ]);
+      const detail = await api.getMovieDetails(id);
       setMovie(detail);
-      setRecommendations(recs?.items || []);
-      setProgress(wp);
+
+      // Load recommendations and progress safely without blocking
+      api.getMovieRecommendations(id)
+        .then(recs => {
+          if (recs?.items) setRecommendations(recs.items);
+        })
+        .catch(err => console.warn('Failed to load recommendations:', err));
+
+      loadWatchProgress(`movie_${id}`)
+        .then(wp => {
+          if (wp) setProgress(wp);
+        })
+        .catch(err => console.warn('Failed to load watch progress:', err));
+
     } catch (err) {
       console.error('Failed to load movie:', err);
     }
@@ -82,7 +90,8 @@ export default function MovieDetailScreen() {
   if (!movie) {
     return (
       <View style={styles.loading}>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <ActivityIndicator size="large" color="#E50914" />
+        <Text style={styles.loadingText}>HIJISTREAM</Text>
       </View>
     );
   }
@@ -104,92 +113,117 @@ export default function MovieDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Fixed Top Header Bar ── */}
-      <View style={styles.topBar}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      {/* Hero Section */}
+      <View style={styles.heroSection}>
+        {/* Floating Back Button directly on Hero */}
         <TVFocusable
           onPress={handleBack}
           style={styles.backButton}
           focusStyle={styles.backButtonFocused}
           focusScale={1.05}
-          showFocusRing={true}
+          showFocusRing={false}
           accessibilityLabel="Go back"
         >
-          <ArrowLeft size={24} color="#fff" />
+          {({ isFocused }) => (
+            <>
+              <ArrowLeft size={16} color={isFocused ? '#000' : '#fff'} />
+              <Text style={[styles.backText, isFocused && styles.backTextFocused]}>
+                Back
+              </Text>
+            </>
+          )}
         </TVFocusable>
-      </View>
-
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-      {/* Hero Section */}
-      <View style={styles.heroSection}>
         {/* Backdrop image */}
         {backdrop && (
           <Image source={{ uri: backdrop }} style={styles.backdrop} resizeMode="cover" />
         )}
         <LinearGradient
-          colors={['transparent', 'rgba(20,20,20,0.4)', colors.background]}
+          colors={['transparent', 'rgba(20,20,20,0.6)', colors.background]}
           locations={[0, 0.5, 1]}
           style={styles.gradient}
         />
         <LinearGradient
-          colors={['rgba(20,20,20,0.6)', 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.2, y: 0 }}
+          colors={['rgba(20,20,20,0.85)', 'rgba(20,20,20,0.4)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
           style={styles.leftGradient}
         />
 
         {/* Content info overlay */}
         <View style={styles.infoOverlay}>
-          <Text style={styles.title}>{movie.title}</Text>
+          <View style={styles.detailRow}>
+            {/* Poster */}
+            {poster && (
+              <Image source={{ uri: poster }} style={styles.poster} resizeMode="cover" />
+            )}
 
-          <View style={styles.metaRow}>
-            {year ? <Text style={styles.metaText}>{year}</Text> : null}
-            {rating ? (
-              <View style={styles.ratingBadge}>
-                <Star size={16} color={colors.rating} fill={colors.rating} />
-                <Text style={styles.ratingText}>{rating}/10</Text>
+            {/* Detail text */}
+            <View style={styles.detailTextContainer}>
+              <Text style={styles.title} numberOfLines={2}>{movie.title}</Text>
+
+              <View style={styles.metaRow}>
+                {year ? <Text style={styles.metaText}>{year}</Text> : null}
+                {rating ? (
+                  <View style={styles.ratingBadge}>
+                    <Star size={14} color={colors.rating} fill={colors.rating} />
+                    <Text style={styles.ratingText}>{rating}</Text>
+                  </View>
+                ) : null}
+                {runtime ? <Text style={styles.metaText}>{runtime}</Text> : null}
+                <View style={styles.qualityBadge}>
+                  <Text style={styles.qualityText}>Ultra HD 4K</Text>
+                </View>
               </View>
-            ) : null}
-            {runtime ? <Text style={styles.metaText}>{runtime}</Text> : null}
-          </View>
 
-          {genres ? <Text style={styles.genres}>{genres}</Text> : null}
+              {genres ? <Text style={styles.genres}>{genres}</Text> : null}
 
-          {movie.overview ? (
-            <Text style={styles.overview} numberOfLines={4}>{movie.overview}</Text>
-          ) : null}
+              {movie.overview ? (
+                <Text style={styles.overview} numberOfLines={4}>{movie.overview}</Text>
+              ) : null}
 
-          {/* Action Buttons */}
-          <View style={styles.actions}>
-            <TVFocusable
-              onPress={handlePlay}
-              style={styles.playButton}
-              focusStyle={styles.playButtonFocused}
-              focusScale={1.08}
-              hasTVPreferredFocus
-              accessibilityLabel={progress ? 'Resume movie' : 'Play movie'}
-            >
-              <Play size={24} color="#000" fill="#000" />
-              <Text style={styles.playText}>
-                {progress ? 'Resume' : 'Play'}
-              </Text>
-            </TVFocusable>
+              {/* Action Buttons */}
+              <View style={styles.actions}>
+                <TVFocusable
+                  onPress={handlePlay}
+                  style={styles.playButton}
+                  focusStyle={styles.playButtonFocused}
+                  focusScale={1.05}
+                  hasTVPreferredFocus
+                  accessibilityLabel={progress ? 'Resume movie' : 'Play movie'}
+                >
+                  {({ isFocused }) => (
+                    <>
+                      <Play size={18} color={isFocused ? '#fff' : '#000'} fill={isFocused ? '#fff' : '#000'} />
+                      <Text style={[styles.playText, { color: isFocused ? '#fff' : '#000' }]}>
+                        {progress ? 'Resume' : 'Play'}
+                      </Text>
+                    </>
+                  )}
+                </TVFocusable>
 
-            <TVFocusable
-              onPress={toggle}
-              style={styles.listButton}
-              focusStyle={styles.listButtonFocused}
-              focusScale={1.08}
-              accessibilityLabel={inList ? 'Remove from My List' : 'Add to My List'}
-            >
-              {inList ? (
-                <Check size={24} color="#fff" />
-              ) : (
-                <Plus size={24} color="#fff" />
-              )}
-              <Text style={styles.listText}>
-                {inList ? 'In My List' : 'My List'}
-              </Text>
-            </TVFocusable>
+                <TVFocusable
+                  onPress={toggle}
+                  style={styles.listButton}
+                  focusStyle={styles.listButtonFocused}
+                  focusScale={1.05}
+                  accessibilityLabel={inList ? 'Remove from My List' : 'Add to My List'}
+                >
+                  {({ isFocused }) => (
+                    <>
+                      {inList ? (
+                        <Check size={18} color={isFocused ? '#000' : '#fff'} />
+                      ) : (
+                        <Plus size={18} color={isFocused ? '#000' : '#fff'} />
+                      )}
+                      <Text style={[styles.listText, { color: isFocused ? '#000' : '#fff' }]}>
+                        {inList ? 'In My List' : 'My List'}
+                      </Text>
+                    </>
+                  )}
+                </TVFocusable>
+              </View>
+            </View>
           </View>
         </View>
       </View>
@@ -223,163 +257,211 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 48,
+    paddingBottom: 24,
   },
   loading: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#141414',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
   },
   loadingText: {
-    fontSize: 20,
-    color: '#999',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#E50914',
+    letterSpacing: 2,
+    marginTop: 10,
+    fontFamily: 'Inter_700Bold',
   },
   heroSection: {
-    height: SCREEN_HEIGHT * 0.75,
+    height: SCREEN_HEIGHT * 0.72,
     width: SCREEN_WIDTH,
     justifyContent: 'flex-end',
-    marginTop: -56, // Pull up under the header bar so hero fills properly
+    position: 'relative',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.75,
+    height: SCREEN_HEIGHT * 0.72,
   },
   gradient: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
   leftGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     bottom: 0,
-    width: SCREEN_WIDTH * 0.35,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    height: 56,
-    backgroundColor: 'transparent',
-    zIndex: 200,
+    width: SCREEN_WIDTH * 0.7,
+    zIndex: 2,
   },
   backButton: {
+    position: 'absolute',
+    top: 36,
+    left: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    zIndex: 200,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   backButtonFocused: {
-    backgroundColor: 'rgba(229, 9, 20, 0.85)',
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
+  },
+  backText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  backTextFocused: {
+    color: '#000000',
   },
   infoOverlay: {
     position: 'absolute',
-    bottom: 80,
-    left: 56,
-    maxWidth: '55%',
+    bottom: 32,
+    left: 48,
+    right: 48,
     zIndex: 10,
   },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  poster: {
+    width: 170,
+    height: 250,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#222',
+  },
+  detailTextContainer: {
+    flex: 1,
+    paddingLeft: 32,
+    justifyContent: 'flex-end',
+    maxWidth: SCREEN_WIDTH * 0.6,
+  },
   title: {
-    fontSize: 48,
-    fontWeight: '800',
+    fontSize: 32,
+    fontWeight: '900',
     color: '#fff',
     marginBottom: 10,
+    fontFamily: 'Inter_700Bold',
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 4,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 10,
   },
   metaText: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#b3b3b3',
-    fontWeight: '500',
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   ratingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   ratingText: {
-    fontSize: 15,
+    fontSize: 13,
     color: colors.rating,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  qualityBadge: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  qualityText: {
+    fontSize: 10,
+    color: '#b3b3b3',
+    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
   },
   genres: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#b3b3b3',
-    marginBottom: 12,
+    marginBottom: 10,
+    fontFamily: 'Inter_500Medium',
   },
   overview: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#ccc',
-    lineHeight: 26,
+    lineHeight: 22,
     marginBottom: 20,
+    fontFamily: 'Inter_400Regular',
   },
   actions: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 12,
   },
   playButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 4,
-    gap: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 6,
+    gap: 8,
   },
   playButtonFocused: {
-    backgroundColor: '#e5e5e5',
+    backgroundColor: '#E50914',
   },
   playText: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#000',
+    fontFamily: 'Inter_700Bold',
   },
   listButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(109,109,110,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 4,
+    paddingVertical: 10,
+    borderRadius: 6,
     gap: 8,
   },
   listButtonFocused: {
-    backgroundColor: 'rgba(109,109,110,0.9)',
+    backgroundColor: '#fff',
   },
   listText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   recSection: {
-    marginTop: 16,
-    paddingLeft: 56,
+    marginTop: 24,
+    paddingLeft: 48,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 12,
   },
   recList: {
-    paddingRight: 56,
+    paddingRight: 48,
     paddingBottom: 8,
   },
 });

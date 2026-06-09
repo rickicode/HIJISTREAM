@@ -37,7 +37,7 @@ export default function LanguageModal({ visible, onClose }) {
           <Text style={styles.nativeName}>{item.nativeName}</Text>
           <Text style={styles.name}>{item.name}</Text>
         </View>
-        {isSelected && <Check size={24} color="#E50914" />}
+        {isSelected && <Check size={18} color="#E50914" />}
       </TVFocusable>
     );
   };
@@ -75,17 +75,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dialog: {
-    width: 500,
+    width: 380,
     maxHeight: '80%',
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    padding: 24,
+    padding: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
   },
   list: {
@@ -94,10 +94,10 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 10,
     borderRadius: 8,
     backgroundColor: '#2a2a2a',
-    gap: 16,
+    gap: 12,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -109,23 +109,23 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   flag: {
-    fontSize: 28,
+    fontSize: 20,
   },
   labelContainer: {
     flex: 1,
   },
   nativeName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
   },
   name: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#b3b3b3',
   },
   closeButton: {
-    marginTop: 20,
-    paddingVertical: 14,
+    marginTop: 12,
+    paddingVertical: 10,
     backgroundColor: '#2a2a2a',
     borderRadius: 8,
     alignItems: 'center',
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3a3a3a',
   },
   closeText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },

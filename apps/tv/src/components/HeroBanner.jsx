@@ -19,7 +19,7 @@ import { colors } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const BANNER_HEIGHT = SCREEN_HEIGHT * 0.78;
+const BANNER_HEIGHT = SCREEN_HEIGHT * 0.60;
 const AUTO_SLIDE_INTERVAL = 10000;
 
 export default function HeroBanner({ items }) {
@@ -135,12 +135,17 @@ export default function HeroBanner({ items }) {
               onBlur={resumeAutoSlide}
               style={styles.playButton}
               focusStyle={styles.playButtonFocused}
-              focusScale={1.08}
+              focusScale={1.05}
+              showFocusRing={false}
               hasTVPreferredFocus
               accessibilityLabel={`Play ${title}`}
             >
-              <Play size={24} color="#000" fill="#000" />
-              <Text style={styles.playText}>Play</Text>
+              {({ isFocused }) => (
+                <>
+                  <Play size={16} color={isFocused ? '#fff' : '#000'} fill={isFocused ? '#fff' : '#000'} />
+                  <Text style={[styles.playText, { color: isFocused ? '#fff' : '#000' }]}>Play</Text>
+                </>
+              )}
             </TVFocusable>
 
             <TVFocusable
@@ -149,11 +154,16 @@ export default function HeroBanner({ items }) {
               onBlur={resumeAutoSlide}
               style={styles.secondaryButton}
               focusStyle={styles.secondaryButtonFocused}
-              focusScale={1.08}
+              focusScale={1.05}
+              showFocusRing={false}
               accessibilityLabel={`More info about ${title}`}
             >
-              <Info size={24} color="#fff" />
-              <Text style={styles.secondaryText}>More Info</Text>
+              {({ isFocused }) => (
+                <>
+                  <Info size={16} color={isFocused ? '#000' : '#fff'} />
+                  <Text style={[styles.secondaryText, { color: isFocused ? '#000' : '#fff' }]}>More Info</Text>
+                </>
+              )}
             </TVFocusable>
           </View>
         </View>
@@ -211,7 +221,7 @@ const styles = StyleSheet.create({
   container: {
     height: BANNER_HEIGHT,
     width: SCREEN_WIDTH,
-    marginBottom: -60,
+    marginBottom: -48,
   },
   slide: {
     width: SCREEN_WIDTH,
@@ -231,33 +241,33 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     bottom: 0,
-    width: SCREEN_WIDTH * 0.3,
+    width: SCREEN_WIDTH * 0.35,
   },
   content: {
     position: 'absolute',
-    bottom: 100,
-    left: 56,
-    maxWidth: '55%',
+    bottom: 48,
+    left: 48,
+    maxWidth: '50%',
     zIndex: 10,
   },
   title: {
-    fontSize: 52,
+    fontSize: 36,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 6,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 6,
+    textShadowRadius: 4,
     letterSpacing: -0.5,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 6,
   },
   metaText: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#b3b3b3',
     fontWeight: '500',
   },
@@ -266,97 +276,97 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   ratingText: {
-    fontSize: 15,
+    fontSize: 13,
     color: colors.rating,
     fontWeight: '700',
   },
   genres: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#b3b3b3',
-    marginBottom: 10,
+    marginBottom: 8,
     letterSpacing: 0.3,
   },
   overview: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#ccc',
-    lineHeight: 26,
-    marginBottom: 20,
+    lineHeight: 20,
+    marginBottom: 16,
   },
   buttons: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 10,
   },
   playButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 4,
-    gap: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 6,
+    gap: 8,
   },
   playButtonFocused: {
-    backgroundColor: '#e5e5e5',
+    backgroundColor: '#E50914',
   },
   playText: {
-    fontSize: 22,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#000',
+    fontFamily: 'Inter_700Bold',
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(109,109,110,0.7)',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 4,
-    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 6,
+    gap: 8,
   },
   secondaryButtonFocused: {
-    backgroundColor: 'rgba(109,109,110,0.9)',
+    backgroundColor: '#fff',
   },
   secondaryText: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
   dots: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 24,
     alignSelf: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     zIndex: 10,
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.3)',
   },
   dotActive: {
     backgroundColor: '#E50914',
-    width: 22,
-    borderRadius: 5,
+    width: 16,
+    borderRadius: 3,
   },
   maturityBadge: {
     position: 'absolute',
-    bottom: 36,
+    bottom: 20,
     right: 0,
     backgroundColor: 'rgba(0,0,0,0.8)',
     borderLeftWidth: 3,
     borderLeftColor: '#E50914',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     zIndex: 10,
   },
   maturityText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
   },

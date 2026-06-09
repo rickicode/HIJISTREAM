@@ -36,13 +36,13 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 16,
   },
   tab: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   tabText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     color: '#b3b3b3',
   },

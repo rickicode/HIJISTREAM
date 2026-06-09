@@ -10,12 +10,19 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, FlatList, StyleSheet, BackHandler, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors } from '@hijistream/shared/theme';
 import { GENRE_IDS, TMDB_COUNTRIES } from '@hijistream/shared/utils/api';
 import { useTranslation } from '@hijistream/shared/i18n';
 import TVFocusable from '../../components/TVFocusable';
+import TVTopNav from '../../components/TVTopNav';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GRID_PADDING = 48;
+const GRID_GAP = 12;
+const COLUMNS = 6;
+const CARD_WIDTH = (SCREEN_WIDTH - (2 * GRID_PADDING) - ((COLUMNS - 1) * GRID_GAP)) / COLUMNS;
 
 /* ── Genre metadata with emoji + color for TV-friendly cards ── */
 const GENRE_META = {
@@ -69,80 +76,99 @@ export default function BrowseScreen() {
 
   /* ── Genre card with emoji + color block ── */
   const renderGenreItem = useCallback(({ item }) => (
-    <TVFocusable
-      onPress={() => handleGenrePress(item.id)}
-      style={styles.gridCard}
-      focusStyle={[styles.gridCardFocused, { backgroundColor: item.meta.color }]}
-      focusScale={1.08}
-      accessibilityLabel={item.name}
-    >
-      <View style={[styles.genreColorBar, { backgroundColor: item.meta.color }]} />
-      <Text style={styles.genreEmoji}>{item.meta.emoji}</Text>
-      <Text style={styles.gridCardText} numberOfLines={2}>
-        {t(`genres.${item.key}`) || item.name}
-      </Text>
-    </TVFocusable>
+    <View style={{ width: CARD_WIDTH }}>
+      <TVFocusable
+        onPress={() => handleGenrePress(item.id)}
+        style={styles.gridCard}
+        focusStyle={[styles.gridCardFocused, { backgroundColor: item.meta.color }]}
+        focusScale={1.08}
+        accessibilityLabel={item.name}
+      >
+        <View style={[styles.genreColorBar, { backgroundColor: item.meta.color }]} />
+        <Text style={styles.genreEmoji}>{item.meta.emoji}</Text>
+        <Text style={styles.gridCardText} numberOfLines={2}>
+          {t(`genres.${item.key}`) || item.name}
+        </Text>
+      </TVFocusable>
+    </View>
   ), [t, handleGenrePress]);
 
   /* ── Country card with large flag ── */
   const renderCountryItem = useCallback(({ item }) => (
-    <TVFocusable
-      onPress={() => handleCountryPress(item.iso)}
-      style={styles.gridCard}
-      focusStyle={styles.gridCardFocused}
-      focusScale={1.08}
-      accessibilityLabel={item.code.toUpperCase()}
-    >
-      <Text style={styles.countryFlag}>{item.flag}</Text>
-      <Text style={styles.gridCardText}>{item.code.toUpperCase()}</Text>
-    </TVFocusable>
+    <View style={{ width: CARD_WIDTH }}>
+      <TVFocusable
+        onPress={() => handleCountryPress(item.iso)}
+        style={styles.gridCard}
+        focusStyle={styles.gridCardFocused}
+        focusScale={1.08}
+        accessibilityLabel={item.code.toUpperCase()}
+      >
+        <Text style={styles.countryFlag}>{item.flag}</Text>
+        <Text style={styles.gridCardText}>{item.code.toUpperCase()}</Text>
+      </TVFocusable>
+    </View>
   ), [handleCountryPress]);
 
   const listKey = useMemo(() => activeTab, [activeTab]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.pageTitle}>Browse</Text>
+      <TVTopNav />
+      <View style={styles.contentWrapper}>
+        <Text style={styles.pageTitle}>Browse</Text>
 
-      {/* Tab switcher */}
-      <View style={styles.tabRow}>
-        <TVFocusable
-          onPress={() => setActiveTab('genre')}
-          style={[styles.tab, activeTab === 'genre' && styles.tabActive]}
-          focusStyle={styles.tabFocused}
-          focusScale={1.05}
-          hasTVPreferredFocus={activeTab === 'genre'}
-          accessibilityLabel="Browse by Genre"
-        >
-          <Text style={[styles.tabText, activeTab === 'genre' && styles.tabTextActive]}>
-            📂 Genres
-          </Text>
-        </TVFocusable>
-        <TVFocusable
-          onPress={() => setActiveTab('country')}
-          style={[styles.tab, activeTab === 'country' && styles.tabActive]}
-          focusStyle={styles.tabFocused}
-          focusScale={1.05}
-          accessibilityLabel="Browse by Country"
-        >
-          <Text style={[styles.tabText, activeTab === 'country' && styles.tabTextActive]}>
-            🌍 Countries
-          </Text>
-        </TVFocusable>
+        {/* Tab switcher */}
+        <View style={styles.tabRow}>
+          <TVFocusable
+            onPress={() => setActiveTab('genre')}
+            style={[styles.tab, activeTab === 'genre' && styles.tabActive]}
+            focusStyle={styles.tabFocused}
+            focusScale={1.05}
+            hasTVPreferredFocus={activeTab === 'genre'}
+            accessibilityLabel="Browse by Genre"
+          >
+            {({ isFocused }) => (
+              <Text style={[
+                styles.tabText,
+                activeTab === 'genre' && styles.tabTextActive,
+                isFocused && styles.tabTextFocused
+              ]}>
+                📂 Genres
+              </Text>
+            )}
+          </TVFocusable>
+          <TVFocusable
+            onPress={() => setActiveTab('country')}
+            style={[styles.tab, activeTab === 'country' && styles.tabActive]}
+            focusStyle={styles.tabFocused}
+            focusScale={1.05}
+            accessibilityLabel="Browse by Country"
+          >
+            {({ isFocused }) => (
+              <Text style={[
+                styles.tabText,
+                activeTab === 'country' && styles.tabTextActive,
+                isFocused && styles.tabTextFocused
+              ]}>
+                🌍 Countries
+              </Text>
+            )}
+          </TVFocusable>
+        </View>
+
+        {/* Grid */}
+        <FlatList
+          key={listKey}
+          data={activeTab === 'genre' ? GENRE_LIST : TMDB_COUNTRIES}
+          renderItem={activeTab === 'genre' ? renderGenreItem : renderCountryItem}
+          keyExtractor={(item) => String(item.id || item.iso)}
+          numColumns={6}
+          contentContainerStyle={styles.grid}
+          columnWrapperStyle={styles.row}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={false}
+        />
       </View>
-
-      {/* Grid */}
-      <FlatList
-        key={listKey}
-        data={activeTab === 'genre' ? GENRE_LIST : TMDB_COUNTRIES}
-        renderItem={activeTab === 'genre' ? renderGenreItem : renderCountryItem}
-        keyExtractor={(item) => String(item.id || item.iso)}
-        numColumns={4}
-        contentContainerStyle={styles.grid}
-        columnWrapperStyle={styles.row}
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={false}
-      />
     </View>
   );
 }
@@ -151,97 +177,110 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: 56,
-    paddingTop: 24,
-    paddingBottom: 48,
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingHorizontal: 48,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   pageTitle: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 28,
+    marginBottom: 16,
     letterSpacing: -0.5,
   },
 
   /* ── Tabs ── */
   tabRow: {
     flexDirection: 'row',
-    gap: 14,
-    marginBottom: 32,
+    gap: 12,
+    marginBottom: 20,
   },
   tab: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
   tabActive: {
-    backgroundColor: '#E50914',
+    backgroundColor: 'rgba(229, 9, 20, 0.2)',
     borderColor: '#E50914',
   },
   tabFocused: {
-    borderColor: '#E50914',
-    backgroundColor: 'rgba(229, 9, 20, 0.2)',
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
   },
   tabText: {
-    fontSize: 22,
+    fontSize: 14,
     fontWeight: '600',
     color: '#b3b3b3',
+    fontFamily: 'Inter_600SemiBold',
   },
   tabTextActive: {
-    color: '#fff',
+    color: '#E50914',
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  tabTextFocused: {
+    color: '#000000',
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
   },
 
   /* ── Grid ── */
   grid: {
-    paddingBottom: 48,
+    paddingBottom: 24,
   },
   row: {
-    gap: 14,
-    marginBottom: 14,
+    gap: 12,
+    marginBottom: 12,
   },
 
   /* ── Genre card ── */
   gridCard: {
     flex: 1,
-    minHeight: 160,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    minHeight: 110,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 14,
     overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
   gridCardFocused: {
-    borderColor: '#E50914',
+    borderColor: '#ffffff',
   },
   genreColorBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 6,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    height: 4,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
   genreEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+    fontSize: 32,
+    marginBottom: 6,
   },
   gridCardText: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
     letterSpacing: 0.3,
+    fontFamily: 'Inter_700Bold',
   },
 
   /* ── Country card ── */
   countryFlag: {
-    fontSize: 56,
-    marginBottom: 10,
+    fontSize: 36,
+    marginBottom: 6,
   },
 });

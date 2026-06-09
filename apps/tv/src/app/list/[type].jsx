@@ -2,18 +2,27 @@
  * ListScreen - "See All" list page for Android TV
  *
  * Features:
- * - Full paginated content list
+ * - Header bar with Back button and Title
+ * - Full paginated content list in a compact 6-column grid
  * - TV remote D-pad navigation
  * - Back button support
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, BackHandler } from 'react-native';
+import { View, Text, FlatList, StyleSheet, BackHandler, ActivityIndicator, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import api from '@hijistream/shared/utils/api';
 import { getAllWatchProgress } from '@hijistream/shared/utils/player';
 import { colors } from '@hijistream/shared/theme';
+import { ArrowLeft } from 'lucide-react-native';
+import TVFocusable from '../../components/TVFocusable';
 import ContentCard from '../../components/ContentCard';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const GRID_PADDING = 48;
+const GRID_GAP = 12;
+const COLUMNS = 6;
+const CARD_WIDTH = (SCREEN_WIDTH - (2 * GRID_PADDING) - ((COLUMNS - 1) * GRID_GAP)) / COLUMNS;
 
 const TITLE_MAP = {
   'trending-movies': 'Trending Now',
@@ -112,18 +121,64 @@ export default function ListScreen() {
 
   const renderItem = ({ item }) => (
     <View style={styles.cardWrapper}>
-      <ContentCard item={item} type={item.type || mediaType} />
+      <ContentCard item={item} type={item.type || mediaType} width="100%" />
     </View>
   );
 
+  if (items.length === 0 && loading) {
+    return (
+      <View style={styles.container}>
+        {/* Top Header Bar */}
+        <View style={styles.topBar}>
+          <TVFocusable
+            onPress={() => router.back()}
+            style={styles.backButton}
+            focusStyle={styles.backButtonFocused}
+            focusScale={1.05}
+            showFocusRing={false}
+            accessibilityLabel="Go back"
+            hasTVPreferredFocus
+          >
+            {({ isFocused }) => (
+              <ArrowLeft size={18} color={isFocused ? '#000' : '#fff'} />
+            )}
+          </TVFocusable>
+          <Text style={styles.title}>{TITLE_MAP[listType] || 'Browse'}</Text>
+        </View>
+
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E50914" />
+          <Text style={styles.loadingText}>HIJISTREAM</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{TITLE_MAP[listType] || 'Browse'}</Text>
+      {/* Top Header Bar */}
+      <View style={styles.topBar}>
+        <TVFocusable
+          onPress={() => router.back()}
+          style={styles.backButton}
+          focusStyle={styles.backButtonFocused}
+          focusScale={1.05}
+          showFocusRing={false}
+          accessibilityLabel="Go back"
+          hasTVPreferredFocus
+        >
+          {({ isFocused }) => (
+            <ArrowLeft size={18} color={isFocused ? '#000' : '#fff'} />
+          )}
+        </TVFocusable>
+        <Text style={styles.title}>{TITLE_MAP[listType] || 'Browse'}</Text>
+      </View>
+
       <FlatList
         data={items}
         renderItem={renderItem}
         keyExtractor={(item) => String(item.id)}
-        numColumns={5}
+        numColumns={6}
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
@@ -139,25 +194,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: 56,
+    paddingHorizontal: 48,
+    paddingTop: 24,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+    height: 48,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  backButtonFocused: {
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
   },
   title: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '800',
     color: '#fff',
-    marginBottom: 24,
     letterSpacing: -0.5,
+    fontFamily: 'Inter_700Bold',
   },
   grid: {
-    paddingBottom: 48,
+    paddingBottom: 32,
   },
   row: {
     gap: 12,
     marginBottom: 12,
   },
   cardWrapper: {
-    flex: 1,
-    maxWidth: '20%',
+    width: CARD_WIDTH,
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#E50914',
+    letterSpacing: 2,
+    marginTop: 10,
+    fontFamily: 'Inter_700Bold',
   },
 });

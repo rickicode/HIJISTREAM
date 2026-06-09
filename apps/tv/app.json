@@ -5,6 +5,11 @@
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#141414"
+    },
     "scheme": "hijistream-tv",
     "platforms": [
       "android"

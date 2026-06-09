@@ -185,7 +185,7 @@ export default function CustomPlayerOverlay({
             focusStyle={styles.iconButtonFocused}
             accessibilityLabel="Back"
           >
-            <ArrowLeft size={26} color="#fff" />
+            <ArrowLeft size={18} color="#fff" />
           </TVFocusable>
           <Text style={styles.title} numberOfLines={1}>{title || ''}</Text>
           <View style={{ width: 48 }} />
@@ -203,7 +203,7 @@ export default function CustomPlayerOverlay({
             hasTVPreferredFocus={!isPlaying}
             accessibilityLabel="Play"
           >
-            <Play size={56} color="#000" fill="#000" />
+            <Play size={36} color="#000" fill="#000" />
           </TVFocusable>
           {buffering && <Text style={styles.bufferingText}>Loading...</Text>}
         </View>
@@ -234,7 +234,7 @@ export default function CustomPlayerOverlay({
                 focusStyle={styles.iconButtonFocused}
                 accessibilityLabel="Rewind 10 seconds"
               >
-                <RotateCcw size={22} color="#fff" />
+                <RotateCcw size={16} color="#fff" />
               </TVFocusable>
 
               {/* Play/Pause */}
@@ -244,7 +244,7 @@ export default function CustomPlayerOverlay({
                 focusStyle={styles.playBtnFocused}
                 accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
               >
-                {isPlaying ? <Pause size={28} color="#000" fill="#000" /> : <Play size={28} color="#000" fill="#000" />}
+                {isPlaying ? <Pause size={20} color="#000" fill="#000" /> : <Play size={20} color="#000" fill="#000" />}
               </TVFocusable>
 
               {/* Forward 10s */}
@@ -254,7 +254,7 @@ export default function CustomPlayerOverlay({
                 focusStyle={styles.iconButtonFocused}
                 accessibilityLabel="Forward 10 seconds"
               >
-                <RotateCw size={22} color="#fff" />
+                <RotateCw size={16} color="#fff" />
               </TVFocusable>
 
               <View style={{ flex: 1 }} />
@@ -267,13 +267,13 @@ export default function CustomPlayerOverlay({
                   focusStyle={styles.pillButtonFocused}
                   accessibilityLabel="Subtitle"
                 >
-                  <Subtitles size={18} color={selectedSubLang && selectedSubLang !== 'off' ? colors.primary : '#fff'} />
+                  <Subtitles size={14} color={selectedSubLang && selectedSubLang !== 'off' ? '#E50914' : '#fff'} />
                   <Text style={styles.pillText}>
                     {selectedSubLang && selectedSubLang !== 'off'
                       ? (LANG_FLAGS[selectedSubLang] || '🌐') + ' ' + selectedSubLang.toUpperCase()
                       : 'CC'}
                   </Text>
-                  <ChevronDown size={14} color="#fff" />
+                  <ChevronDown size={12} color="#fff" />
                 </TVFocusable>
               )}
 
@@ -286,7 +286,7 @@ export default function CustomPlayerOverlay({
                   accessibilityLabel="Quality"
                 >
                   <Text style={styles.pillText}>{currentQuality || availableQualities[0]}</Text>
-                  <ChevronDown size={14} color="#fff" />
+                  <ChevronDown size={12} color="#fff" />
                 </TVFocusable>
               )}
 
@@ -298,7 +298,7 @@ export default function CustomPlayerOverlay({
                   focusStyle={styles.iconButtonFocused}
                   accessibilityLabel={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                 >
-                  {isFullscreen ? <Minimize size={22} color="#fff" /> : <Maximize size={22} color="#fff" />}
+                  {isFullscreen ? <Minimize size={16} color="#fff" /> : <Maximize size={16} color="#fff" />}
                 </TVFocusable>
               )}
             </View>
@@ -399,13 +399,13 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 220,
     backgroundColor: 'rgba(0,0,0,0.7)',
   },
-  topBar: { paddingTop: 24 },
+  topBar: { paddingTop: 16 },
   topBarContent: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 32, paddingVertical: 14, gap: 20,
+    paddingHorizontal: 24, paddingVertical: 10, gap: 16,
   },
   title: {
-    flex: 1, fontSize: 22, fontWeight: '700', color: '#fff',
+    flex: 1, fontSize: 18, fontWeight: '700', color: '#fff',
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 4,
   },
   centerContainer: {
@@ -413,22 +413,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   centerPlayBtn: {
-    width: 110, height: 110, borderRadius: 55,
+    width: 80, height: 80, borderRadius: 40,
     backgroundColor: 'rgba(255,255,255,0.95)',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 3, borderColor: 'transparent',
   },
   centerPlayBtnFocused: {
     backgroundColor: '#fff',
-    borderColor: colors.primary,
+    borderColor: '#E50914',
   },
   bufferingText: {
-    color: '#fff', fontSize: 16, marginTop: 16, fontWeight: '600',
+    color: '#fff', fontSize: 14, marginTop: 12, fontWeight: '600',
   },
-  bottomBar: { paddingBottom: 24 },
-  bottomContent: { paddingHorizontal: 32, paddingTop: 8 },
+  bottomBar: { paddingBottom: 16 },
+  bottomContent: { paddingHorizontal: 24, paddingTop: 4 },
   seekBar: {
-    height: 36, justifyContent: 'center',
+    height: 24, justifyContent: 'center',
   },
   seekTrack: {
     position: 'absolute', left: 0, right: 0, height: 4,
@@ -436,57 +436,57 @@ const styles = StyleSheet.create({
   },
   seekFill: {
     position: 'absolute', left: 0, height: 4,
-    backgroundColor: colors.primary, borderRadius: 2,
+    backgroundColor: '#E50914', borderRadius: 2,
   },
   seekThumb: {
-    position: 'absolute', width: 14, height: 14, borderRadius: 7,
-    backgroundColor: colors.primary, marginLeft: -7,
+    position: 'absolute', width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#E50914', marginLeft: -6,
   },
   timeRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    marginTop: 4, marginBottom: 14,
+    marginTop: 2, marginBottom: 8,
   },
   timeText: {
-    color: '#fff', fontSize: 13, fontWeight: '600',
+    color: '#fff', fontSize: 12, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 3,
   },
   controlsRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
   },
   iconButton: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: 'transparent',
   },
   iconButtonFocused: {
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderColor: colors.primary,
+    borderColor: '#E50914',
   },
   playBtn: {
-    width: 60, height: 60, borderRadius: 30,
+    width: 46, height: 46, borderRadius: 23,
     backgroundColor: 'rgba(255,255,255,0.95)',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: 'transparent',
   },
   playBtnFocused: {
     backgroundColor: '#fff',
-    borderColor: colors.primary,
+    borderColor: '#E50914',
   },
   pillButton: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 2, borderColor: 'transparent',
-    minHeight: 48,
+    minHeight: 36,
   },
   pillButtonFocused: {
     backgroundColor: 'rgba(255,255,255,0.15)',
-    borderColor: colors.primary,
+    borderColor: '#E50914',
   },
   pillText: {
-    color: '#fff', fontSize: 14, fontWeight: '600',
+    color: '#fff', fontSize: 13, fontWeight: '600',
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -494,53 +494,53 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   modalDialog: {
-    width: 460, maxHeight: '70%',
+    width: 380, maxHeight: '70%',
     backgroundColor: '#1a1a1a',
-    borderRadius: 12, padding: 20,
+    borderRadius: 12, padding: 16,
   },
   modalTitle: {
-    fontSize: 20, fontWeight: '700', color: '#fff',
-    marginBottom: 16, textAlign: 'center',
+    fontSize: 16, fontWeight: '700', color: '#fff',
+    marginBottom: 12, textAlign: 'center',
   },
-  modalList: { maxHeight: 400 },
+  modalList: { maxHeight: 300 },
   modalItem: {
     flexDirection: 'row', alignItems: 'center',
-    padding: 14, borderRadius: 8,
+    padding: 10, borderRadius: 8,
     backgroundColor: '#2a2a2a',
     borderWidth: 2, borderColor: 'transparent',
   },
-  modalItemCurrent: { borderColor: colors.primary, backgroundColor: 'rgba(229,9,20,0.1)' },
+  modalItemCurrent: { borderColor: '#E50914', backgroundColor: 'rgba(229,9,20,0.1)' },
   modalItemFocused: { borderColor: '#fff' },
-  modalItemLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  modalItemSub: { color: '#888', fontSize: 12, marginTop: 2 },
+  modalItemLabel: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  modalItemSub: { color: '#888', fontSize: 11, marginTop: 2 },
   modalCloseBtn: {
-    marginTop: 16, paddingVertical: 12,
+    marginTop: 12, paddingVertical: 8,
     backgroundColor: '#2a2a2a', borderRadius: 8,
     alignItems: 'center',
     borderWidth: 2, borderColor: 'transparent',
   },
-  modalCloseBtnFocused: { borderColor: colors.primary, backgroundColor: '#3a3a3a' },
-  modalCloseText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  modalCloseBtnFocused: { borderColor: '#E50914', backgroundColor: '#3a3a3a' },
+  modalCloseText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   errorContainer: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000',
     justifyContent: 'center', alignItems: 'center',
-    padding: 32, gap: 16,
+    padding: 24, gap: 12,
   },
-  errorTitle: { color: '#fff', fontSize: 24, fontWeight: '700' },
-  errorMessage: { color: '#888', fontSize: 16, textAlign: 'center' },
+  errorTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  errorMessage: { color: '#888', fontSize: 14, textAlign: 'center' },
   retryBtn: {
-    paddingHorizontal: 32, paddingVertical: 14,
-    backgroundColor: colors.primary, borderRadius: 6,
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: '#E50914', borderRadius: 6,
     borderWidth: 2, borderColor: 'transparent',
   },
   retryBtnFocused: { borderColor: '#fff' },
-  retryText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  retryText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   backErrorBtn: {
-    paddingHorizontal: 24, paddingVertical: 12,
+    paddingHorizontal: 16, paddingVertical: 8,
     backgroundColor: '#2a2a2a', borderRadius: 6,
     borderWidth: 2, borderColor: 'transparent',
   },
   backErrorBtnFocused: { borderColor: '#fff' },
-  backErrorText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  backErrorText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
