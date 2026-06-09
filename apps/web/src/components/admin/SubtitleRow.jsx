@@ -75,8 +75,18 @@ export default function SubtitleRow({ entry, onDelete, onRefresh, onEdit, onConf
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${entry.lang === 'id' ? 'bg-green-500/20 text-green-400' : entry.lang === 'en' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
             <Globe size={10} /> {(LANG_LABELS[entry.lang] || entry.lang || '').toUpperCase()}
           </span>
-          <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${entry.source === 'manual' ? 'text-cyan-400 bg-cyan-400/10' : 'text-orange-400 bg-orange-400/10'}`}>
-            {entry.source === 'manual' ? 'MANUAL' : 'OS'}
+          <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${
+            entry.source === 'manual' ? 'text-cyan-400 bg-cyan-400/10'
+            : entry.source === 'subdl' ? 'text-purple-400 bg-purple-400/10'
+            : entry.source === 'opensubtitles_com' ? 'text-yellow-400 bg-yellow-400/10'
+            : entry.source === 'opensubtitles_org' ? 'text-blue-400 bg-blue-400/10'
+            : 'text-orange-400 bg-orange-400/10'
+          }`}>
+            {entry.source === 'manual' ? 'MANUAL'
+            : entry.source === 'subdl' ? 'SubDL'
+            : entry.source === 'opensubtitles_com' ? 'OS.com'
+            : entry.source === 'opensubtitles_org' ? 'OS.org'
+            : entry.source?.replace('opensubtitles_', 'OS.').toUpperCase() || 'Unknown'}
           </span>
         </div>
       </td>

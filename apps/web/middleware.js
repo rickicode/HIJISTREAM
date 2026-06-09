@@ -71,6 +71,7 @@ function transformMovieDetail(movie) {
 function transformTVDetail(show) {
   return {
     id: show.id,
+    imdb_id: show.external_ids?.imdb_id || null,
     title: show.name,
     year: show.first_air_date?.substring(0, 4) || '',
     poster_url: show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : '',
@@ -212,21 +213,8 @@ async function handleSubtitles(env, url) {
   }
 
   // Resolve OS credentials: env vars > R2-stored settings
-  let osEnv = env;
-  if (!env.OPENSUBTITLES_API_KEY || !env.OPENSUBTITLES_USERNAME || !env.OPENSUBTITLES_PASSWORD) {
-    try {
-      const res = await fetch(getR2PublicUrl(env, PROVIDERS_SETTINGS_KEY));
-      if (res.ok) {
-        const stored = await res.json();
-        if (stored.opensubtitles_com?.apiKey) {
-          osEnv = { ...env, OPENSUBTITLES_API_KEY: stored.opensubtitles_com.apiKey, OPENSUBTITLES_USERNAME: stored.opensubtitles_com.username, OPENSUBTITLES_PASSWORD: stored.opensubtitles_com.password };
-        }
-      }
-    } catch { /* ignore */ }
-  }
-  if (!osEnv.OPENSUBTITLES_API_KEY) {
-    return { error: 'OpenSubtitles credentials not configured', subtitles: [] };
-  }
+  // Resolve all provider credentials (env + R2 stored settings)
+  const osEnv = env;
 
   try {
     const options = {};
