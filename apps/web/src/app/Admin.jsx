@@ -26,6 +26,7 @@ import MonitoringSection from '../components/admin/MonitoringSection';
 import SettingsTab from '../components/admin/SettingsTab';
 import DownloadTab from '../components/admin/DownloadTab';
 import BulkDownloadPanel from '../components/admin/BulkDownloadPanel';
+import ProviderManagementTab from '../components/admin/ProviderManagementTab';
 import { LANG_LABELS } from '../components/admin/shared';
 
 // ============================================================
@@ -44,7 +45,7 @@ function AdminDashboard({ onLogout }) {
   const [showUpload, setShowUpload] = useState(false);
   const [showBulkRefresh, setShowBulkRefresh] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring' | 'settings' | 'download' | 'bulk'
+  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring' | 'settings' | 'download' | 'bulk' | 'providers'
   const [monitoringData, setMonitoringData] = useState(null);
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
@@ -270,6 +271,16 @@ function AdminDashboard({ onLogout }) {
             <BarChart3 size={14} /> Monitoring
           </button>
           <button
+            onClick={() => setView('providers')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              view === 'providers'
+                ? 'border-[#E50914] text-white'
+                : 'border-transparent text-[#808080] hover:text-white hover:border-[#555]'
+            }`}
+          >
+            <Settings size={14} /> Providers
+          </button>
+          <button
             onClick={() => setView('settings')}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               view === 'settings'
@@ -305,6 +316,8 @@ function AdminDashboard({ onLogout }) {
           <BulkDownloadPanel />
         ) : view === 'download' ? (
           <DownloadTab />
+        ) : view === 'providers' ? (
+          <ProviderManagementTab />
         ) : view === 'settings' ? (
           <SettingsTab />
         ) : view === 'monitoring' ? (
