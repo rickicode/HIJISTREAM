@@ -391,11 +391,11 @@ const api = {
   /**
    * Save OpenSubtitles credentials.
    */
-  saveAdminSettings({ apiKey, username, password }) {
+  saveAdminSettings(settings) {
     return fetch(`${BASE_URL}/admin/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },
-      body: JSON.stringify({ apiKey, username, password }),
+      body: JSON.stringify(settings),
     }).then((res) => {
       if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Save failed'); });
       return res.json();

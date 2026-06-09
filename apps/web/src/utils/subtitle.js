@@ -1032,6 +1032,42 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     }
   } catch { /* skip provider */ }
 
+  // 4. Podnapisi — free, no auth required
+  try {
+    const searchLang = lang || 'en';
+    const params = new URLSearchParams({ sXML: '1', sL: searchLang, sK: String(tmdbId) });
+    if (type === 'tv') {
+      if (season !== undefined) params.set('sTS', String(season));
+      if (episode !== undefined) params.set('sTE', String(episode));
+    }
+    const res = await fetch(`${PODNAPISI_BASE}/search/old?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+    if (res.ok) {
+      const xml = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, 'text/xml');
+      const subs = doc.querySelectorAll('subtitle');
+      for (const s of Array.from(subs).slice(0, 10)) {
+        const pid = s.querySelector('pid')?.textContent || '';
+        const subLang = (s.querySelector('language')?.textContent || 'en').toLowerCase();
+        const release = s.querySelector('release')?.textContent || '';
+        const flags = s.querySelector('flags')?.textContent || '';
+        results.push({
+          provider: 'podnapisi',
+          lang: normalizeLang(subLang) || subLang,
+          langName: LANG_NAMES[normalizeLang(subLang) || subLang] || subLang,
+          title: release,
+          downloadCount: 0,
+          rating: 0,
+          format: 'srt',
+          size: 0,
+          fileId: pid,
+          fps: null,
+          hearingImpaired: flags.includes('n'),
+        });
+      }
+    }
+  } catch { /* skip */ }
+
   // Sort by download count descending
   results.sort((a, b) => b.downloadCount - a.downloadCount);
   return results;

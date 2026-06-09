@@ -1,42 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, CheckCircle, XCircle, Loader, RefreshCw, Globe, Lock, Unlock, AlertTriangle } from 'lucide-react';
 import api from '../../utils/api';
-
-const PROVIDER_INFO = {
-  opensubtitles_com: {
-    name: 'OpenSubtitles.com',
-    description: 'REST API v1 — API Key + Username + Password',
-    icon: '🎬',
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-400/10',
-    fields: [
-      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Dari opensubtitles.com/consumers' },
-      { key: 'username', label: 'Username', type: 'text', placeholder: 'Username' },
-      { key: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
-    ],
-  },
-  opensubtitles_org: {
-    name: 'OpenSubtitles.org',
-    description: 'XML-RPC Legacy — Username + Password',
-    icon: '📺',
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-400/10',
-    fields: [
-      { key: 'username', label: 'Username', type: 'text', placeholder: 'Username opensubtitles.org' },
-      { key: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
-    ],
-  },
-  subdl: {
-    name: 'Subdl',
-    description: 'REST API — API Key only',
-    icon: '📦',
-    color: 'text-purple-400',
-    bgColor: 'bg-purple-400/10',
-    fields: [
-      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Dari subdl.com/api' },
-    ],
-  },
-};
+import { PROVIDER_INFO } from '../../utils/subtitle-constants';
 
 export default function ProviderManagementTab() {
   const [settings, setSettings] = useState({});

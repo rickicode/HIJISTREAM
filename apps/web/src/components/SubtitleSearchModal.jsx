@@ -2,11 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Download, Globe, Loader, CheckCircle, XCircle, Film, Tv } from 'lucide-react';
 import api from '../utils/api';
 import { getCurrentLanguage } from '../utils/language';
-
-const LANG_FLAGS = { id: '🇮🇩', en: '🇺🇸', es: '🇪🇸', pt: '🇧🇷', hi: '🇮🇳', ja: '🇯🇵', ko: '🇰🇷' };
-const LANG_LABELS = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
-const PROVIDER_LABELS = { opensubtitles_com: 'OS.com', opensubtitles_org: 'OS.org', subdl: 'Subdl' };
-const PROVIDER_COLORS = { opensubtitles_com: 'text-yellow-400 bg-yellow-400/10', opensubtitles_org: 'text-blue-400 bg-blue-400/10', subdl: 'text-purple-400 bg-purple-400/10' };
+import { LANG_FLAGS, LANG_LABELS, PROVIDER_LABELS, PROVIDER_COLORS, getLangFlag, getLangLabel } from '../utils/subtitle-constants';
 
 /**
  * SubtitleSearchModal — Search & download subtitles from all providers.
