@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.env.*
+*.log
+src
+tests
+.apk
+*.apk
