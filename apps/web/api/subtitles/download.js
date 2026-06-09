@@ -27,7 +27,6 @@ export default async function handler(req, res) {
       episode: episode ? Number(episode) : undefined,
       imdbId: imdb_id || undefined,
       title: title || undefined,
-      force: true,
     });
 
     if (!sub) {
