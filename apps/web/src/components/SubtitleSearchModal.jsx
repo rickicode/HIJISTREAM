@@ -153,8 +153,8 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
           {searching && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader size={28} className="animate-spin text-[#E50914] mb-3" />
-              <p className="text-[#808080] text-sm">Mencari dari {providers.length || '3'} provider...</p>
-              <p className="text-[#555] text-xs mt-1">OpenSubtitles.com • OpenSubtitles.org • Subdl</p>
+              <p className="text-[#808080] text-sm">Mencari dari 4 provider...</p>
+              <p className="text-[#555] text-xs mt-1">OS.com • OS.org • Subdl • Podnapisi</p>
             </div>
           )}
 
