@@ -646,12 +646,19 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
   let seasons = [];
   try {
     const tmdbKey = env.TMDB_API_KEY;
-    if (!tmdbKey) throw new Error('TMDB_API_KEY not configured');
+    if (!tmdbKey) throw new Error('TMDB_API_KEY tidak dikonfigurasi di environment');
     const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`, {
       headers: { Authorization: `Bearer ${tmdbKey}` },
     });
-    if (!tvRes.ok) throw new Error('TMDB TV fetch failed');
+    if (!tvRes.ok) {
+      let detail = '';
+      try { const errBody = await tvRes.json(); detail = errBody.status_message || JSON.stringify(errBody); } catch { detail = await tvRes.text().catch(() => ''); }
+      throw new Error(`TMDB API error ${tvRes.status}: ${detail || tvRes.statusText}`);
+    }
     const tvData = await tvRes.json();
+    if (!tvData.seasons || tvData.seasons.length === 0) {
+      throw new Error(`TMDB mengembalikan 0 season untuk ID ${tmdbId}. Pastikan ID benar dan bukan movie.`);
+    }
     seasons = (tvData.seasons || [])
       .filter(s => s.season_number > 0) // skip specials
       .map(s => ({ number: s.season_number, episodeCount: s.episode_count || 0, name: s.name }));

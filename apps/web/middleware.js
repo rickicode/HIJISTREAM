@@ -248,9 +248,13 @@ async function handleSubtitles(env, url) {
           if (!options.imdbId && tmdbData.external_ids?.imdb_id) {
             options.imdbId = tmdbData.external_ids.imdb_id;
           }
+        } else {
+          console.error(`[Subtitle] TMDB title fetch failed: ${tmdbRes.status} ${tmdbRes.statusText} for ${type}/${tmdbId}`);
         }
+      } else {
+        console.error('[Subtitle] TMDB_API_KEY not configured — subtitle will be stored without title');
       }
-    } catch { /* proceed without title */ }
+    } catch (err) { console.error(`[Subtitle] TMDB title fetch error: ${err.message}`); }
 
     const languages = lang.split(',').map((l) => l.trim()).filter(Boolean);
     const results = [];
