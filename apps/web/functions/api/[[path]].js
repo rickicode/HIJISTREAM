@@ -85,6 +85,25 @@ async function handleSubtitles(env, url) {
     if (season) options.season = Number(season);
     if (episode) options.episode = Number(episode);
     if (imdbId) options.imdbId = imdbId;
+
+    // Fetch title from TMDB to store in subtitle metadata
+    try {
+      const tmdbKey = env.TMDB_API_KEY;
+      if (tmdbKey) {
+        const endpoint = type === 'tv'
+          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
+          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+        const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        if (tmdbRes.ok) {
+          const tmdbData = await tmdbRes.json();
+          options.title = tmdbData.title || tmdbData.name || null;
+          if (!options.imdbId && tmdbData.external_ids?.imdb_id) {
+            options.imdbId = tmdbData.external_ids.imdb_id;
+          }
+        }
+      }
+    } catch { /* proceed without title */ }
+
     const languages = lang.split(',').map(l => l.trim()).filter(Boolean);
     const results = [];
     for (const l of languages) {

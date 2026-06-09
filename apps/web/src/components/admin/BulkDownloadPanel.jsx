@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Search, Download, Loader, CheckCircle, XCircle, Film, Tv, Globe, Zap, Package } from 'lucide-react';
+import { Search, Download, Loader, CheckCircle, XCircle, Film, Tv, Globe, Zap, Package, Trash2 } from 'lucide-react';
 import api from '../../utils/api';
 
 const LANGS = [
@@ -17,25 +17,24 @@ export default function BulkDownloadPanel() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState(null);
+
+  // ── Selected items ──
+  const [selectedItems, setSelectedItems] = useState([]); // array of items
 
   // ── Config ──
   const [langs, setLangs] = useState(['id', 'en']);
-  const [seasonFilter, setSeasonFilter] = useState(''); // comma-separated season numbers
-  const [useBulk, setUseBulk] = useState(true); // try ZIP packages
 
   // ── Progress ──
   const [downloading, setDownloading] = useState(false);
-  const [progress, setProgress] = useState(null);
-  const [result, setResult] = useState(null);
+  const [currentItem, setCurrentItem] = useState(null);
+  const [currentProgress, setCurrentProgress] = useState(null);
+  const [results_log, setResultsLog] = useState([]); // array of { item, result }
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
     setSearching(true);
     setResults([]);
-    setSelected(null);
-    setResult(null);
     try {
       const data = await api.search(query.trim());
       setResults(data.items || []);
@@ -43,52 +42,62 @@ export default function BulkDownloadPanel() {
     finally { setSearching(false); }
   };
 
+  const toggleSelect = (item) => {
+    setSelectedItems(prev => {
+      const exists = prev.find(i => i.id === item.id && i.type === item.type);
+      if (exists) return prev.filter(i => !(i.id === item.id && i.type === item.type));
+      return [...prev, item];
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedItems(prev => {
+      const existing = new Set(prev.map(i => `${i.type}-${i.id}`));
+      const newItems = results.filter(r => !existing.has(`${r.type}-${r.id}`));
+      return [...prev, ...newItems];
+    });
+  };
+
+  const clearSelection = () => setSelectedItems([]);
+
+  const removeSelected = (item) => {
+    setSelectedItems(prev => prev.filter(i => !(i.id === item.id && i.type === item.type)));
+  };
+
   const handleBulkDownload = useCallback(async () => {
-    if (!selected) return;
+    if (selectedItems.length === 0) return;
     setDownloading(true);
-    setResult(null);
-    setProgress({ phase: 'starting', current: 0, total: 0, message: 'Memulai...' });
+    setResultsLog([]);
+    setCurrentProgress(null);
 
-    try {
-      // Polling progress via a simple interval (backend processes synchronously)
-      const progressPromise = new Promise((resolve) => {
-        let ticks = 0;
-        const interval = setInterval(() => {
-          ticks++;
-          setProgress(prev => ({
-            ...prev,
-            message: prev?.phase === 'starting' ? 'Menghubungi provider...' : prev?.message,
-          }));
-          if (ticks > 300) { clearInterval(interval); resolve(); } // 5 min timeout
-        }, 1000);
-        // Resolve when download completes
-        setTimeout(() => clearInterval(interval), 600000);
-      });
+    for (let i = 0; i < selectedItems.length; i++) {
+      const item = selectedItems[i];
+      setCurrentItem(item);
+      setCurrentProgress({ phase: 'starting', current: 0, total: 0, message: `${item.title}...` });
 
-      const seasonFilterArr = seasonFilter
-        ? seasonFilter.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
-        : null;
-
-      const data = await api.bulkDownloadSubtitles({
-        type: selected.type,
-        tmdbId: selected.id,
-        languages: langs,
-        seasonFilter: seasonFilterArr,
-        imdbId: selected.imdb_id || undefined,
-        title: selected.title,
-      });
-
-      setResult(data);
-      setProgress(null);
-    } catch (err) {
-      setResult({ error: err.message });
-      setProgress(null);
-    } finally {
-      setDownloading(false);
+      try {
+        const data = await api.bulkDownloadSubtitles({
+          type: item.type,
+          tmdbId: item.id,
+          languages: langs,
+          imdbId: item.imdb_id || undefined,
+          title: item.title,
+        });
+        setResultsLog(prev => [...prev, { item, result: data }]);
+      } catch (err) {
+        setResultsLog(prev => [...prev, { item, result: { error: err.message, success: 0, fail: 0, results: [] } }]);
+      }
     }
-  }, [selected, langs, seasonFilter]);
+
+    setCurrentItem(null);
+    setCurrentProgress(null);
+    setDownloading(false);
+  }, [selectedItems, langs]);
 
   const toggleLang = (code) => setLangs(prev => prev.includes(code) ? prev.filter(x => x !== code) : [...prev, code]);
+
+  const totalSuccess = results_log.reduce((sum, r) => sum + (r.result?.success || 0), 0);
+  const totalFail = results_log.reduce((sum, r) => sum + (r.result?.fail || 0), 0);
 
   const inputClass = 'px-3 py-2 bg-[#141414] border border-[#333] rounded text-white text-sm placeholder-[#555] focus:outline-none focus:border-[#E50914] transition-colors';
 
@@ -100,7 +109,7 @@ export default function BulkDownloadPanel() {
           <Zap size={16} className="text-[#E50914]" /> Bulk Download
         </h2>
         <p className="text-xs text-[#666]">
-          Download semua subtitle sekaligus. Untuk TV series, otomatis extract ZIP package jika tersedia.
+          Cari dan pilih beberapa judul, lalu download semua subtitle sekaligus. TV series otomatis extract ZIP package.
         </p>
       </div>
 
@@ -115,136 +124,155 @@ export default function BulkDownloadPanel() {
         </button>
       </form>
 
-      {/* Search results */}
-      {results.length > 0 && (
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-          {results.map(item => (
-            <button key={`${item.type}-${item.id}`} onClick={() => { setSelected(item); setResult(null); setSeasonFilter(''); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#252525] transition-colors border-b border-[#2a2a2a] last:border-0 ${selected?.id === item.id ? 'bg-[#252525] border-l-2 border-l-[#E50914]' : ''}`}>
-              {item.poster_url
-                ? <img src={item.poster_url} alt="" className="w-8 h-12 object-cover rounded shrink-0" />
-                : <div className="w-8 h-12 bg-[#2a2a2a] rounded shrink-0 flex items-center justify-center">{item.type === 'movie' ? <Film size={12} className="text-[#555]" /> : <Tv size={12} className="text-[#555]" />}</div>
-              }
-              <div className="min-w-0">
-                <p className="text-white text-sm font-medium truncate">{item.title}</p>
-                <p className="text-[#808080] text-xs">{item.type === 'movie' ? 'Movie' : 'TV'} {item.year && `· ${item.year}`}</p>
-              </div>
-              {selected?.id === item.id && <CheckCircle size={14} className="text-[#E50914] ml-auto shrink-0" />}
+      {/* Language selection */}
+      <div>
+        <label className="block text-xs text-[#808080] mb-2 font-medium">Bahasa yang akan diunduh</label>
+        <div className="flex flex-wrap gap-2">
+          {LANGS.map(l => (
+            <button key={l.code} onClick={() => toggleLang(l.code)}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${
+                langs.includes(l.code)
+                  ? 'border-[#E50914] text-white bg-[#E50914]/15 shadow-[0_0_6px_rgba(229,9,20,0.1)]'
+                  : 'border-[#333] text-[#808080] hover:border-[#555] hover:text-white'
+              }`}>
+              <span>{l.flag}</span>
+              <span className="font-medium">{l.label}</span>
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Search results — multi-select */}
+      {results.length > 0 && (
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[#2a2a2a] bg-[#141414]">
+            <span className="text-xs text-[#808080]">{results.length} hasil · {selectedItems.length} dipilih</span>
+            <div className="flex items-center gap-2">
+              <button onClick={selectAll} className="text-[10px] text-[#808080] hover:text-white transition-colors">Pilih semua</button>
+              {selectedItems.length > 0 && (
+                <button onClick={clearSelection} className="text-[10px] text-red-400 hover:text-red-300 transition-colors">Clear</button>
+              )}
+            </div>
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {results.map(item => {
+              const isSelected = selectedItems.some(i => i.id === item.id && i.type === item.type);
+              return (
+                <button key={`${item.type}-${item.id}`} onClick={() => toggleSelect(item)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#252525] transition-colors border-b border-[#2a2a2a] last:border-0 ${
+                    isSelected ? 'bg-[#E50914]/5 border-l-2 border-l-[#E50914]' : ''
+                  }`}>
+                  {/* Checkbox */}
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    isSelected ? 'border-[#E50914] bg-[#E50914]' : 'border-[#444]'
+                  }`}>
+                    {isSelected && <CheckCircle size={12} className="text-white" />}
+                  </div>
+                  {/* Poster */}
+                  {item.poster_url
+                    ? <img src={item.poster_url} alt="" className="w-8 h-12 object-cover rounded shrink-0" />
+                    : <div className="w-8 h-12 bg-[#2a2a2a] rounded shrink-0 flex items-center justify-center">{item.type === 'movie' ? <Film size={12} className="text-[#555]" /> : <Tv size={12} className="text-[#555]" />}</div>
+                  }
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                    <p className="text-[#808080] text-xs">
+                      {item.type === 'movie' ? 'Movie' : 'TV'} {item.year && `· ${item.year}`}
+                    </p>
+                  </div>
+                  {/* Type icon */}
+                  <span className="shrink-0">
+                    {item.type === 'movie'
+                      ? <Film size={14} className="text-blue-400" />
+                      : <Tv size={14} className="text-purple-400" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Config */}
-      {selected && (
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-4">
-          {/* Selected info */}
-          <div className="flex items-center gap-2">
-            {selected.type === 'movie' ? <Film size={14} className="text-[#E50914]" /> : <Tv size={14} className="text-[#E50914]" />}
-            <span className="text-white text-sm font-medium">{selected.title}</span>
-            <span className="text-[#555] text-xs">TMDB #{selected.id}</span>
+      {/* Selected items summary + download button */}
+      {selectedItems.length > 0 && (
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-white">{selectedItems.length} judul dipilih</span>
+              <span className="text-[10px] text-[#666]">
+                · {selectedItems.filter(i => i.type === 'movie').length} movie · {selectedItems.filter(i => i.type === 'tv').length} TV
+              </span>
+            </div>
+            <button onClick={clearSelection} className="text-xs text-[#808080] hover:text-red-400 transition-colors flex items-center gap-1">
+              <Trash2 size={11} /> Clear
+            </button>
           </div>
 
-          {/* Language selection */}
-          <div>
-            <label className="block text-xs text-[#808080] mb-2 font-medium">Bahasa yang akan diunduh</label>
-            <div className="flex flex-wrap gap-2">
-              {LANGS.map(l => (
-                <button key={l.code} onClick={() => toggleLang(l.code)}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded-full border transition-all duration-150 ${
-                    langs.includes(l.code)
-                      ? 'border-[#E50914] text-white bg-[#E50914]/15 shadow-[0_0_6px_rgba(229,9,20,0.1)]'
-                      : 'border-[#333] text-[#808080] hover:border-[#555] hover:text-white'
-                  }`}>
-                  <span>{l.flag}</span>
-                  <span className="font-medium">{l.label}</span>
+          {/* Selected items list */}
+          <div className="flex flex-wrap gap-1.5">
+            {selectedItems.map(item => (
+              <div key={`${item.type}-${item.id}`} className="flex items-center gap-1.5 bg-[#222] border border-[#333] rounded-full px-2.5 py-1 text-xs">
+                <span className="text-[#808080]">{item.type === 'movie' ? '🎬' : '📺'}</span>
+                <span className="text-white font-medium truncate max-w-[180px]">{item.title}</span>
+                <button onClick={() => removeSelected(item)} className="text-[#666] hover:text-red-400 ml-0.5">
+                  <XCircle size={12} />
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* TV: Season filter + bulk option */}
-          {selected.type === 'tv' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <label className="block text-xs text-[#808080] mb-1">Filter Season (opsional)</label>
-                  <input value={seasonFilter} onChange={e => setSeasonFilter(e.target.value)}
-                    placeholder="Contoh: 1,2,3 atau kosong = semua"
-                    className={`${inputClass} w-full`} />
-                </div>
               </div>
-
-              {/* Bulk ZIP option */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={useBulk} onChange={e => setUseBulk(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#333] bg-[#141414] text-[#E50914] focus:ring-[#E50914]" />
-                <div className="flex items-center gap-1.5">
-                  <Package size={13} className="text-[#808080]" />
-                  <span className="text-xs text-[#b3b3b3]">Coba ambil ZIP package (lebih cepat)</span>
-                </div>
-              </label>
-            </div>
-          )}
+            ))}
+          </div>
 
           {/* Download button */}
           <button onClick={handleBulkDownload} disabled={downloading || langs.length === 0}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#E50914] text-white text-sm font-semibold rounded-lg hover:bg-[#f6121d] disabled:opacity-40 transition-colors">
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#E50914] text-white text-sm font-semibold rounded-lg hover:bg-[#f6121d] disabled:opacity-40 transition-colors w-full justify-center">
             {downloading ? <Loader size={14} className="animate-spin" /> : <Download size={14} />}
-            {downloading ? 'Mengunduh...' : `Bulk Download ${selected.type === 'tv' ? '(TV Series)' : '(Movie)'} — ${langs.length} bahasa`}
+            {downloading
+              ? `Mengunduh... ${currentItem ? `(${selectedItems.indexOf(currentItem) + 1}/${selectedItems.length})` : ''}`
+              : `Download ${selectedItems.length} judul — ${langs.length} bahasa`}
           </button>
 
-          {/* Progress */}
-          {progress && (
-            <div className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <Loader size={14} className="animate-spin text-[#E50914]" />
-                <span className="text-xs text-[#b3b3b3]">{progress.message}</span>
-              </div>
+          {/* Current progress */}
+          {currentProgress && currentItem && (
+            <div className="bg-[#141414] border border-[#2a2a2a] rounded-lg p-3 flex items-center gap-2">
+              <Loader size={13} className="animate-spin text-[#E50914]" />
+              <span className="text-xs text-[#b3b3b3]">
+                <span className="text-white font-medium">{currentItem.title}</span>
+                {' '}— {currentProgress.message}
+              </span>
             </div>
           )}
 
-          {/* Results */}
-          {result && !result.error && (
+          {/* Results log */}
+          {results_log.length > 0 && (
             <div className="space-y-2">
-              {/* Summary */}
               <div className="flex items-center gap-4 text-sm">
                 <span className="text-green-400 font-medium flex items-center gap-1">
-                  <CheckCircle size={14} /> {result.success} berhasil
+                  <CheckCircle size={14} /> {totalSuccess} berhasil
                 </span>
-                {result.fail > 0 && (
+                {totalFail > 0 && (
                   <span className="text-red-400 font-medium flex items-center gap-1">
-                    <XCircle size={14} /> {result.fail} gagal
+                    <XCircle size={14} /> {totalFail} gagal
                   </span>
                 )}
-                {result.skipped > 0 && (
-                  <span className="text-[#808080]">{result.skipped} skipped</span>
-                )}
               </div>
-
-              {/* Detailed results */}
-              <div className="max-h-64 overflow-y-auto bg-[#141414] border border-[#2a2a2a] rounded-lg divide-y divide-[#2a2a2a]">
-                {result.results.map((r, i) => (
-                  <div key={i} className={`flex items-center gap-2 px-3 py-2 text-xs ${
-                    r.success ? 'text-green-400' : 'text-red-400'
+              <div className="max-h-64 overflow-y-auto space-y-1.5">
+                {results_log.map((log, i) => (
+                  <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+                    log.result?.error
+                      ? 'border-red-400/20 bg-red-400/5 text-red-400'
+                      : log.result?.fail > 0
+                        ? 'border-amber-400/20 bg-amber-400/5 text-amber-400'
+                        : 'border-green-400/20 bg-green-400/5 text-green-400'
                   }`}>
-                    {r.success ? <CheckCircle size={11} className="shrink-0" /> : <XCircle size={11} className="shrink-0" />}
-                    <span className="font-medium">
-                      {r.season !== undefined ? `S${String(r.season).padStart(2, '0')}:E${String(r.episode).padStart(2, '0')}` : (LANGS.find(l => l.code === r.lang)?.full || r.lang)}
+                    {log.result?.error ? <XCircle size={11} className="shrink-0" /> :
+                     log.result?.fail > 0 ? <XCircle size={11} className="shrink-0" /> :
+                     <CheckCircle size={11} className="shrink-0" />}
+                    <span className="font-medium truncate">{log.item.title}</span>
+                    <span className="text-[#666] ml-auto shrink-0">
+                      {log.result?.error || `${log.result?.success || 0} ok, ${log.result?.fail || 0} fail`}
                     </span>
-                    {r.bulk && <Package size={10} className="text-purple-400 shrink-0" title="From ZIP package" />}
-                    {!r.success && <span className="text-[#666] ml-1">{r.message}</span>}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Error */}
-          {result?.error && (
-            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">
-              <XCircle size={16} />
-              <span>{result.error}</span>
             </div>
           )}
         </div>
