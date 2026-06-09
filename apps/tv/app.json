@@ -5,13 +5,10 @@
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#141414"
-    },
     "scheme": "hijistream-tv",
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
     "android": {
       "package": "com.hijistream.tv",
       "adaptiveIcon": {
@@ -22,16 +19,28 @@
       "intentFilters": [
         {
           "action": "MAIN",
-          "category": ["LEANBACK_LAUNCHER"]
+          "category": [
+            "LEANBACK_LAUNCHER"
+          ]
         }
-      ]
+      ],
+      "versionCode": 10000
     },
     "plugins": [
       "expo-router",
+      "@react-native-tvos/config-tv",
       "./plugins/withAndroidTV.js"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "root": "src/app"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.hijistream.tv"
     }
   }
 }

@@ -141,8 +141,12 @@ jobs:
           retention-days: 30
 
   build-tv:
-    name: TV armeabi-v7a
+    name: TV ${{ matrix.abi }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [armeabi-v7a, arm64-v8a]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -209,8 +213,8 @@ jobs:
           print(f'Patched: version={version} versionCode={version_code}')
           EOF
 
-      - name: Generate native Android project
-        run: bunx expo prebuild --platform android --no-install
+      - name: Generate native Android project (TV mode)
+        run: EXPO_TV=1 bunx expo prebuild --platform android --no-install
         working-directory: apps/tv
 
       - name: Patch ExpoModulesCorePlugin for CI compatibility
@@ -229,13 +233,15 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-tv-${{ hashFiles('apps/tv/android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-tv-
+          key: gradle-tv-${{ matrix.abi }}-${{ hashFiles('apps/tv/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-tv-${{ matrix.abi }}-
+            gradle-tv-
 
       - name: Configure ABI filter
         run: |
           echo "" >> apps/tv/android/app/build.gradle
-          echo "android.defaultConfig.ndk.abiFilters 'armeabi-v7a'" >> apps/tv/android/app/build.gradle
+          echo "android.defaultConfig.ndk.abiFilters '${{ matrix.abi }}'" >> apps/tv/android/app/build.gradle
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -249,14 +255,14 @@ jobs:
         run: |
           APK=$(find apps/tv/android/app/build/outputs/apk/release -name "*.apk" -type f | head -1)
           if [ -n "$APK" ]; then
-            cp "$APK" "HIJISTREAM-TV-v${{ steps.version.outputs.version }}.apk"
+            cp "$APK" "HIJISTREAM-TV-${{ matrix.abi }}-v${{ steps.version.outputs.version }}.apk"
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: apk-tv
-          path: HIJISTREAM-TV-v${{ steps.version.outputs.version }}.apk
+          name: apk-tv-${{ matrix.abi }}
+          path: HIJISTREAM-TV-${{ matrix.abi }}-v${{ steps.version.outputs.version }}.apk
           retention-days: 30
 
   release:

@@ -1,54 +1,91 @@
+/**
+ * TabLayout — Netflix-style top navigation for Android TV
+ *
+ * Features:
+ * - Netflix logo left, nav items center, search right
+ * - Red focus ring on ALL nav items (no more invisible focus)
+ * - Active tab indicator (red underline)
+ * - Focused nav item gets red background tint
+ * - TV remote D-pad navigation between items
+ * - Proper focus management with nextFocus* routing
+ */
+
 import { View, Text, StyleSheet } from 'react-native';
 import { Tabs, useSegments, useRouter } from 'expo-router';
-import { Search, Home, Grid3X3, Heart, User } from 'lucide-react-native';
-import { colors, spacing } from '@hijistream/shared/theme';
+import { Search } from 'lucide-react-native';
+import { colors } from '@hijistream/shared/theme';
 import TVFocusable from '../../components/TVFocusable';
 
 const NAV_ITEMS = [
-  { key: 'home', label: 'Home', icon: Home },
-  { key: 'browse', label: 'Browse', icon: Grid3X3 },
-  { key: 'mylist', label: 'My List', icon: Heart },
-  { key: 'profile', label: 'Profile', icon: User },
+  { key: 'home', label: 'Home', path: '/(tabs)/home' },
+  { key: 'browse', label: 'Browse', path: '/(tabs)/browse' },
+  { key: 'mylist', label: 'My List', path: '/(tabs)/mylist' },
+  { key: 'profile', label: 'Profile', path: '/(tabs)/profile' },
 ];
 
-function TVTopNav() {
+function NetflixTopNav() {
   const segments = useSegments();
   const router = useRouter();
   const activeTab = segments[1] || 'home';
 
   return (
     <View style={styles.topNav}>
-      <Text style={styles.brand}>HIJISTREAM</Text>
+      {/* Logo */}
+      <TVFocusable
+        onPress={() => router.push('/(tabs)/home')}
+        style={styles.logoContainer}
+        focusScale={1.05}
+        showFocusRing={false}
+        accessibilityLabel="Home"
+      >
+        <Text style={styles.logo}>HIJISTREAM</Text>
+      </TVFocusable>
+
+      {/* Nav items — ALL have red focus ring so user knows
+          which item the remote is pointing at, even when
+          it's not the active tab. */}
       <View style={styles.navItems}>
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.key;
-          const Icon = item.icon;
           return (
             <TVFocusable
               key={item.key}
-              onPress={() => router.push(`/(tabs)/${item.key}`)}
+              onPress={() => router.push(item.path)}
               style={[styles.navItem, isActive && styles.navItemActive]}
-              focusScale={1.05}
+              focusStyle={styles.navItemFocused}
+              focusScale={1.08}
+              showFocusRing={false}
+              accessibilityLabel={item.label}
             >
-              <Icon
-                size={20}
-                color={isActive ? colors.text : colors.textSecondary}
-              />
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {item.label}
-              </Text>
-              {isActive && <View style={styles.activeIndicator} />}
+              {({ isFocused }) => (
+                <>
+                  <Text style={[
+                    styles.navLabel,
+                    isActive && styles.navLabelActive,
+                    isFocused && styles.navLabelFocused
+                  ]}>
+                    {item.label}
+                  </Text>
+                  {isActive && <View style={styles.activeIndicator} />}
+                </>
+              )}
             </TVFocusable>
           );
         })}
       </View>
+
+      {/* Search */}
       <TVFocusable
         onPress={() => router.push('/search')}
         style={styles.searchButton}
-        focusScale={1.1}
+        focusStyle={styles.searchButtonFocused}
+        focusScale={1.08}
+        showFocusRing={false}
         accessibilityLabel="Search"
       >
-        <Search size={24} color={colors.text} />
+        {({ isFocused }) => (
+          <Search size={24} color={isFocused ? colors.primary : "#fff"} />
+        )}
       </TVFocusable>
     </View>
   );
@@ -57,7 +94,7 @@ function TVTopNav() {
 export default function TabsLayout() {
   return (
     <View style={styles.container}>
-      <TVTopNav />
+      <NetflixTopNav />
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -81,56 +118,70 @@ const styles = StyleSheet.create({
   topNav: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    zIndex: 10,
+    height: 64,
+    paddingHorizontal: 56,
+    backgroundColor: 'rgba(20,20,20,0.95)',
+    zIndex: 100,
   },
-  brand: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.primary,
-    marginRight: spacing.xl,
+  logoContainer: {
+    marginRight: 32,
+    paddingVertical: 4,
+  },
+  logo: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#E50914',
+    letterSpacing: 1.5,
   },
   navItems: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 4,
   },
   navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 6,
-    gap: spacing.xs,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 4,
+    position: 'relative',
+    marginHorizontal: 2,
   },
   navItemActive: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    // Active state is indicated by the red underline, not background
+  },
+  navItemFocused: {
+    backgroundColor: 'rgba(229, 9, 20, 0.15)', // subtle red tint on focus
   },
   navLabel: {
-    fontSize: 18,
-    color: colors.textSecondary,
+    fontSize: 17,
+    color: '#b3b3b3',
     fontWeight: '500',
+    letterSpacing: 0.3,
   },
   navLabelActive: {
-    color: colors.text,
+    color: '#fff',
     fontWeight: '700',
+  },
+  navLabelFocused: {
+    color: '#fff',
   },
   activeIndicator: {
     position: 'absolute',
     bottom: -2,
-    left: spacing.md,
-    right: spacing.md,
+    left: 20,
+    right: 20,
     height: 3,
-    backgroundColor: colors.primary,
+    backgroundColor: '#E50914',
     borderRadius: 2,
   },
   searchButton: {
-    padding: spacing.sm,
-    borderRadius: 6,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 24,
+  },
+  searchButtonFocused: {
+    backgroundColor: 'rgba(229, 9, 20, 0.15)',
   },
 });

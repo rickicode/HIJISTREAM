@@ -4,9 +4,15 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
+    "start:tv": "EXPO_TV=1 expo start",
     "android": "expo run:android",
+    "android:tv": "EXPO_TV=1 expo run:android",
+    "prebuild": "expo prebuild --clean",
+    "prebuild:tv": "EXPO_TV=1 expo prebuild --clean",
+    "prebuild:tv:ci": "EXPO_TV=1 expo prebuild --platform android --no-install",
     "export": "expo export --platform android",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
@@ -20,7 +26,6 @@
     "expo-linking": "~7.0.0",
     "expo-localization": "~16.0.1",
     "expo-router": "~4.0.0",
-    "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.0",
     "lucide-react-native": "^0.468.0",
     "react": "18.3.1",
@@ -33,6 +38,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@react-native-tvos/config-tv": "^0.1.6",
     "@types/react": "~18.3.0",
     "eslint": "^8.57.0",
     "eslint-config-expo": "~8.0.1",

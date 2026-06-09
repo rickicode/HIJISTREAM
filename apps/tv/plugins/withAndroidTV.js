@@ -18,7 +18,7 @@
  * (`expo.android.intentFilters`) since that schema is well supported.
  */
 
-const { withAndroidManifest } = require('expo/config-plugins');
+const { withAndroidManifest, withAndroidStyles } = require('expo/config-plugins');
 
 const TV_USES_FEATURES = [
   { name: 'android.hardware.touchscreen', required: 'false' },
@@ -64,8 +64,33 @@ function ensureApplicationMetaData(application, name, resource) {
   }
 }
 
+function ensureDarkWindowBackground(styles) {
+  const resources = styles.resources || styles;
+  const styleList = resources.style || [];
+
+  styleList.forEach((style) => {
+    const name = style?.$?.name || '';
+    if (!name.includes('AppTheme')) return;
+
+    if (!Array.isArray(style.item)) style.item = [];
+
+    const existing = style.item.find(
+      (item) => item?.$?.name === 'android:windowBackground'
+    );
+
+    if (existing) {
+      existing._ = '#141414';
+    } else {
+      style.item.push({
+        $: { name: 'android:windowBackground' },
+        _: '#141414',
+      });
+    }
+  });
+}
+
 function withAndroidTV(config) {
-  return withAndroidManifest(config, (cfg) => {
+  config = withAndroidManifest(config, (cfg) => {
     const manifest = cfg.modResults.manifest;
 
     TV_USES_FEATURES.forEach(({ name, required }) => {
@@ -81,6 +106,11 @@ function withAndroidTV(config) {
       ensureApplicationMetaData(application, BANNER_META.name, BANNER_META.resource);
     }
 
+    return cfg;
+  });
+
+  return withAndroidStyles(config, (cfg) => {
+    ensureDarkWindowBackground(cfg.modResults);
     return cfg;
   });
 }

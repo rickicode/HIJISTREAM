@@ -22,24 +22,29 @@ describe('getMovieEmbedUrl', () => {
     expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?skin=netflix');
   });
 
-  it('returns URL with ds_lang parameter', () => {
-    const url = getMovieEmbedUrl('tt1234567', null, { dsLang: 'id' });
-    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?ds_lang=id');
+  it('returns URL with sub_url parameter', () => {
+    const url = getMovieEmbedUrl('tt1234567', null, { subUrl: 'https://r2.dev/sub.vtt' });
+    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?sub_url=https%3A%2F%2Fr2.dev%2Fsub.vtt');
+  });
+
+  it('returns URL with sub_url + sub_lang + sub_default', () => {
+    const url = getMovieEmbedUrl('tt1234567', null, { subUrl: 'https://r2.dev/id.vtt', subLang: 'id', subDefault: true });
+    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?sub_url=https%3A%2F%2Fr2.dev%2Fid.vtt&sub_lang=id&sub_default=true');
   });
 
   it('returns URL with all options combined', () => {
-    const url = getMovieEmbedUrl('tt1234567', 300, { skin: 'netflix', dsLang: 'id' });
-    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?resumeAt=300&skin=netflix&ds_lang=id');
+    const url = getMovieEmbedUrl('tt1234567', 300, {
+      skin: 'netflix',
+      subUrl: 'https://r2.dev/id.vtt',
+      subLang: 'id',
+      subDefault: true,
+    });
+    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?resumeAt=300&skin=netflix&sub_url=https%3A%2F%2Fr2.dev%2Fid.vtt&sub_lang=id&sub_default=true');
   });
 
   it('works with numeric TMDB ID', () => {
     const url = getMovieEmbedUrl(550, 60, { skin: 'netflix' });
     expect(url).toBe('https://vaplayer.ru/embed/movie/550?resumeAt=60&skin=netflix');
-  });
-
-  it('ignores null dsLang', () => {
-    const url = getMovieEmbedUrl('tt1234567', 300, { skin: 'netflix', dsLang: null });
-    expect(url).toBe('https://vaplayer.ru/embed/movie/tt1234567?resumeAt=300&skin=netflix');
   });
 });
 
@@ -64,18 +69,23 @@ describe('getTVEmbedUrl', () => {
     expect(url).toBe('https://vaplayer.ru/embed/tv/1396/2/5?skin=netflix');
   });
 
-  it('returns URL with ds_lang parameter', () => {
-    const url = getTVEmbedUrl(1396, 1, 1, null, { dsLang: 'id' });
-    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?ds_lang=id');
+  it('returns URL with sub_url parameter', () => {
+    const url = getTVEmbedUrl(1396, 1, 1, null, { subUrl: 'https://r2.dev/sub.vtt' });
+    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?sub_url=https%3A%2F%2Fr2.dev%2Fsub.vtt');
+  });
+
+  it('returns URL with sub_url + sub_lang + sub_default', () => {
+    const url = getTVEmbedUrl(1396, 1, 1, null, { subUrl: 'https://r2.dev/id.vtt', subLang: 'id', subDefault: true });
+    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?sub_url=https%3A%2F%2Fr2.dev%2Fid.vtt&sub_lang=id&sub_default=true');
   });
 
   it('returns URL with all options combined', () => {
-    const url = getTVEmbedUrl(1396, 1, 1, 300, { skin: 'netflix', dsLang: 'id' });
-    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?resumeAt=300&skin=netflix&ds_lang=id');
-  });
-
-  it('ignores null dsLang', () => {
-    const url = getTVEmbedUrl(1396, 1, 1, 300, { skin: 'netflix', dsLang: null });
-    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?resumeAt=300&skin=netflix');
+    const url = getTVEmbedUrl(1396, 1, 1, 300, {
+      skin: 'netflix',
+      subUrl: 'https://r2.dev/id.vtt',
+      subLang: 'id',
+      subDefault: true,
+    });
+    expect(url).toBe('https://vaplayer.ru/embed/tv/1396/1/1?resumeAt=300&skin=netflix&sub_url=https%3A%2F%2Fr2.dev%2Fid.vtt&sub_lang=id&sub_default=true');
   });
 });

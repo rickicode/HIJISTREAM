@@ -1,317 +1,325 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, Modal, FlatList, StyleSheet, Dimensions, Pressable } from 'react-native';
+/**
+ * VideoPlayer — TV-only custom player.
+ *
+ * Arsitektur:
+ *   - WebView load embed URL vaplayer.ru dengan `controls=false&overlay=false` →
+ *     UI bawaan TIDAK tampil, hanya video + iframe.
+ *   - Custom overlay UI (CustomPlayerOverlay) render di ATAS WebView sebagai
+ *     React Native layer, dengan kontrol play/pause/seek/quality/subtitle.
+ *   - State player (isPlaying, currentTime, duration, qualities) disinkronkan
+ *     via `postMessage` PLAYER_EVENT dari iframe → onMessage WebView.
+ *   - Commands (play/pause/seek) dikirim ke iframe via `injectJavaScript`
+ *     yang memanipulasi `<video>` element langsung.
+ *
+ * Subtitle:
+ *   - Mount: panggil api.getSubtitles() untuk dapat list {url, lang, cached}.
+ *   - Jika ada url (R2-cached): pakai sub_url + sub_lang + sub_default=1.
+ *   - Jika tidak ada: pakai ds_lang saja (auto-search OpenSubtitles dari vaplayer).
+ *   - User bahasa (currentLanguage) selalu dipilih.
+ *   - User bisa ganti subtitle dari overlay picker → reload iframe dengan sub_url baru.
+ *
+ *   params: { id, type, title, season, episode, resumeAt, imdbId? }
+ */
+
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { useTVEventHandler } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Subtitles, Settings } from 'lucide-react-native';
-import { colors, spacing, borderRadius } from '@hijistream/shared/theme';
 import { getMovieEmbedUrl, getTVEmbedUrl, saveWatchProgress } from '@hijistream/shared/utils/player';
-import { getDsLang } from '@hijistream/shared/utils/language';
-import TVFocusable from './TVFocusable';
+import { getCurrentLanguage } from '@hijistream/shared/utils/language';
+import api from '@hijistream/shared/utils/api';
+import ADBLOCK_INJECTED_JS from '@hijistream/shared/utils/adblock';
+import CustomPlayerOverlay from './CustomPlayerOverlay';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const OVERLAY_HIDE_TIMEOUT = 6000;
+const ISO_639_2_MAP = {
+  id: 'ind', en: 'eng', es: 'spa', pt: 'por',
+  hi: 'hin', ja: 'jpn', ko: 'kor',
+};
 
-const SUBTITLE_LANGUAGES = [
-  { code: '', label: 'Off' },
-  { code: 'eng', label: 'English' },
-  { code: 'ind', label: 'Indonesian' },
-  { code: 'ara', label: 'Arabic' },
-  { code: 'chi', label: 'Chinese' },
-  { code: 'dut', label: 'Dutch' },
-  { code: 'fre', label: 'French' },
-  { code: 'ger', label: 'German' },
-  { code: 'hin', label: 'Hindi' },
-  { code: 'ita', label: 'Italian' },
-  { code: 'jpn', label: 'Japanese' },
-  { code: 'kor', label: 'Korean' },
-  { code: 'may', label: 'Malay' },
-  { code: 'por', label: 'Portuguese' },
-  { code: 'pob', label: 'Portuguese (BR)' },
-  { code: 'rus', label: 'Russian' },
-  { code: 'spa', label: 'Spanish' },
-  { code: 'tha', label: 'Thai' },
-  { code: 'tur', label: 'Turkish' },
-  { code: 'vie', label: 'Vietnamese' },
-];
-
-const SPEED_OPTIONS = [
-  { value: 0.5, label: '0.5x' },
-  { value: 0.75, label: '0.75x' },
-  { value: 1, label: '1x (Normal)' },
-  { value: 1.25, label: '1.25x' },
-  { value: 1.5, label: '1.5x' },
-  { value: 2, label: '2x' },
-];
-
-const ALLOWED_DOMAINS = [
-  'vaplayer.ru',
-  'streamdata.vaplayer.ru',
-  'cdn.jsdelivr.net',
-  'code.jquery.com',
-  'cdnjs.cloudflare.com',
-  'www.gstatic.com',
-];
-
-const INJECTED_JS = `
-(function() {
-  // Block popups
-  window.open = function() { return null; };
-  window.alert = function() {};
-  window.confirm = function() { return false; };
-  window.prompt = function() { return null; };
-
-  // Block form submission (ad redirects)
-  HTMLFormElement.prototype.submit = function() {};
-
-  // Block histats and ad scripts
-  var observer = new MutationObserver(function(mutations) {
-    mutations.forEach(function(m) {
-      m.addedNodes.forEach(function(node) {
-        if (node.tagName === 'SCRIPT' && node.src) {
-          if (node.src.indexOf('histats') !== -1 || node.src.indexOf('popunder') !== -1) {
-            node.remove();
-          }
-        }
-        if (node.tagName === 'IFRAME' && node.src && node.src.indexOf('histats') !== -1) {
-          node.remove();
-        }
-      });
-    });
+// Bridge: forward window.postMessage dari iframe ke ReactNativeWebView,
+// dan kirim progress setiap 2 detik selama playing.
+const BRIDGE_JS = `
+(function(){
+  if (window.__tvBridge) return;
+  window.__tvBridge = true;
+  window.addEventListener('message', function(e){
+    if(!window.ReactNativeWebView) return;
+    try {
+      var msg = typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
+      window.ReactNativeWebView.postMessage(msg);
+    } catch(x){}
   });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  setInterval(function(){
+    var v = document.querySelector('video');
+    if (v && !v.paused && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'progress',
+        time: v.currentTime || 0,
+        duration: v.duration || 0,
+      }));
+    }
+  }, 2000);
+})();`;
 
-  // Block mousedown propagation on ad triggers
-  document.addEventListener('mousedown', function(e) {
-    if (e.target.tagName === 'A' && e.target.href && e.target.href.indexOf('vaplayer') === -1) {
-      e.stopPropagation();
-      e.preventDefault();
+// Inject overlay auto-hide hooks: paksa klik pada video untuk trigger native overlay show
+const OVERLAY_HOOK_JS = `
+(function(){
+  document.addEventListener('mousemove', function(){
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({type: 'overlay-show'}));
     }
   }, true);
-
-  // Wait for video iframe and force fullscreen
-  function setupIframe() {
-    var iframe = document.querySelector('iframe');
-    if (iframe) {
-      iframe.style.position = 'fixed';
-      iframe.style.top = '0';
-      iframe.style.left = '0';
-      iframe.style.width = '100vw';
-      iframe.style.height = '100vh';
-      iframe.style.border = 'none';
-      iframe.style.zIndex = '999999';
-
-      // Hide other elements
-      var allElements = document.body.children;
-      for (var i = 0; i < allElements.length; i++) {
-        if (allElements[i] !== iframe && allElements[i].tagName !== 'SCRIPT') {
-          allElements[i].style.display = 'none';
-        }
-      }
-      document.body.style.margin = '0';
-      document.body.style.padding = '0';
-      document.body.style.overflow = 'hidden';
-      document.body.style.background = '#000';
+  // Block default click-to-play supaya native overlay play/pause saja yg control
+  document.addEventListener('click', function(e){
+    var v = e.target.closest('video');
+    if (v && window.ReactNativeWebView) {
+      // Allow default click (it'll play/pause video), just notify native
+      window.ReactNativeWebView.postMessage(JSON.stringify({type: 'video-tap'}));
     }
-  }
+  }, true);
+})();`;
 
-  // Forward progress events back to React Native
-  function listenForProgress() {
-    window.addEventListener('message', function(event) {
+/**
+ * Build embed URL dengan parameter subtitle:
+ * - sub_url ada (dari R2): gunakan sub_url + sub_lang + sub_default=1
+ * - sub_url tidak ada: gunakan ds_lang (auto-search dari vaplayer)
+ */
+function buildEmbedUrl(base, lang) {
+  const params = ['controls=0', 'overlay=0', 'autoplay=1'];
+  params.push(`ds_lang=${encodeURIComponent(lang)}`);
+  params.push(`lang=${encodeURIComponent(lang)}`);
+  params.push(`sub_lang=${encodeURIComponent(lang)}`);
+  return `${base}?${params.join('&')}`;
+}
+
+function buildEmbedUrlWithSub(base, lang, subUrl) {
+  const params = ['controls=0', 'overlay=0', 'autoplay=1'];
+  if (subUrl) {
+    params.push(`sub_url=${encodeURIComponent(subUrl)}`);
+    params.push(`sub_lang=${encodeURIComponent(lang)}`);
+    params.push('sub_default=1');
+  } else {
+    params.push(`ds_lang=${encodeURIComponent(lang)}`);
+    params.push(`lang=${encodeURIComponent(lang)}`);
+  }
+  return `${base}?${params.join('&')}`;
+}
+
+export default function VideoPlayer({ id, type, title, season, episode, resumeAt, imdbId: imdbIdProp, tmdbId: tmdbIdProp }) {
+  const webViewRef = useRef(null);
+  const router = useRouter();
+
+  // Player state (driven by PLAYER_EVENT + progress polling)
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [buffering, setBuffering] = useState(true);
+  const [availableQualities, setAvailableQualities] = useState([]);
+  const [currentQuality, setCurrentQuality] = useState(null);
+  const [embedUrl, setEmbedUrl] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  // Subtitle state
+  const [subtitles, setSubtitles] = useState([]);           // [{url, lang, cached}]
+  const [selectedSub, setSelectedSub] = useState(null);     // {url, lang} | null
+  const [appLanguage, setAppLanguage] = useState('id');
+  const [baseEmbedUrl, setBaseEmbedUrl] = useState('');      // base tanpa sub params
+  const selectedSubLang = selectedSub?.lang || 'off';
+
+  // D-pad wake: increment counter → overlay listen & show
+  const [showTrigger, setShowTrigger] = useState(0);
+
+  // ── Init: build base embed URL, fetch user language, fetch subtitles ──
+  useEffect(() => {
+    if (!id || !type) return;
+    (async () => {
       try {
-        var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data && data.event === 'timeupdate') {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'progress',
-            time: data.currentTime,
-            duration: data.duration,
-          }));
-        }
-      } catch(e) {}
-    });
-  }
+        const lang = await getCurrentLanguage();
+        setAppLanguage(lang);
 
-  // Forward key events to iframe
-  document.addEventListener('keydown', function(e) {
-    var iframe = document.querySelector('iframe');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage(JSON.stringify({
-        type: 'keydown',
-        key: e.key,
-        keyCode: e.keyCode,
-      }), '*');
+        // Build base embed URL (tanpa sub params, hanya controls=0 overlay=0 autoplay=1 ds_lang)
+        const opts = { skin: 'netflix' };
+        const time = resumeAt || 0;
+        const base = type === 'tv'
+          ? getTVEmbedUrl(id, season, episode, time, opts)
+          : getMovieEmbedUrl(id, time, opts);
+        setBaseEmbedUrl(base);
+
+        // Set initial embed URL (with ds_lang fallback) — langsung putar
+        setEmbedUrl(buildEmbedUrl(base, lang));
+
+        // Fetch subtitles dari R2 (background — tidak block player)
+        api.getSubtitles({
+          type,
+          tmdbId: tmdbIdProp || id,  // Untuk TV: tmdbId. Untuk movie: kalau caller kirim tmdbId, pakai itu; kalau tidak, fallback ke id (yang mungkin IMDB)
+          lang,
+          season: type === 'tv' ? season : undefined,
+          episode: type === 'tv' ? episode : undefined,
+          imdbId: imdbIdProp,
+        }).then((data) => {
+          const list = data?.subtitles || [];
+          if (list.length > 0) {
+            setSubtitles(list);
+            // Auto-select bahasa user
+            const match = list.find((s) => s.lang === lang) || list[0];
+            setSelectedSub(match);
+            // Rebuild embed URL dengan sub_url
+            setEmbedUrl(buildEmbedUrlWithSub(base, match.lang, match.url));
+          } else {
+            // Tidak ada subtitle, tetap pakai ds_lang (sudah di-set di initial)
+            setSubtitles([]);
+          }
+        }).catch(() => {
+          setSubtitles([]);
+        });
+      } catch (err) {
+        setErrorMessage(err.message);
+        setHasError(true);
+      }
+    })();
+  }, [id, type, season, episode, resumeAt, imdbIdProp, tmdbIdProp]);
+
+  // ── Save watch progress every 5s ──
+  useEffect(() => {
+    if (!id) return;
+    const iv = setInterval(() => {
+      if (currentTime > 0 && duration > 0) {
+        const pid = type === 'tv' ? `tv_${id}_s${season}e${episode}` : `movie_${id}`;
+        saveWatchProgress(pid, currentTime, duration, { title, type });
+      }
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [id, type, title, season, episode, currentTime, duration]);
+
+  // ── Handle hardware back → exit player ──
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.back();
+      return true;
+    });
+    return () => handler.remove();
+  }, [router]);
+
+  // ── D-pad handler: wake overlay ──
+  useTVEventHandler((evt) => {
+    if (!evt?.eventType || evt.eventKeyAction === 1) return; // ignore key-up
+    const t = evt.eventType;
+    if (t === 'right' || t === 'down' || t === 'left' || t === 'up' || t === 'select' || t === 'playPause') {
+      console.warn('[Player] D-pad:', t, '→ showTrigger++');
+      setShowTrigger(n => n + 1);
     }
   });
 
-  setTimeout(setupIframe, 1000);
-  setTimeout(setupIframe, 3000);
-  setTimeout(setupIframe, 5000);
-  listenForProgress();
-})();
-true;
-`;
-
-export default function VideoPlayer({ id, type, title, season, episode, resumeAt }) {
-  const router = useRouter();
-  const webViewRef = useRef(null);
-  const hideTimeoutRef = useRef(null);
-  const progressRef = useRef({ time: 0, duration: 0 });
-
-  const [overlayVisible, setOverlayVisible] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [subtitleLang, setSubtitleLang] = useState('');
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [ccModalVisible, setCcModalVisible] = useState(false);
-  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [embedUrl, setEmbedUrl] = useState('');
-  const [hasError, setHasError] = useState(false);
-
-  // Build initial URL
-  useEffect(() => {
-    buildUrl('');
+  // ── Iframe commands: play/pause/seek via injectJavaScript ──
+  const sendCommand = useCallback((cmd) => {
+    const js = `(function(){
+      var v = document.querySelector('video');
+      if (!v) return;
+      ${cmd}
+    })();`;
+    webViewRef.current?.injectJavaScript(js);
   }, []);
 
-  const buildUrl = useCallback(async (dsLang, currentTime) => {
-    const lang = dsLang || await getDsLang();
-    const options = { skin: 'netflix', dsLang: lang || undefined };
-    const time = currentTime !== undefined ? currentTime : resumeAt;
-    let url;
-    if (type === 'tv') {
-      url = getTVEmbedUrl(id, season, episode, time, options);
+  const handlePlayPause = useCallback(() => {
+    sendCommand(`if (v.paused) { v.play().catch(function(){}); } else { v.pause(); }`);
+  }, [sendCommand]);
+
+  const handleSeek = useCallback((sec) => {
+    sendCommand(`v.currentTime = ${Number(sec) || 0}; v.play().catch(function(){});`);
+  }, [sendCommand]);
+
+  const handleQualityChange = useCallback((q) => {
+    setCurrentQuality(q);
+    // VidAPI tidak expose command API publik untuk ganti quality.
+    // Workaround: reload iframe dengan hint via postMessage ke window.__player (jika ada).
+    // Untuk sekarang, ini hanya update UI state.
+    // User akan melihat quality berubah saat level dipicu (auto ABR).
+  }, []);
+
+  const handleSubtitleChange = useCallback((newLang) => {
+    if (!newLang) {
+      // Off
+      setSelectedSub(null);
+      // Reload embed URL tanpa sub_url (fallback ke ds_lang)
+      if (baseEmbedUrl) setEmbedUrl(buildEmbedUrl(baseEmbedUrl, appLanguage));
     } else {
-      url = getMovieEmbedUrl(id, time, options);
+      const sub = subtitles.find((s) => s.lang === newLang);
+      if (sub && baseEmbedUrl) {
+        setSelectedSub(sub);
+        setEmbedUrl(buildEmbedUrlWithSub(baseEmbedUrl, sub.lang, sub.url));
+      }
     }
-    setEmbedUrl(url);
+  }, [baseEmbedUrl, appLanguage, subtitles]);
+
+  const handleRetry = useCallback(() => {
     setHasError(false);
-  }, [id, type, season, episode, resumeAt]);
+    setErrorMessage(null);
+    setRetryKey((k) => k + 1);
+  }, []);
 
-  // Auto-hide overlay
-  useEffect(() => {
-    resetHideTimer();
-    return () => {
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  }, [overlayVisible]);
-
-  const resetHideTimer = () => {
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    if (overlayVisible && !ccModalVisible && !settingsModalVisible) {
-      hideTimeoutRef.current = setTimeout(() => {
-        setOverlayVisible(false);
-      }, OVERLAY_HIDE_TIMEOUT);
-    }
-  };
-
-  // Save progress periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const { time, duration } = progressRef.current;
-      if (time > 0 && duration > 0) {
-        const progressId = type === 'tv' ? `tv_${id}_s${season}e${episode}` : `movie_${id}`;
-        saveWatchProgress(progressId, time, duration, { title, type });
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id, type, title, season, episode]);
-
-  const handleMessage = (event) => {
+  // ── onMessage: handle PLAYER_EVENT + progress polling ──
+  const onMessage = useCallback((event) => {
+    let raw = event.nativeEvent.data;
+    let data;
     try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'progress') {
-        progressRef.current = { time: data.time, duration: data.duration };
-      }
-    } catch (e) {}
-  };
-
-  const handleShowOverlay = () => {
-    if (!overlayVisible) {
-      setOverlayVisible(true);
+      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch {
+      return;
     }
-    resetHideTimer();
-  };
+    if (!data) return;
 
-  const handleBack = () => {
-    router.back();
-  };
-
-  const injectPlayPause = () => {
-    const js = `
-      var iframe = document.querySelector('iframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify({ type: 'keydown', key: ' ', keyCode: 32 }), '*');
+    if (data.type === 'PLAYER_EVENT' && data.data) {
+      const { player_status, player_progress, player_duration, availableQualities, quality } = data.data;
+      if (player_status === 'playing') {
+        setIsPlaying(true);
+        setBuffering(false);
+      } else if (player_status === 'paused') {
+        setIsPlaying(false);
+        setBuffering(false);
+      } else if (player_status === 'buffering') {
+        setBuffering(true);
+      } else if (player_status === 'completed') {
+        setIsPlaying(false);
+        setBuffering(false);
       }
-      true;
-    `;
-    webViewRef.current?.injectJavaScript(js);
-    setIsPlaying(!isPlaying);
-    resetHideTimer();
-  };
-
-  const injectSeek = (seconds) => {
-    const js = `
-      var iframe = document.querySelector('iframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify({
-          type: 'keydown',
-          key: '${seconds > 0 ? 'ArrowRight' : 'ArrowLeft'}',
-          keyCode: ${seconds > 0 ? 39 : 37}
-        }), '*');
+      if (typeof player_progress === 'number') setCurrentTime(player_progress);
+      if (typeof player_duration === 'number' && player_duration > 0) setDuration(player_duration);
+      if (Array.isArray(availableQualities) && availableQualities.length > 0) {
+        setAvailableQualities(availableQualities);
       }
-      true;
-    `;
-    webViewRef.current?.injectJavaScript(js);
-    resetHideTimer();
-  };
-
-  const handleSubtitleSelect = (code) => {
-    setSubtitleLang(code);
-    setCcModalVisible(false);
-    // Rebuild URL with new ds_lang, preserving current playback position
-    const currentTime = progressRef.current.time || 0;
-    buildUrl(code, currentTime > 0 ? currentTime : undefined);
-  };
-
-  const handleSpeedSelect = (value) => {
-    setPlaybackSpeed(value);
-    setSettingsModalVisible(false);
-    const js = `
-      var iframe = document.querySelector('iframe');
-      if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify({
-          type: 'setPlaybackRate',
-          rate: ${value}
-        }), '*');
-      }
-      true;
-    `;
-    webViewRef.current?.injectJavaScript(js);
-  };
-
-  const onShouldStartLoadWithRequest = (request) => {
-    try {
-      const url = new URL(request.url);
-      const domain = url.hostname;
-      return ALLOWED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d));
-    } catch (e) {
-      return false;
+      if (quality?.label) setCurrentQuality(quality.label);
+    } else if (data.type === 'progress') {
+      if (typeof data.time === 'number') setCurrentTime(data.time);
+      if (typeof data.duration === 'number' && data.duration > 0) setDuration(data.duration);
+    } else if (data.type === 'video-tap' || data.type === 'overlay-show') {
+      setShowTrigger(n => n + 1);
     }
-  };
+  }, []);
 
-  const handleWebViewError = () => {
+  const onLoad = useCallback(() => {
+    setBuffering(false);
+    setHasError(false);
+  }, []);
+
+  const onError = useCallback((e) => {
     setHasError(true);
-  };
+    setErrorMessage(e?.nativeEvent?.description || 'WebView error');
+  }, []);
 
-  const handleRetry = () => {
-    setHasError(false);
-    // Rebuild URL to force WebView to reload
-    const currentTime = progressRef.current.time || 0;
-    buildUrl(subtitleLang, currentTime > 0 ? currentTime : undefined);
-  };
+  // ── Render ──
+  const finalInjected = useMemo(
+    () => `${ADBLOCK_INJECTED_JS}\n${BRIDGE_JS}\n${OVERLAY_HOOK_JS}`,
+    []
+  );
 
   return (
-    <View style={styles.container}>
-      {/* WebView Player */}
-      {embedUrl && !hasError ? (
+    <View style={styles.container} focusable={true} hasTVPreferredFocus={true}>
+      {embedUrl && !hasError && (
         <WebView
+          key={retryKey}
           ref={webViewRef}
           source={{ uri: embedUrl }}
           style={styles.webview}
@@ -319,328 +327,42 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
           domStorageEnabled
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
-          injectedJavaScript={INJECTED_JS}
-          onMessage={handleMessage}
-          onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
-          onError={handleWebViewError}
-          onHttpError={handleWebViewError}
+          injectedJavaScript={finalInjected}
+          onMessage={onMessage}
+          onLoad={onLoad}
+          onError={onError}
           allowsFullscreenVideo
-        />
-      ) : null}
-
-      {/* Error State */}
-      {hasError && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Failed to load player. Press to retry.</Text>
-          <TVFocusable
-            onPress={handleRetry}
-            style={styles.retryButton}
-            focusScale={1.08}
-            hasTVPreferredFocus
-            accessibilityLabel="Retry"
-          >
-            <Text style={styles.retryText}>Retry</Text>
-          </TVFocusable>
-        </View>
-      )}
-
-      {/* Hidden focus trigger - full screen transparent pressable to show overlay */}
-      {!overlayVisible && (
-        <Pressable
-          style={styles.hiddenTrigger}
-          onPress={handleShowOverlay}
-          onFocus={handleShowOverlay}
-          focusable
-          hasTVPreferredFocus
+          mixedContentMode="compatibility"
+          setSupportMultipleWindows={false}
+          javaScriptCanOpenWindowsAutomatically={false}
+          onShouldStartLoadWithRequest={() => true}
         />
       )}
 
-      {/* Native Overlay Controls */}
-      {overlayVisible && (
-        <View style={styles.overlay}>
-          {/* Top Bar */}
-          <View style={styles.topBar}>
-            <TVFocusable
-              onPress={handleBack}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              accessibilityLabel="Back"
-            >
-              <ArrowLeft size={28} color={colors.text} />
-            </TVFocusable>
-            <Text style={styles.titleText} numberOfLines={1}>{title}</Text>
-          </View>
-
-          {/* Bottom Bar */}
-          <View style={styles.bottomBar}>
-            <TVFocusable
-              onPress={() => injectSeek(-10)}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              accessibilityLabel="Seek Back"
-            >
-              <SkipBack size={28} color={colors.text} />
-            </TVFocusable>
-            <TVFocusable
-              onPress={injectPlayPause}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              hasTVPreferredFocus
-              accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause size={32} color={colors.text} fill={colors.text} />
-              ) : (
-                <Play size={32} color={colors.text} fill={colors.text} />
-              )}
-            </TVFocusable>
-            <TVFocusable
-              onPress={() => injectSeek(10)}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              accessibilityLabel="Seek Forward"
-            >
-              <SkipForward size={28} color={colors.text} />
-            </TVFocusable>
-            <View style={styles.spacer} />
-            <TVFocusable
-              onPress={() => { setCcModalVisible(true); resetHideTimer(); }}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              accessibilityLabel="Subtitles"
-            >
-              <Subtitles size={28} color={subtitleLang ? colors.primary : colors.text} />
-            </TVFocusable>
-            <TVFocusable
-              onPress={() => { setSettingsModalVisible(true); resetHideTimer(); }}
-              onFocus={resetHideTimer}
-              style={styles.controlButton}
-              focusScale={1.1}
-              accessibilityLabel="Settings"
-            >
-              <Settings size={28} color={colors.text} />
-            </TVFocusable>
-          </View>
-        </View>
-      )}
-
-      {/* Subtitle Modal */}
-      <Modal visible={ccModalVisible} transparent animationType="fade" onRequestClose={() => setCcModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalDialog}>
-            <Text style={styles.modalTitle}>Subtitles</Text>
-            <FlatList
-              data={SUBTITLE_LANGUAGES}
-              renderItem={({ item }) => {
-                const isSelected = item.code === subtitleLang;
-                return (
-                  <TVFocusable
-                    onPress={() => handleSubtitleSelect(item.code)}
-                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
-                    focusScale={1.03}
-                    hasTVPreferredFocus={isSelected}
-                  >
-                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>
-                      {item.label}
-                    </Text>
-                    {isSelected && <View style={styles.checkmark} />}
-                  </TVFocusable>
-                );
-              }}
-              keyExtractor={(item) => item.code || 'off'}
-              contentContainerStyle={styles.modalList}
-            />
-            <TVFocusable
-              onPress={() => setCcModalVisible(false)}
-              style={styles.modalCloseButton}
-              focusScale={1.05}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TVFocusable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Settings Modal */}
-      <Modal visible={settingsModalVisible} transparent animationType="fade" onRequestClose={() => setSettingsModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalDialog}>
-            <Text style={styles.modalTitle}>Playback Speed</Text>
-            <FlatList
-              data={SPEED_OPTIONS}
-              renderItem={({ item }) => {
-                const isSelected = item.value === playbackSpeed;
-                return (
-                  <TVFocusable
-                    onPress={() => handleSpeedSelect(item.value)}
-                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
-                    focusScale={1.03}
-                    hasTVPreferredFocus={isSelected}
-                  >
-                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>
-                      {item.label}
-                    </Text>
-                    {isSelected && <View style={styles.checkmark} />}
-                  </TVFocusable>
-                );
-              }}
-              keyExtractor={(item) => String(item.value)}
-              contentContainerStyle={styles.modalList}
-            />
-            <TVFocusable
-              onPress={() => setSettingsModalVisible(false)}
-              style={styles.modalCloseButton}
-              focusScale={1.05}
-            >
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TVFocusable>
-          </View>
-        </View>
-      </Modal>
+      <CustomPlayerOverlay
+        title={title}
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        duration={duration}
+        availableQualities={availableQualities}
+        currentQuality={currentQuality}
+        subtitles={subtitles}
+        selectedSubLang={selectedSubLang}
+        buffering={buffering}
+        errorMessage={errorMessage}
+        showTrigger={showTrigger}
+        onBack={() => router.back()}
+        onPlayPause={handlePlayPause}
+        onSeek={handleSeek}
+        onQualityChange={handleQualityChange}
+        onSubtitleChange={handleSubtitleChange}
+        onRetry={handleRetry}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  hiddenTrigger: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    zIndex: 100,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    gap: spacing.md,
-  },
-  titleText: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  bottomBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    gap: spacing.md,
-  },
-  controlButton: {
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  spacer: {
-    flex: 1,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalDialog: {
-    width: 420,
-    maxHeight: '80%',
-    backgroundColor: colors.backgroundElevated,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  modalList: {
-    gap: spacing.sm,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.card,
-  },
-  modalItemSelected: {
-    backgroundColor: 'rgba(229,9,20,0.2)',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  modalItemText: {
-    fontSize: 18,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  modalItemTextSelected: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  checkmark: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.primary,
-  },
-  modalCloseButton: {
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  errorContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  errorText: {
-    fontSize: 22,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  retryButton: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-  },
-  retryText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
+  container: { flex: 1, backgroundColor: '#000' },
+  webview: { flex: 1, backgroundColor: '#000' },
 });

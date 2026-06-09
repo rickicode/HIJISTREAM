@@ -8,7 +8,11 @@ export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
   const parts = [];
   if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
   if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
-  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+  if (options.dsLang) {
+    parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+    parts.push(`lang=${encodeURIComponent(options.dsLang)}`);       // alias
+  }
+  if (options.poster) parts.push(`poster=${encodeURIComponent(options.poster)}`);
   const qs = parts.join('&');
   return `${PLAYER_BASE_URL}/movie/${imdbId}${qs ? '?' + qs : ''}`;
 }
@@ -17,7 +21,11 @@ export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
   const parts = [];
   if (resumeAt) parts.push(`resumeAt=${Math.floor(resumeAt)}`);
   if (options.skin) parts.push(`skin=${encodeURIComponent(options.skin)}`);
-  if (options.dsLang) parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+  if (options.dsLang) {
+    parts.push(`ds_lang=${encodeURIComponent(options.dsLang)}`);
+    parts.push(`lang=${encodeURIComponent(options.dsLang)}`);       // alias
+  }
+  if (options.poster) parts.push(`poster=${encodeURIComponent(options.poster)}`);
   const qs = parts.join('&');
   return `${PLAYER_BASE_URL}/tv/${tmdbId}/${season}/${episode}${qs ? '?' + qs : ''}`;
 }

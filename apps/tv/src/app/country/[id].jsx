@@ -1,21 +1,40 @@
-import { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+/**
+ * CountryScreen - Country browse results for Android TV
+ *
+ * Features:
+ * - Paginated grid of content by country
+ * - TV remote D-pad navigation
+ * - Load more on scroll
+ * - Back button support
+ */
+
+import { useEffect, useState, useCallback } from 'react';
+import { View, FlatList, StyleSheet, BackHandler } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import api from '@hijistream/shared/utils/api';
-import { colors, spacing } from '@hijistream/shared/theme';
+import { colors } from '@hijistream/shared/theme';
 import ContentCard from '../../components/ContentCard';
 
 export default function CountryScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.back();
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [router]);
+
+  useEffect(() => {
     loadData();
   }, [id, page]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await api.getDiscoverByCountry('movie', id, page);
@@ -29,7 +48,7 @@ export default function CountryScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [id, page]);
 
   const renderItem = ({ item }) => (
     <View style={styles.cardWrapper}>
@@ -46,6 +65,8 @@ export default function CountryScreen() {
         numColumns={5}
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.row}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
         onEndReached={() => setPage(p => p + 1)}
         onEndReachedThreshold={0.5}
       />
@@ -57,17 +78,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
+    padding: 56,
   },
   grid: {
-    paddingBottom: spacing.xl,
+    paddingBottom: 48,
   },
   row: {
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    gap: 12,
+    marginBottom: 12,
   },
   cardWrapper: {
     flex: 1,
     maxWidth: '20%',
+    alignItems: 'center',
   },
 });

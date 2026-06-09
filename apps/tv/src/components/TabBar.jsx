@@ -1,5 +1,11 @@
+/**
+ * TabBar - TV remote-friendly tab selector
+ *
+ * Used for tab switching on browse/filter screens.
+ * Fully D-pad navigable with TVFocusable.
+ */
+
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing } from '@hijistream/shared/theme';
 import TVFocusable from './TVFocusable';
 
 export default function TabBar({ tabs, activeTab, onTabChange }) {
@@ -12,8 +18,10 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
             key={tab.key}
             onPress={() => onTabChange(tab.key)}
             style={[styles.tab, isActive && styles.tabActive]}
+            focusStyle={styles.tabFocused}
             focusScale={1.05}
             hasTVPreferredFocus={isActive}
+            accessibilityLabel={tab.label}
           >
             <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
               {tab.label}
@@ -28,24 +36,31 @@ export default function TabBar({ tabs, activeTab, onTabChange }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    gap: 12,
+    marginBottom: 20,
   },
   tab: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 6,
-    backgroundColor: colors.card,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#E50914',
+    borderColor: '#E50914',
+  },
+  tabFocused: {
+    borderColor: '#fff',
   },
   tabText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: '#b3b3b3',
   },
   tabTextActive: {
-    color: colors.text,
+    color: '#fff',
+    fontWeight: '700',
   },
 });

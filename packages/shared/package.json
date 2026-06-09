@@ -10,6 +10,7 @@
     "./utils/player": "./utils/player.js",
     "./utils/genres": "./utils/genres.js",
     "./utils/language": "./utils/language.js",
+    "./utils/adblock": "./utils/adblock.js",
     "./utils/myList": "./utils/myList.js",
     "./hooks/useMyList": "./hooks/useMyList.js",
     "./i18n": "./i18n/index.js",

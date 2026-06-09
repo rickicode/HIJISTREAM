@@ -1096,12 +1096,20 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
       if (content) result = { content, source: 'opensubtitles_org', alreadyVtt: true };
     }
   } else if (provider === 'subdl' && fileId) {
-    const dlUrl = `https://dl.subdl.com${fileId}`;
+    // fileId might be full URL or path
+    const dlUrl = fileId.startsWith('http') ? fileId : `https://dl.subdl.com${fileId}`;
     const dlRes = await fetch(dlUrl, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
     if (dlRes.ok) {
-      const blob = await dlRes.arrayBuffer();
-      const content = await extractSubtitleFromZip(blob);
-      if (content) result = { content, source: 'subdl' };
+      const contentType = dlRes.headers.get('content-type') || '';
+      if (contentType.includes('zip') || contentType.includes('octet-stream')) {
+        const blob = await dlRes.arrayBuffer();
+        const content = await extractSubtitleFromZip(blob);
+        if (content) result = { content, source: 'subdl' };
+      } else {
+        // Might be direct SRT/VTT content
+        const text = await dlRes.text();
+        if (text && text.trim()) result = { content: text, source: 'subdl' };
+      }
     }
   }
 

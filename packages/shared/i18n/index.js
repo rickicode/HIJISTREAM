@@ -43,20 +43,31 @@ function getNestedValue(obj, path) {
 
 export function LanguageProvider({ children }) {
   const [locale, setLocaleState] = useState('id');
-  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
-      const stored = await storage.getItem(STORAGE_KEY);
-      if (stored && translations[stored]) {
-        setLocaleState(stored);
-      } else {
+      try {
+        const stored = await storage.getItem(STORAGE_KEY);
+        if (cancelled) return;
+
+        if (stored && translations[stored]) {
+          setLocaleState(stored);
+          return;
+        }
+
         const detected = detectDeviceLanguage();
         setLocaleState(detected);
         await storage.setItem(STORAGE_KEY, detected);
+      } catch (err) {
+        console.warn('Failed to initialize language:', err);
       }
-      setIsReady(true);
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setLocale = useCallback(async (newLocale) => {
@@ -77,8 +88,6 @@ export function LanguageProvider({ children }) {
     const found = SUPPORTED_LOCALES.find(l => l.code === locale);
     return found ? found.locale : 'id-ID';
   }, [locale]);
-
-  if (!isReady) return null;
 
   return (
     <LanguageContext.Provider value={{ t, locale, setLocale, getApiLocale, locales: SUPPORTED_LOCALES }}>

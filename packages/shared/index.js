@@ -4,6 +4,7 @@ export { default as cacheManager, TTL } from './utils/cache';
 export { getMovieEmbedUrl, getTVEmbedUrl, saveWatchProgress, loadWatchProgress, getAllWatchProgress } from './utils/player';
 export { findGenreId } from './utils/genres';
 export { getCurrentLanguage, setLanguage, getApiLanguageParam, getDsLang } from './utils/language';
+export { default as ADBLOCK_INJECTED_JS } from './utils/adblock';
 export { default as myList } from './utils/myList';
 export { default as useMyList, useMyListItems } from './hooks/useMyList';
 export { LanguageProvider, useTranslation, SUPPORTED_LOCALES } from './i18n/index';

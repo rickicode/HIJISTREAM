@@ -137,6 +137,34 @@ const api = {
       TTL.CONTENT_LIST
     );
   },
+  /**
+   * Fetch available subtitles for a movie/TV episode from R2-cached system.
+   * @param {object} params
+   * @param {'movie'|'tv'} params.type
+   * @param {string|number} params.tmdbId
+   * @param {string} [params.lang] - ISO 639-1, comma-separated for multiple (default: currentLanguage)
+   * @param {number} [params.season] - For TV
+   * @param {number} [params.episode] - For TV
+   * @param {string} [params.imdbId]
+   * @returns {Promise<{subtitles: Array<{url:string, lang:string, format:string, cached:boolean}>}>}
+   */
+  async getSubtitles({ type, tmdbId, lang, season, episode, imdbId }) {
+    if (!type || !tmdbId) return { subtitles: [] };
+    const userLang = await getCurrentLanguage();
+    const requestedLang = lang || userLang;
+    const params = new URLSearchParams({ type, tmdb_id: String(tmdbId), lang: requestedLang });
+    if (season !== undefined && season !== null) params.set('season', String(season));
+    if (episode !== undefined && episode !== null) params.set('episode', String(episode));
+    if (imdbId) params.set('imdb_id', imdbId);
+
+    const cacheKey = `subtitles_${type}_${tmdbId}_${requestedLang}${season ? `_s${season}` : ''}${episode ? `_e${episode}` : ''}`;
+    try {
+      return await fetchWithCache(`/subtitles?${params}`, cacheKey, TTL.CONTENT_DETAIL);
+    } catch (err) {
+      // Subtitle service may be unconfigured — return empty list, don't break player
+      return { subtitles: [] };
+    }
+  },
 };
 
 export default api;

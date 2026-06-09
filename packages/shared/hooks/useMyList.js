@@ -1,41 +1,45 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import myList from '../utils/myList';
 
 export default function useMyList(item, type) {
   const [inList, setInList] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const aliveRef = useRef(true);
 
   const itemKey = item ? `${item.type || item._detectedType || type || 'movie'}:${item.id || item.tmdb_id || ''}` : '';
 
   const refresh = useCallback(() => {
     if (!item) return;
-    let alive = true;
+    aliveRef.current = true;
     myList.isInList(item, type).then((result) => {
-      if (alive) setInList(result);
+      if (aliveRef.current) {
+        setInList(result);
+        setLoading(false);
+      }
     });
-    return () => {
-      alive = false;
-    };
   }, [item, type]);
 
   useEffect(() => {
-    const cleanup = refresh();
+    setLoading(true);
+    aliveRef.current = true;
+    refresh();
+    
     const unsubscribe = myList.subscribe(() => {
       refresh();
     });
+    
     return () => {
-      if (typeof cleanup === 'function') cleanup();
+      aliveRef.current = false;
       unsubscribe();
     };
-    // itemKey ensures effect re-runs when the targeted item changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemKey]);
+  }, [itemKey, refresh]);
 
   const toggle = useCallback(async () => {
     if (!item) return;
     await myList.toggle(item, type);
   }, [item, type]);
 
-  return { inList, toggle };
+  return { inList, toggle, loading };
 }
 
 export function useMyListItems() {

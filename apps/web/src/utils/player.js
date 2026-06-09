@@ -4,13 +4,15 @@ const PLAYER_BASE_URL = 'https://vaplayer.ru/embed';
 const PROGRESS_PREFIX = 'watch_progress_';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
-export function getMovieEmbedUrl(imdbId, resumeAt, options = {}) {
+export function getMovieEmbedUrl(tmdbId, resumeAt, options = {}) {
   const params = new URLSearchParams();
   if (resumeAt) params.set('resumeAt', String(Math.floor(resumeAt)));
   if (options.skin) params.set('skin', options.skin);
-  if (options.dsLang) params.set('ds_lang', options.dsLang);
+  if (options.subUrl) params.set('sub_url', options.subUrl);
+  if (options.subLang) params.set('sub_lang', options.subLang);
+  if (options.subDefault) params.set('sub_default', 'true');
   const qs = params.toString();
-  return `${PLAYER_BASE_URL}/movie/${imdbId}${qs ? '?' + qs : ''}`;
+  return `${PLAYER_BASE_URL}/movie/${tmdbId}${qs ? '?' + qs : ''}`;
 }
 
 export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
@@ -21,7 +23,9 @@ export function getTVEmbedUrl(tmdbId, season, episode, resumeAt, options = {}) {
   const params = new URLSearchParams();
   if (resumeAt) params.set('resumeAt', String(Math.floor(resumeAt)));
   if (options.skin) params.set('skin', options.skin);
-  if (options.dsLang) params.set('ds_lang', options.dsLang);
+  if (options.subUrl) params.set('sub_url', options.subUrl);
+  if (options.subLang) params.set('sub_lang', options.subLang);
+  if (options.subDefault) params.set('sub_default', 'true');
   const qs = params.toString();
   return `${url}${qs ? '?' + qs : ''}`;
 }

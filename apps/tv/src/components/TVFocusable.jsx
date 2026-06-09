@@ -10,6 +10,9 @@ export default function TVFocusable({
   hasTVPreferredFocus = false,
   focusScale = 1.06,
   showFocusRing = true,
+  ringColor = '#E50914',
+  ringWidth = 2.5,
+  glowColor = '#E50914',
   disabled = false,
   accessibilityLabel,
   accessibilityRole = 'button',
@@ -43,6 +46,10 @@ export default function TVFocusable({
   };
 
   const showRing = showFocusRing && isFocused;
+  
+  // Extract border radius from passed style for dynamic fitting
+  const flatStyle = StyleSheet.flatten(style) || {};
+  const borderRadius = flatStyle.borderRadius !== undefined ? flatStyle.borderRadius : 8;
 
   const tvProps = {
     hasTVPreferredFocus,
@@ -52,13 +59,30 @@ export default function TVFocusable({
   if (nextFocusLeft != null) tvProps.nextFocusLeft = nextFocusLeft;
   if (nextFocusRight != null) tvProps.nextFocusRight = nextFocusRight;
 
+  const renderChildren = () => {
+    if (typeof children === 'function') {
+      return children({ isFocused });
+    }
+    return children;
+  };
+
   return (
     <Animated.View
       style={[
         styles.wrapper,
-        showRing && styles.ringWrapper,
-        { transform: [{ scale }] },
-        showRing ? { elevation: 16 } : null,
+        {
+          borderRadius,
+          borderWidth: ringWidth,
+          borderColor: showRing ? ringColor : 'transparent',
+          transform: [{ scale }],
+        },
+        showRing ? {
+          shadowColor: glowColor,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.6,
+          shadowRadius: 12,
+          elevation: 12,
+        } : null,
       ]}
     >
       <Pressable
@@ -72,7 +96,7 @@ export default function TVFocusable({
         style={[styles.inner, style, isFocused && focusStyle]}
         {...tvProps}
       >
-        {children}
+        {renderChildren()}
       </Pressable>
     </Animated.View>
   );
@@ -80,17 +104,11 @@ export default function TVFocusable({
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: 6,
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  ringWrapper: {
-    borderWidth: 3,
-    borderColor: colors.primary,
-    elevation: 16,
+    // Basic wrapper to contain the Pressable
   },
   inner: {
-    minWidth: 48,
-    minHeight: 48,
+    minWidth: 40,
+    minHeight: 40,
   },
 });
+
