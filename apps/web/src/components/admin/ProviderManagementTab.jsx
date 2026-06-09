@@ -54,7 +54,7 @@ export default function ProviderManagementTab() {
     setChecking(prev => ({ ...prev, [provider]: true }));
     setCheckResults(prev => ({ ...prev, [provider]: null }));
     try {
-      const res = await api.checkOSAccount({ provider, ...settings[provider] });
+      const res = await api.checkProvider({ provider, ...settings[provider] });
       setCheckResults(prev => ({ ...prev, [provider]: res }));
     } catch (err) {
       setCheckResults(prev => ({ ...prev, [provider]: { success: false, message: err.message } }));

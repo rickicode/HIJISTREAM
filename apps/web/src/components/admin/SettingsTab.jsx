@@ -93,119 +93,47 @@ function R2Status() {
 }
 
 export default function SettingsTab() {
-  const [forms, setForms] = useState({
-    opensubtitles_com: { apiKey: '', username: '', password: '' },
-    opensubtitles_org: { username: '', password: '' },
-    subdl: { apiKey: '' },
-  });
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState({});
-  const [checking, setChecking] = useState({});
-  const [checkResults, setCheckResults] = useState({});
-  const [saveMsgs, setSaveMsgs] = useState({});
 
   useEffect(() => {
-    api.getAdminSettings().then(s => {
-      if (s && typeof s === 'object') {
-        setForms(prev => ({
-          opensubtitles_com: { apiKey: s.opensubtitles_com?.apiKey || '', username: s.opensubtitles_com?.username || '', password: s.opensubtitles_com?.password || '' },
-          opensubtitles_org: { username: s.opensubtitles_org?.username || '', password: s.opensubtitles_org?.password || '' },
-          subdl: { apiKey: s.subdl?.apiKey || '' },
-        }));
-      }
-    }).catch(() => {}).finally(() => setLoading(false));
+    setLoading(false);
   }, []);
-
-  const handleChange = (provider, e) => {
-    setForms(f => ({ ...f, [provider]: { ...f[provider], [e.target.name]: e.target.value } }));
-    setCheckResults(r => ({ ...r, [provider]: null }));
-  };
-
-  const handleSave = async (provider) => {
-    setSaving(s => ({ ...s, [provider]: true }));
-    setSaveMsgs(m => ({ ...m, [provider]: null }));
-    try {
-      await api.saveAdminSettings({ provider, ...forms[provider] });
-      setSaveMsgs(m => ({ ...m, [provider]: { ok: true, text: 'Tersimpan' } }));
-    } catch (err) {
-      setSaveMsgs(m => ({ ...m, [provider]: { ok: false, text: err.message } }));
-    } finally {
-      setSaving(s => ({ ...s, [provider]: false }));
-    }
-  };
-
-  const handleCheck = async (provider) => {
-    setChecking(c => ({ ...c, [provider]: true }));
-    setCheckResults(r => ({ ...r, [provider]: null }));
-    try {
-      const res = await api.checkOSAccount({ provider, ...forms[provider] });
-      setCheckResults(r => ({ ...r, [provider]: res }));
-    } catch (err) {
-      setCheckResults(r => ({ ...r, [provider]: { success: false, message: err.message } }));
-    } finally {
-      setChecking(c => ({ ...c, [provider]: false }));
-    }
-  };
 
   if (loading) return <div className="flex items-center justify-center py-20"><Loader size={22} className="animate-spin text-[#E50914]" /></div>;
 
-  const f = forms;
-
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-lg space-y-6">
       <div>
-        <h2 className="text-base font-semibold text-white mb-0.5">Pengaturan Subtitle</h2>
-        <p className="text-xs text-[#666]">Provider dicoba berurutan sampai ada yang berhasil: OS.com → OS.org → Subdl</p>
+        <h2 className="text-base font-semibold text-white mb-0.5">System Settings</h2>
+        <p className="text-xs text-[#666]">R2 storage status dan informasi sistem</p>
       </div>
 
-      {/* OS.com */}
-      <ProviderCard
-        title="OpenSubtitles.com" badge="REST API"
-        canCheck={!!(f.opensubtitles_com.apiKey && f.opensubtitles_com.username && f.opensubtitles_com.password)}
-        checking={checking.opensubtitles_com} saving={saving.opensubtitles_com}
-        onCheck={() => handleCheck('opensubtitles_com')} onSave={() => handleSave('opensubtitles_com')}
-        checkResult={checkResults.opensubtitles_com}
-        fields={<>
-          <ProviderField label="API Key" name="apiKey" value={f.opensubtitles_com.apiKey} onChange={e => handleChange('opensubtitles_com', e)} placeholder="opensubtitles.com/consumers" />
-          <ProviderField label="Username" name="username" value={f.opensubtitles_com.username} onChange={e => handleChange('opensubtitles_com', e)} placeholder="Username" />
-          <ProviderField label="Password" name="password" type="password" value={f.opensubtitles_com.password} onChange={e => handleChange('opensubtitles_com', e)} placeholder="Password" />
-          {saveMsgs.opensubtitles_com && <p className={`text-xs ${saveMsgs.opensubtitles_com.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsgs.opensubtitles_com.text}</p>}
-        </>}
-      />
-
-      {/* OS.org */}
-      <ProviderCard
-        title="OpenSubtitles.org" badge="XML-RPC"
-        canCheck={!!(f.opensubtitles_org.username && f.opensubtitles_org.password)}
-        checking={checking.opensubtitles_org} saving={saving.opensubtitles_org}
-        onCheck={() => handleCheck('opensubtitles_org')} onSave={() => handleSave('opensubtitles_org')}
-        checkResult={checkResults.opensubtitles_org}
-        fields={<>
-          <ProviderField label="Username" name="username" value={f.opensubtitles_org.username} onChange={e => handleChange('opensubtitles_org', e)} placeholder="Username opensubtitles.org" />
-          <ProviderField label="Password" name="password" type="password" value={f.opensubtitles_org.password} onChange={e => handleChange('opensubtitles_org', e)} placeholder="Password" />
-          {saveMsgs.opensubtitles_org && <p className={`text-xs ${saveMsgs.opensubtitles_org.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsgs.opensubtitles_org.text}</p>}
-        </>}
-      />
-
-      {/* Subdl */}
-      <ProviderCard
-        title="Subdl" badge="REST API"
-        canCheck={!!f.subdl.apiKey}
-        checking={checking.subdl} saving={saving.subdl}
-        onCheck={() => handleCheck('subdl')} onSave={() => handleSave('subdl')}
-        checkResult={checkResults.subdl}
-        fields={<>
-          <ProviderField label="API Key" name="apiKey" value={f.subdl.apiKey} onChange={e => handleChange('subdl', e)} placeholder="Dari subdl.com/api" />
-          {saveMsgs.subdl && <p className={`text-xs ${saveMsgs.subdl.ok ? 'text-green-400' : 'text-red-400'}`}>{saveMsgs.subdl.text}</p>}
-        </>}
-      />
-
-      <p className="text-xs text-[#555]">
-        Daftar: <a href="https://www.opensubtitles.com/consumers" target="_blank" rel="noopener noreferrer" className="text-[#808080] hover:text-white underline">opensubtitles.com</a>
-        {' · '}<a href="https://subdl.com/api-doc" target="_blank" rel="noopener noreferrer" className="text-[#808080] hover:text-white underline">subdl.com</a>
-      </p>
-
       <R2Status />
+
+      {/* System Info */}
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-white mb-3">Subtitle System</h3>
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[#808080]">Providers</span>
+            <span className="text-white">4 aktif (OS.com, OS.org, Subdl, Podnapisi)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#808080]">Search Mode</span>
+            <span className="text-white">Parallel (semua provider sekaligus)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#808080]">Cache</span>
+            <span className="text-white">R2 (auto-cache setelah download)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#808080]">Format</span>
+            <span className="text-white">WebVTT (auto-convert dari SRT)</span>
+          </div>
+        </div>
+      </div>
+
+
     </div>
   );
 }

@@ -405,7 +405,7 @@ const api = {
   /**
    * Check OpenSubtitles credentials by attempting login.
    */
-  checkOSAccount({ provider, apiKey, username, password }) {
+  checkProvider({ provider, apiKey, username, password }) {
     return fetch(`${BASE_URL}/admin/settings/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },

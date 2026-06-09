@@ -716,6 +716,11 @@ export default async function middleware(request) {
               if (!apiKey) return new Response(JSON.stringify({ success: false, message: 'apiKey required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
               const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
               success = r.ok; message = r.ok ? 'API Key Subdl valid!' : `API Key tidak valid (${r.status})`;
+            } else if (provider === 'podnapisi') {
+              // Podnapisi is free, no auth needed - just test connectivity
+              const r = await fetch('https://podnapisi.net/subtitles/search/old?sXML=1&sL=en&sK=matrix', { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+              success = r.ok;
+              message = r.ok ? 'Podnapisi aktif! (Free, tanpa API key)' : `Koneksi gagal (${r.status})`;
             } else {
               message = 'Provider tidak dikenal';
             }
