@@ -1032,10 +1032,26 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     }
   } catch { /* skip provider */ }
 
-  // 4. Podnapisi — free, no auth required
+  // 4. Podnapisi — free, no auth required (title-based search)
   try {
+    // Get title from TMDB for Podnapisi search
+    let searchTitle = '';
+    try {
+      const tmdbKey = env.TMDB_API_KEY;
+      if (tmdbKey) {
+        const endpoint = type === 'tv'
+          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
+          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+        const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        if (tmdbRes.ok) {
+          const tmdbData = await tmdbRes.json();
+          searchTitle = tmdbData.title || tmdbData.name || '';
+        }
+      }
+    } catch {}
+    if (searchTitle) {
     const searchLang = lang || 'en';
-    const params = new URLSearchParams({ sXML: '1', sL: searchLang, sK: String(tmdbId) });
+    const params = new URLSearchParams({ sXML: '1', sL: searchLang, sK: searchTitle });
     if (type === 'tv') {
       if (season !== undefined) params.set('sTS', String(season));
       if (episode !== undefined) params.set('sTE', String(episode));
@@ -1066,6 +1082,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
         });
       }
     }
+    } // end if (searchTitle)
   } catch { /* skip */ }
 
   // Sort by download count descending
