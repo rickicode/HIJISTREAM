@@ -860,3 +860,58 @@ export async function getMonitoringData(env) {
     recentErrors: errorLog.slice(0, 30),
   };
 }
+
+// ─── Backfill missing titles from TMDB ──────────────────────────────────────
+
+/**
+ * Backfill missing titles for subtitle entries by fetching from TMDB.
+ * Returns { updated, skipped, errors }.
+ */
+export async function backfillTitles(env) {
+  const metadata = await readMetadata(env);
+  const subtitles = metadata.subtitles || [];
+  const missing = subtitles.filter(s => !s.title && s.tmdbId);
+
+  if (missing.length === 0) return { updated: 0, skipped: subtitles.length, errors: 0 };
+
+  // Group by tmdbId to avoid duplicate API calls
+  const uniqueTmdbIds = [...new Set(missing.map(s => `${s.type}:${s.tmdbId}`))];
+  const titleCache = {};
+  let updated = 0;
+  let errors = 0;
+
+  for (const key of uniqueTmdbIds) {
+    const [type, tmdbId] = key.split(':');
+    try {
+      const tmdbKey = env.TMDB_API_KEY;
+      if (!tmdbKey) { errors++; continue; }
+      const endpoint = type === 'tv'
+        ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
+        : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+      const res = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${tmdbKey}` },
+      });
+      if (!res.ok) { errors++; continue; }
+      const data = await res.json();
+      const title = data.title || data.name || null;
+      const imdbId = data.external_ids?.imdb_id || null;
+      if (title) titleCache[key] = { title, imdbId };
+    } catch { errors++; }
+  }
+
+  // Apply cached titles to metadata
+  for (const entry of subtitles) {
+    if (!entry.title && entry.tmdbId) {
+      const cacheKey = `${entry.type}:${entry.tmdbId}`;
+      const cached = titleCache[cacheKey];
+      if (cached?.title) {
+        entry.title = cached.title;
+        if (cached.imdbId && !entry.imdbId) entry.imdbId = cached.imdbId;
+        updated++;
+      }
+    }
+  }
+
+  if (updated > 0) await writeMetadata(env, metadata);
+  return { updated, skipped: subtitles.length - updated, errors };
+}

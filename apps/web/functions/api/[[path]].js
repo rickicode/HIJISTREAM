@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider } from '../../src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles } from '../../src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -130,6 +130,11 @@ async function handleAdmin(pathname, method, env, request) {
 
   if (pathname === '/admin/subtitles/refresh-all' && method === 'POST') {
     return jsonRes(await refreshAllSubtitles(env));
+  }
+
+  if (pathname === '/admin/subtitles/backfill' && method === 'POST') {
+    const result = await backfillTitles(env);
+    return jsonRes(result);
   }
 
   if (pathname === '/admin/subtitles/edit' && method === 'POST') {

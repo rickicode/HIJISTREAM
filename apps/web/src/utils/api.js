@@ -296,6 +296,22 @@ const api = {
   },
 
   /**
+   * Backfill missing titles from TMDB.
+   */
+  backfillTitles() {
+    return fetch(`${BASE_URL}/admin/subtitles/backfill`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+    }).then((res) => {
+      if (!res.ok) throw new Error('Backfill failed');
+      return res.json();
+    });
+  },
+
+  /**
    * Edit subtitle metadata (title, imdbId).
    */
   editAdminSubtitle(id, updates) {

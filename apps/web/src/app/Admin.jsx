@@ -9,7 +9,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../utils/api';
 import {
   Search, RefreshCw, LogOut, AlertTriangle, HardDrive,
-  Filter, ChevronDown, FileText, Plus, BarChart3,
+  Filter, ChevronDown, FileText, Plus, BarChart3, Settings, Download,
+  ChevronLeft, ChevronRight, Wand2,
 } from 'lucide-react';
 
 // Extracted components
@@ -22,6 +23,8 @@ import ChartsSection from '../components/admin/ChartsSection';
 import BulkRefreshModal from '../components/admin/BulkRefreshModal';
 import EditMetadataModal from '../components/admin/EditMetadataModal';
 import MonitoringSection from '../components/admin/MonitoringSection';
+import SettingsTab from '../components/admin/SettingsTab';
+import DownloadTab from '../components/admin/DownloadTab';
 import { LANG_LABELS } from '../components/admin/shared';
 
 // ============================================================
@@ -40,9 +43,13 @@ function AdminDashboard({ onLogout }) {
   const [showUpload, setShowUpload] = useState(false);
   const [showBulkRefresh, setShowBulkRefresh] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring'
+  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring' | 'settings' | 'download'
   const [monitoringData, setMonitoringData] = useState(null);
   const [monitoringLoading, setMonitoringLoading] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState(null);
+  const [page, setPage] = useState(1);
+  const perPage = 25;
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -70,6 +77,7 @@ function AdminDashboard({ onLogout }) {
     try {
       const data = await api.getAdminSubtitles();
       setSubtitles(data.subtitles || []);
+      setPage(1);
     } catch (err) {
       if (err.message === 'Unauthorized') {
         api.clearAdminAuth();
@@ -133,6 +141,30 @@ function AdminDashboard({ onLogout }) {
   }, [subtitles, search, filterType, filterLang, sortBy]);
 
   // Confirm delete handler — called by SubtitleRow
+  const handleBackfill = useCallback(async () => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const result = await api.backfillTitles();
+      setBackfillResult(result);
+      if (result.updated > 0) loadData();
+    } catch (err) {
+      setBackfillResult({ error: err.message });
+    } finally {
+      setBackfilling(false);
+    }
+  }, [loadData]);
+
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filtered.slice(start, start + perPage);
+  }, [filtered, page, perPage]);
+
+  // Reset page on filter change
+  useEffect(() => { setPage(1); }, [search, filterType, filterLang, sortBy]);
+
   const handleConfirmDelete = useCallback((entry, callback) => {
     setConfirmConfig({
       title: 'Hapus Subtitle',
@@ -161,6 +193,17 @@ function AdminDashboard({ onLogout }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {view === 'subtitles' && (
+                <button
+                  onClick={handleBackfill}
+                  disabled={backfilling}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-cyan-400 border border-cyan-400/30 font-semibold rounded hover:bg-cyan-400/10 transition-colors disabled:opacity-50"
+                  title="Fetch judul dari TMDB untuk entry yang kosong"
+                >
+                  <Wand2 size={14} className={backfilling ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">{backfilling ? 'Backfilling...' : 'Backfill Titles'}</span>
+                </button>
+              )}
               {view === 'subtitles' && osCount > 0 && (
                 <button
                   onClick={() => setShowBulkRefresh(true)}
@@ -225,9 +268,33 @@ function AdminDashboard({ onLogout }) {
           >
             <BarChart3 size={14} /> Monitoring
           </button>
+          <button
+            onClick={() => setView('settings')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              view === 'settings'
+                ? 'border-[#E50914] text-white'
+                : 'border-transparent text-[#808080] hover:text-white hover:border-[#555]'
+            }`}
+          >
+            <Settings size={14} /> Settings
+          </button>
+          <button
+            onClick={() => setView('download')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              view === 'download'
+                ? 'border-[#E50914] text-white'
+                : 'border-transparent text-[#808080] hover:text-white hover:border-[#555]'
+            }`}
+          >
+            <Download size={14} /> Download
+          </button>
         </div>
 
-        {view === 'monitoring' ? (
+        {view === 'download' ? (
+          <DownloadTab />
+        ) : view === 'settings' ? (
+          <SettingsTab />
+        ) : view === 'monitoring' ? (
           /* ── Monitoring View ── */
           monitoringLoading && !monitoringData ? (
             <div className="flex items-center justify-center py-20">
@@ -253,6 +320,22 @@ function AdminDashboard({ onLogout }) {
                 <AlertTriangle size={16} />
                 <span>{error}</span>
                 <button onClick={loadData} className="ml-auto underline hover:no-underline">Retry</button>
+              </div>
+            )}
+
+            {backfillResult && !backfilling && (
+              <div className={`mb-4 flex items-center gap-2 text-sm rounded-lg px-4 py-3 ${
+                backfillResult.error
+                  ? 'text-red-400 bg-red-400/10 border border-red-400/20'
+                  : 'text-green-400 bg-green-400/10 border border-green-400/20'
+              }`}>
+                {backfillResult.error ? <AlertTriangle size={16} /> : <Wand2 size={16} />}
+                <span>
+                  {backfillResult.error
+                    ? backfillResult.error
+                    : `Backfill selesai: ${backfillResult.updated} title diupdate, ${backfillResult.skipped} sudah ada, ${backfillResult.errors} error`}
+                </span>
+                <button onClick={() => setBackfillResult(null)} className="ml-auto text-[#808080] hover:text-white">✕</button>
               </div>
             )}
 
@@ -363,7 +446,7 @@ function AdminDashboard({ onLogout }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filtered.map((entry) => (
+                      {paginated.map((entry) => (
                         <SubtitleRow
                           key={entry.id}
                           entry={entry}
@@ -376,8 +459,50 @@ function AdminDashboard({ onLogout }) {
                     </tbody>
                   </table>
                 </div>
+                {/* Pagination */}
                 <div className="flex items-center justify-between px-4 py-3 border-t border-[#2a2a2a] text-sm text-[#808080]">
-                  <span>{filtered.length} of {subtitles.length} subtitles</span>
+                  <span>Menampilkan {((page - 1) * perPage) + 1}–{Math.min(page * perPage, filtered.length)} dari {filtered.length} subtitle</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="p-1.5 rounded hover:bg-[#333] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (page <= 4) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 3) {
+                        pageNum = totalPages - 6 + i;
+                      } else {
+                        pageNum = page - 3 + i;
+                      }
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
+                            page === pageNum
+                              ? 'bg-[#E50914] text-white'
+                              : 'text-[#808080] hover:bg-[#333] hover:text-white'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages}
+                      className="p-1.5 rounded hover:bg-[#333] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
