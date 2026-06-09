@@ -480,6 +480,312 @@ async function extractSubtitleFromZip(buffer) {
   return null;
 }
 
+/**
+ * Extract ALL subtitle files from a ZIP archive.
+ * Returns array of { filename, content } for each .srt/.vtt/.ass/.ssa file found.
+ */
+async function extractAllSubtitlesFromZip(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const decoder = new TextDecoder('utf-8');
+  let offset = 0;
+  const entries = [];
+
+  while (offset < bytes.length - 4) {
+    if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
+      const compression = bytes[offset+8] | (bytes[offset+9] << 8);
+      const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+      const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
+      const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
+      const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
+      const dataStart = offset + 30 + fnLen + extraLen;
+      const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
+
+      if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
+        let text;
+        if (compression === 0) {
+          text = decoder.decode(compressedData);
+        } else if (compression === 8) {
+          try {
+            const ds = new DecompressionStream('deflate-raw');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
+            writer.write(compressedData);
+            writer.close();
+            const chunks = [];
+            let done = false;
+            while (!done) {
+              const { value, done: d } = await reader.read();
+              if (value) chunks.push(value);
+              done = d;
+            }
+            const total = chunks.reduce((a, c) => a + c.length, 0);
+            const result = new Uint8Array(total);
+            let pos = 0;
+            for (const c of chunks) { result.set(c, pos); pos += c.length; }
+            text = decoder.decode(result);
+          } catch { text = null; }
+        }
+        if (text) entries.push({ filename, content: text });
+      }
+      offset = dataStart + compressedSize;
+    } else {
+      offset++;
+    }
+  }
+  return entries;
+}
+
+/**
+ * Guess season/episode numbers from a subtitle filename.
+ * Supports patterns like: S01E05, s01e05, 1x05, - 1x05, E05, ep05, etc.
+ */
+function guessSeasonEpisode(filename) {
+  const clean = filename.replace(/[\/_]/g, ' ');
+  // Pattern: S01E05 or s01e05
+  let m = clean.match(/[Ss](\d{1,2})[Ee](\d{1,3})/);
+  if (m) return { season: parseInt(m[1], 10), episode: parseInt(m[2], 10) };
+  // Pattern: 1x05 or 1X05
+  m = clean.match(/(\d{1,2})[xX](\d{1,3})/);
+  if (m) return { season: parseInt(m[1], 10), episode: parseInt(m[2], 10) };
+  // Pattern: - 1x05 or .1x05.
+  m = clean.match(/[\s.-](\d{1,2})[xX](\d{1,3})/);
+  if (m) return { season: parseInt(m[1], 10), episode: parseInt(m[2], 10) };
+  // Pattern: EP05 or ep05 (no season)
+  m = clean.match(/[Ee][Pp]?(\d{1,3})/);
+  if (m) return { season: 1, episode: parseInt(m[1], 10) };
+  // Pattern: just a number like "05" or "5"
+  m = clean.match(/(?:^|[\s.-])(\d{1,3})(?:[\s.-]|$)/);
+  if (m) return { season: 1, episode: parseInt(m[1], 10) };
+  return null;
+}
+
+/**
+ * Download subtitles from a ZIP URL, extracting all entries and mapping to episodes.
+ * Returns array of { season, episode, lang, content, filename }.
+ */
+async function downloadAndExtractZip(url, lang) {
+  const res = await fetch(url, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+  if (!res.ok) return [];
+  const blob = await res.arrayBuffer();
+  const entries = await extractAllSubtitlesFromZip(blob);
+  const results = [];
+  for (const entry of entries) {
+    const guessed = guessSeasonEpisode(entry.filename);
+    results.push({
+      season: guessed?.season || 1,
+      episode: guessed?.episode || 1,
+      lang,
+      content: entry.content,
+      filename: entry.filename,
+    });
+  }
+  return results;
+}
+
+// ─── Bulk Download ───────────────────────────────────────────────────────────
+
+/**
+ * Progress callback type.
+ * @typedef {(progress: { phase: string, current: number, total: number, message: string }) => void} ProgressFn
+ */
+
+/**
+ * Bulk download subtitles for a movie or TV series.
+ *
+ * For movies: downloads each language from providers.
+ * For TV: fetches seasons/episodes from TMDB, then downloads per-episode or from ZIP packages.
+ *
+ * @param {object} env - Worker env with R2 + TMDB + provider credentials
+ * @param {'movie'|'tv'} type
+ * @param {string|number} tmdbId
+ * @param {object} options
+ * @param {string[]} options.languages - e.g. ['id', 'en']
+ * @param {number} [options.seasons] - specific seasons to download (TV only)
+ * @param {string} [options.imdbId]
+ * @param {string} [options.title]
+ * @param {ProgressFn} [options.onProgress]
+ * @returns {Promise<{ total, success, fail, skipped, results }>
+ */
+export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
+  const { languages = ['id', 'en'], imdbId, title, onProgress } = options;
+  let seasonFilter = options.seasonFilter; // array of season numbers, or null = all
+  const report = (phase, current, total, message) => {
+    if (onProgress) onProgress({ phase, current, total, message });
+  };
+
+  const results = [];
+  let success = 0, fail = 0, skipped = 0;
+
+  // ── MOVIE ──
+  if (type === 'movie') {
+    report('movie', 0, languages.length, `Downloading ${languages.length} languages...`);
+    for (let i = 0; i < languages.length; i++) {
+      const lang = languages[i];
+      report('movie', i, languages.length, `Movie · ${LANG_NAMES[lang] || lang}`);
+      try {
+        const existing = await getOrFetchSubtitle(env, type, tmdbId, lang, { imdbId, title });
+        if (existing) {
+          results.push({ lang, success: true, url: existing.url, cached: existing.cached });
+          success++;
+        } else {
+          results.push({ lang, success: false, message: 'Not found' });
+          fail++;
+        }
+      } catch (err) {
+        results.push({ lang, success: false, message: err.message });
+        fail++;
+      }
+    }
+    report('done', languages.length, languages.length, `Done: ${success} ok, ${fail} fail`);
+    return { total: languages.length, success, fail, skipped: 0, results };
+  }
+
+  // ── TV SERIES ──
+  // 1. Fetch season data from TMDB
+  report('seasons', 0, 1, 'Fetching seasons from TMDB...');
+  let seasons = [];
+  try {
+    const tmdbKey = env.TMDB_API_KEY;
+    if (!tmdbKey) throw new Error('TMDB_API_KEY not configured');
+    const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`, {
+      headers: { Authorization: `Bearer ${tmdbKey}` },
+    });
+    if (!tvRes.ok) throw new Error('TMDB TV fetch failed');
+    const tvData = await tvRes.json();
+    seasons = (tvData.seasons || [])
+      .filter(s => s.season_number > 0) // skip specials
+      .map(s => ({ number: s.season_number, episodeCount: s.episode_count || 0, name: s.name }));
+    if (seasonFilter && seasonFilter.length > 0) {
+      seasons = seasons.filter(s => seasonFilter.includes(s.number));
+    }
+  } catch (err) {
+    report('error', 0, 0, `Failed to fetch seasons: ${err.message}`);
+    return { total: 0, success: 0, fail: 0, skipped: 0, results: [], error: err.message };
+  }
+
+  if (seasons.length === 0) {
+    report('done', 0, 0, 'No seasons found');
+    return { total: 0, success: 0, fail: 0, skipped: 0, results: [] };
+  }
+
+  const totalEpisodes = seasons.reduce((sum, s) => sum + s.episodeCount, 0);
+  report('seasons', 0, seasons.length, `${seasons.length} seasons, ~${totalEpisodes} episodes`);
+
+  // 2. For each language, try to find bulk ZIP packages first
+  const allJobs = []; // { season, episode, lang }
+  for (const lang of languages) {
+    for (const season of seasons) {
+      for (let ep = 1; ep <= season.episodeCount; ep++) {
+        allJobs.push({ season: season.number, episode: ep, lang });
+      }
+    }
+  }
+
+  // 3. Try to find ZIP packages from providers (Subdl often has full-season ZIPs)
+  report('searching', 0, allJobs.length, 'Searching providers for bulk packages...');
+  const creds = await resolveProviderCredentials(env);
+  const seasonCache = {}; // key: `${lang}_s${season}` → ZIP results
+  let jobsRemaining = [...allJobs];
+
+  for (const lang of languages) {
+    for (const season of seasons) {
+      const cacheKey = `${lang}_s${season.number}`;
+      if (seasonCache[cacheKey] !== undefined) continue;
+
+      // Try Subdl first (known for full-season ZIPs)
+      if (creds.subdl.apiKey) {
+        try {
+          const langCode = (LANG_MAP[lang] || lang).toUpperCase();
+          const params = new URLSearchParams({
+            api_key: creds.subdl.apiKey,
+            tmdb_id: String(tmdbId),
+            type: 'tv',
+            languages: langCode,
+            season_number: String(season.number),
+          });
+          const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+          if (res.ok) {
+            const data = await res.json();
+            const subs = data.subtitles || [];
+            // Check if any subtitle covers multiple episodes (ZIP package)
+            for (const sub of subs) {
+              const dlUrl = `https://dl.subdl.com${sub.url}`;
+              // Download and try to extract all episodes from this ZIP
+              const extracted = await downloadAndExtractZip(dlUrl, lang);
+              if (extracted.length > 1) {
+                // This is a bulk package!
+                seasonCache[cacheKey] = extracted;
+                // Remove jobs that are covered by this package
+                jobsRemaining = jobsRemaining.filter(j => {
+                  if (j.lang !== lang || j.season !== season.number) return true;
+                  return !extracted.some(e => e.episode === j.episode);
+                });
+                report('bulk', 0, 0, `Bulk package found: S${season.number} ${LANG_NAMES[lang]} (${extracted.length} episodes)`);
+                break;
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+      if (!seasonCache[cacheKey]) seasonCache[cacheKey] = null;
+    }
+  }
+
+  // 4. Save bulk ZIP results to R2
+  for (const [cacheKey, extracted] of Object.entries(seasonCache)) {
+    if (!extracted || extracted.length === 0) continue;
+    const [lang, sPart] = cacheKey.split('_');
+    const seasonNum = parseInt(sPart.replace('s', ''), 10);
+    for (const entry of extracted) {
+      const vttContent = entry.content.startsWith('WEBVTT') ? entry.content : srtToVtt(entry.content);
+      if (!vttContent?.trim()) { skipped++; continue; }
+      const key = getSubtitleKey('tv', tmdbId, lang, seasonNum, entry.episode);
+      const publicUrl = getR2PublicUrl(env, key);
+      const uploaded = await r2PutObject(env, key, vttContent, 'text/vtt; charset=utf-8');
+      if (uploaded) {
+        const entryMeta = {
+          id: generateId('tv', tmdbId, lang, seasonNum, entry.episode),
+          type: 'tv', tmdbId: Number(tmdbId), imdbId: imdbId || null, title: title || null,
+          lang, langName: LANG_NAMES[lang] || lang, key, url: publicUrl, format: 'vtt',
+          season: seasonNum, episode: entry.episode,
+          downloadedAt: new Date().toISOString(), source: 'subdl',
+          bulkPackage: true, bulkFilename: entry.filename,
+        };
+        await addToMetadata(env, entryMeta).catch(() => {});
+        results.push({ season: seasonNum, episode: entry.episode, lang, success: true, url: publicUrl, bulk: true });
+        success++;
+      }
+    }
+  }
+
+  // 5. Download remaining individual episodes from providers
+  const total = jobsRemaining.length;
+  report('downloading', 0, total, `Downloading ${total} individual subtitles...`);
+
+  for (let i = 0; i < jobsRemaining.length; i++) {
+    const job = jobsRemaining[i];
+    report('downloading', i, total, `S${job.season}:E${job.episode} · ${LANG_NAMES[job.lang] || job.lang}`);
+    try {
+      const existing = await getOrFetchSubtitle(env, 'tv', tmdbId, job.lang, {
+        season: job.season, episode: job.episode, imdbId, title,
+      });
+      if (existing) {
+        results.push({ season: job.season, episode: job.episode, lang: job.lang, success: true, url: existing.url, cached: existing.cached });
+        success++;
+      } else {
+        results.push({ season: job.season, episode: job.episode, lang: job.lang, success: false, message: 'Not found' });
+        fail++;
+      }
+    } catch (err) {
+      results.push({ season: job.season, episode: job.episode, lang: job.lang, success: false, message: err.message });
+      fail++;
+    }
+  }
+
+  report('done', total, total, `Done: ${success} ok, ${fail} fail, ${skipped} skipped`);
+  return { total: success + fail + skipped, success, fail, skipped, results };
+}
+
 // ─── Provider: Search (no download) ──────────────────────────────────────────
 
 /**

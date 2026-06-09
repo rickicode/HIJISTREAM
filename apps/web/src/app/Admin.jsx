@@ -25,6 +25,7 @@ import EditMetadataModal from '../components/admin/EditMetadataModal';
 import MonitoringSection from '../components/admin/MonitoringSection';
 import SettingsTab from '../components/admin/SettingsTab';
 import DownloadTab from '../components/admin/DownloadTab';
+import BulkDownloadPanel from '../components/admin/BulkDownloadPanel';
 import { LANG_LABELS } from '../components/admin/shared';
 
 // ============================================================
@@ -43,7 +44,7 @@ function AdminDashboard({ onLogout }) {
   const [showUpload, setShowUpload] = useState(false);
   const [showBulkRefresh, setShowBulkRefresh] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
-  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring' | 'settings' | 'download'
+  const [view, setView] = useState('subtitles'); // 'subtitles' | 'monitoring' | 'settings' | 'download' | 'bulk'
   const [monitoringData, setMonitoringData] = useState(null);
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
@@ -286,11 +287,23 @@ function AdminDashboard({ onLogout }) {
                 : 'border-transparent text-[#808080] hover:text-white hover:border-[#555]'
             }`}
           >
-            <Download size={14} /> Download
+            <Download size={14} /> Search
+          </button>
+          <button
+            onClick={() => setView('bulk')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              view === 'bulk'
+                ? 'border-[#E50914] text-white'
+                : 'border-transparent text-[#808080] hover:text-white hover:border-[#555]'
+            }`}
+          >
+            <Download size={14} /> Bulk
           </button>
         </div>
 
-        {view === 'download' ? (
+        {view === 'bulk' ? (
+          <BulkDownloadPanel />
+        ) : view === 'download' ? (
           <DownloadTab />
         ) : view === 'settings' ? (
           <SettingsTab />

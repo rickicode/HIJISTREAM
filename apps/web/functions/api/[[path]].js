@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles } from '../../src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles } from '../../src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -134,6 +134,19 @@ async function handleAdmin(pathname, method, env, request) {
 
   if (pathname === '/admin/subtitles/backfill' && method === 'POST') {
     const result = await backfillTitles(env);
+    return jsonRes(result);
+  }
+
+  if (pathname === '/admin/subtitles/bulk' && method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const { type, tmdb_id, languages, season_filter, imdb_id, title } = body;
+    if (!type || !tmdb_id) return jsonRes({ error: 'type and tmdb_id required' }, 400);
+    const result = await bulkDownloadSubtitles(env, type, String(tmdb_id), {
+      languages: languages || ['id', 'en'],
+      seasonFilter: season_filter || null,
+      imdbId: imdb_id || undefined,
+      title: title || undefined,
+    });
     return jsonRes(result);
   }
 

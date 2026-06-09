@@ -312,6 +312,29 @@ const api = {
   },
 
   /**
+   * Bulk download subtitles for a movie or TV series.
+   */
+  bulkDownloadSubtitles({ type, tmdbId, languages, seasonFilter, imdbId, title }) {
+    return fetch(`${BASE_URL}/admin/subtitles/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: this._getAdminAuth(),
+      },
+      body: JSON.stringify({
+        type, tmdb_id: String(tmdbId),
+        languages: languages || ['id', 'en'],
+        season_filter: seasonFilter || null,
+        imdb_id: imdbId || null,
+        title: title || null,
+      }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then(d => { throw new Error(d.error || 'Bulk download failed'); });
+      return res.json();
+    });
+  },
+
+  /**
    * Edit subtitle metadata (title, imdbId).
    */
   editAdminSubtitle(id, updates) {
