@@ -254,22 +254,39 @@ export default function BulkDownloadPanel() {
                   </span>
                 )}
               </div>
-              <div className="max-h-64 overflow-y-auto space-y-1.5">
+              <div className="max-h-80 overflow-y-auto space-y-1.5">
                 {results_log.map((log, i) => (
-                  <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
-                    log.result?.error
-                      ? 'border-red-400/20 bg-red-400/5 text-red-400'
-                      : log.result?.fail > 0
-                        ? 'border-amber-400/20 bg-amber-400/5 text-amber-400'
-                        : 'border-green-400/20 bg-green-400/5 text-green-400'
-                  }`}>
-                    {log.result?.error ? <XCircle size={11} className="shrink-0" /> :
-                     log.result?.fail > 0 ? <XCircle size={11} className="shrink-0" /> :
-                     <CheckCircle size={11} className="shrink-0" />}
-                    <span className="font-medium truncate">{log.item.title}</span>
-                    <span className="text-[#666] ml-auto shrink-0">
-                      {log.result?.error || `${log.result?.success || 0} ok, ${log.result?.fail || 0} fail`}
-                    </span>
+                  <div key={i} className="rounded-lg border border-[#2a2a2a] overflow-hidden">
+                    {/* Item header */}
+                    <div className={`flex items-center gap-2 px-3 py-2 text-xs ${
+                      log.result?.error
+                        ? 'bg-red-400/5 text-red-400'
+                        : log.result?.fail > 0
+                          ? 'bg-amber-400/5 text-amber-400'
+                          : 'bg-green-400/5 text-green-400'
+                    }`}>
+                      {log.result?.error ? <XCircle size={11} className="shrink-0" /> :
+                       log.result?.fail > 0 ? <XCircle size={11} className="shrink-0" /> :
+                       <CheckCircle size={11} className="shrink-0" />}
+                      <span className="font-medium truncate">{log.item.title}</span>
+                      <span className="text-[#666] ml-auto shrink-0">
+                        {log.result?.error || `${log.result?.success || 0} ok, ${log.result?.fail || 0} fail`}
+                      </span>
+                    </div>
+                    {/* Failed episodes details */}
+                    {log.result?.results && log.result.results.filter(r => !r.success).length > 0 && (
+                      <div className="px-3 py-1.5 bg-[#141414] text-[10px] text-red-400/70 space-y-0.5">
+                        {log.result.results.filter(r => !r.success).slice(0, 10).map((r, j) => (
+                          <div key={j} className="flex items-center gap-2">
+                            <span className="text-[#666] w-16 shrink-0">S{String(r.season).padStart(2,'0')}:E{String(r.episode).padStart(2,'0')}</span>
+                            <span>{r.message || 'Tidak ditemukan'}</span>
+                          </div>
+                        ))}
+                        {log.result.results.filter(r => !r.success).length > 10 && (
+                          <div className="text-[#555]">+{log.result.results.filter(r => !r.success).length - 10} lagi...</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

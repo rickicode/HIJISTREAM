@@ -765,9 +765,24 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
     }
   }
 
-  // 5. Download remaining individual episodes from providers
+  // 5. Pre-check provider availability before downloading
+  const providerStatus = {};
+  try {
+    const creds = await resolveProviderCredentials(env);
+    providerStatus.opensubtitles_com = !!(creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password);
+    providerStatus.opensubtitles_org = !!(creds.opensubtitles_org.username && creds.opensubtitles_org.password);
+    providerStatus.subdl = !!creds.subdl.apiKey;
+  } catch {}
+  const activeProviders = Object.entries(providerStatus).filter(([, v]) => v).map(([k]) => k);
+  if (activeProviders.length === 0) {
+    const msg = 'Tidak ada provider subtitle yang dikonfigurasi. Siapkan kredensial di Settings.';
+    report('error', 0, 0, msg);
+    return { total: 0, success: 0, fail: 0, skipped: 0, results: [], error: msg };
+  }
+
+  // 6. Download remaining individual episodes from providers
   const total = jobsRemaining.length;
-  report('downloading', 0, total, `Downloading ${total} individual subtitles...`);
+  report('downloading', 0, total, `Downloading ${total} individual subtitles dari ${activeProviders.length} provider...`);
 
   for (let i = 0; i < jobsRemaining.length; i++) {
     const job = jobsRemaining[i];
@@ -780,7 +795,13 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
         results.push({ season: job.season, episode: job.episode, lang: job.lang, success: true, url: existing.url, cached: existing.cached });
         success++;
       } else {
-        results.push({ season: job.season, episode: job.episode, lang: job.lang, success: false, message: 'Not found' });
+        // Provide specific reason for failure
+        const reasons = [];
+        if (!providerStatus.opensubtitles_com) reasons.push('OS.com tidak aktif');
+        if (!providerStatus.opensubtitles_org) reasons.push('OS.org tidak aktif');
+        if (!providerStatus.subdl) reasons.push('Subdl tidak aktif');
+        const reasonStr = reasons.length > 0 ? ` (${reasons.join(', ')})` : '';
+        results.push({ season: job.season, episode: job.episode, lang: job.lang, success: false, message: `Subtitle tidak ditemukan di semua provider${reasonStr}` });
         fail++;
       }
     } catch (err) {
