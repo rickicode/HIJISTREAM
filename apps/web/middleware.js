@@ -470,11 +470,13 @@ export default async function middleware(request) {
             status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
         }
-        const sub = await downloadSubtitleByProvider(process.env, provider, file_id, type, String(tmdb_id), lang, {
+        // Use getOrFetchSubtitle which handles all providers correctly
+        const sub = await getOrFetchSubtitle(process.env, type, String(tmdb_id), lang, {
           season: season ? Number(season) : undefined,
           episode: episode ? Number(episode) : undefined,
           imdbId: imdb_id || undefined,
           title: title || undefined,
+          force: true,
         });
         if (!sub) {
           return new Response(JSON.stringify({ error: 'Download failed' }), {

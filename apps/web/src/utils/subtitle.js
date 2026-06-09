@@ -1121,13 +1121,6 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
         if (blob.byteLength > 100) {
           const content = await extractSubtitleFromZip(blob);
           if (content) result = { content, source: 'subdl' };
-          else {
-            // Fallback: try direct text content
-            const text = new TextDecoder().decode(blob);
-            if (text && text.trim() && (text.includes('-->') || text.includes('WEBVTT'))) {
-              result = { content: text, source: 'subdl' };
-            }
-          }
         }
       }
     } catch (e) { console.error('[Subtitle] Subdl error:', e.message); }
