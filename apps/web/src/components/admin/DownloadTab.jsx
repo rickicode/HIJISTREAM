@@ -202,7 +202,7 @@ export default function DownloadTab() {
 
       {/* Search results */}
       {results.length > 0 && (
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
           {results.map(item => (
             <button key={`${item.type}-${item.id}`} onClick={() => { setSelected(item); setDlResults(null); setProviderResults([]); setSeason(''); setEpisode(''); }}
               className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#252525] transition-colors border-b border-[#2a2a2a] last:border-0 ${selected?.id === item.id ? 'bg-[#252525] border-l-2 border-l-[#E50914]' : ''}`}>
