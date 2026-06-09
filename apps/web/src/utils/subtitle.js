@@ -18,6 +18,58 @@ const LANG_MAP = { id: 'id', en: 'en', es: 'es', pt: 'pt', hi: 'hi', ja: 'ja', k
 const LANG_MAP_3 = { id: 'ind', en: 'eng', es: 'spa', pt: 'por', hi: 'hin', ja: 'jpn', ko: 'kor' };
 const LANG_NAMES = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
 
+/**
+ * Normalize any language string to our standard locale code.
+ * Handles: ISO 639-1 (id, en), ISO 639-2 (ind, eng), full names (Indonesian, english),
+ * Subdl codes (ID, IND), etc.
+ */
+function normalizeLang(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim().toLowerCase();
+  // Direct match
+  if (LANG_MAP[s]) return s;
+  // ISO 639-2 match
+  const by639_2 = Object.entries(LANG_MAP_3).find(([, v]) => v === s);
+  if (by639_2) return by639_2[0];
+  // Full name match
+  const byName = Object.entries(LANG_NAMES).find(([, v]) => v.toLowerCase() === s);
+  if (byName) return byName[0];
+  // Partial matches
+  if (s.startsWith('ind') || s.includes('indonesi')) return 'id';
+  if (s.startsWith('eng') || s.includes('english')) return 'en';
+  if (s.startsWith('spa') || s.includes('spanish') || s.includes('español')) return 'es';
+  if (s.startsWith('por') || s.includes('portugu')) return 'pt';
+  if (s.startsWith('hin') || s.includes('hindi')) return 'hi';
+  if (s.startsWith('jpn') || s.includes('japanese') || s.includes('日本')) return 'ja';
+  if (s.startsWith('kor') || s.includes('korean') || s.includes('한국')) return 'ko';
+  // Try 2-letter match again
+  if (s.length === 2 && LANG_MAP[s]) return s;
+  return s.slice(0, 2); // fallback: take first 2 chars
+}
+
+/**
+ * Detect language from subtitle filename/release name.
+ * Many subtitles embed language info like: Movie.2024.Indonesian.srt, Movie.srt Indonesian, etc.
+ */
+function detectLangFromFilename(filename) {
+  if (!filename) return null;
+  const lower = filename.toLowerCase();
+  // Check for known language keywords in filename
+  const langPatterns = [
+    ['id', /indonesi|\bid\b|bahasa/],
+    ['en', /\beng(lish)?\b|\ben\b/],
+    ['es', /\bespañ?ol\b|\besp\b|\bes\b/],
+    ['pt', /portugu[eê]s|\bpt\b|\bpor\b/],
+    ['hi', /\bhindi\b|\bhin\b/],
+    ['ja', /\bjapanese?\b|\bjpn?\b|日本語/],
+    ['ko', /\bkorean?\b|\bkor?\b|한국어/],
+  ];
+  for (const [code, pattern] of langPatterns) {
+    if (pattern.test(lower)) return code;
+  }
+  return null;
+}
+
 // ─── AWS SigV4 signing ────────────────────────────────────────────────────────
 
 async function sha256Hex(data) {
@@ -423,6 +475,46 @@ async function fetchFromSubdl(creds, tmdbId, type, lang, season, episode) {
   const blob = await dlRes.arrayBuffer();
   const content = await extractSubtitleFromZip(blob);
   return content ? { content, source: 'subdl' } : null;
+}
+
+// ─── Provider: Podnapisi (Free, no auth) ────────────────────────────────────
+
+const PODNAPISI_BASE = 'https://podnapisi.net/subtitles';
+
+async function fetchFromPodnapisi(tmdbId, type, lang, season, episode, imdbId) {
+  try {
+    const langCode = LANG_MAP[lang] || lang;
+    const params = new URLSearchParams({ sXML: '1', sL: langCode, sK: String(tmdbId) });
+    if (type === 'tv') {
+      if (season !== undefined) params.set('sTS', String(season));
+      if (episode !== undefined) params.set('sTE', String(episode));
+    }
+
+    const res = await fetch(`${PODNAPISI_BASE}/search/old?${params}`, {
+      headers: { 'User-Agent': 'HIJISTREAM/1.0' },
+    });
+    if (!res.ok) return null;
+
+    const xml = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const subtitles = doc.querySelectorAll('subtitle');
+
+    if (!subtitles.length) return null;
+
+    const first = subtitles[0];
+    const pid = first.querySelector('pid')?.textContent;
+    if (!pid) return null;
+
+    const dlRes = await fetch(`${PODNAPISI_BASE}/${pid}/download?container=zip`, {
+      headers: { 'User-Agent': 'HIJISTREAM/1.0' },
+    });
+    if (!dlRes.ok) return null;
+
+    const blob = await dlRes.arrayBuffer();
+    const content = await extractSubtitleFromZip(blob);
+    return content ? { content, source: 'podnapisi' } : null;
+  } catch { return null; }
 }
 
 /**
@@ -854,7 +946,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
           for (const s of subs.slice(0, 15)) {
             const attr = s.attributes || {};
             const file = attr.files?.[0] || {};
-            const subLang = LANG_MAP[lang] ? lang : (Object.entries(LANG_MAP).find(([, v]) => v === (attr.language || file.language || ''))?.[0] || attr.language || 'en');
+            const subLang = normalizeLang(lang) || normalizeLang(attr.language) || normalizeLang(file.language) || detectLangFromFilename(file.file_name) || 'en';
             results.push({
               provider: 'opensubtitles_com',
               lang: subLang,
@@ -920,7 +1012,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
           const data = await res.json();
           const subs = data.subtitles || [];
           for (const s of subs.slice(0, 15)) {
-            const subLang = (s.lang || s.language || 'en').toLowerCase();
+            const subLang = normalizeLang(s.lang || s.language) || detectLangFromFilename(s.release_name) || 'en';
             results.push({
               provider: 'subdl',
               lang: subLang,
@@ -1028,23 +1120,39 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
   // 2. Resolve credentials
   const creds = await resolveProviderCredentials(env);
 
-  // 3. Try providers in order
-  const providers = [
-    () => fetchFromOsCom(creds.opensubtitles_com, tmdbId, type, lang, season, episode, imdbId),
-    () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId),
-    () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode),
+  // 3. Search ALL providers simultaneously, pick best result
+  const providerCalls = [
+    { name: 'opensubtitles_com', fn: () => fetchFromOsCom(creds.opensubtitles_com, tmdbId, type, lang, season, episode, imdbId) },
+    { name: 'opensubtitles_org', fn: () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId) },
+    { name: 'subdl', fn: () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode) },
+    { name: 'podnapisi', fn: () => fetchFromPodnapisi(tmdbId, type, lang, season, episode, imdbId) },
   ];
+
+  const providerResults = await Promise.allSettled(
+    providerCalls.map(async (p) => {
+      try {
+        const r = await p.fn();
+        return r?.content ? { source: p.name, content: r.content, alreadyVtt: r.alreadyVtt } : null;
+      } catch (err) {
+        console.error(`[Subtitle] ${p.name} error:`, err.message);
+        return null;
+      }
+    })
+  );
+
+  // Pick best result (prefer non-cached, then by source priority)
+  const successful = providerResults
+    .filter(r => r.status === 'fulfilled' && r.value?.content)
+    .map(r => r.value);
 
   let result = null;
   let usedSource = null;
-
-  for (const tryProvider of providers) {
-    try {
-      const r = await tryProvider();
-      if (r?.content) { result = r; usedSource = r.source; break; }
-    } catch (err) {
-      console.error(`[Subtitle] Provider error:`, err.message);
-    }
+  if (successful.length > 0) {
+    // Prefer OS.com > OS.org > Subdl
+    const sourcePriority = { opensubtitles_com: 1, opensubtitles_org: 2, subdl: 3 };
+    successful.sort((a, b) => (sourcePriority[a.source] || 9) - (sourcePriority[b.source] || 9));
+    result = successful[0];
+    usedSource = result.source;
   }
 
   if (!result) {
