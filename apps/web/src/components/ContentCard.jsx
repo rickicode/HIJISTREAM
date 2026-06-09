@@ -49,6 +49,9 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <h3 className="text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-0.5">
           {item.year && <span className="text-xs text-muted-foreground">{item.year}</span>}
+          <span className="text-[10px] text-[#555] bg-[#222] px-1.5 py-0.5 rounded">
+            {effectiveType === 'movie' ? 'Movie' : 'TV'} · TMDB #{item.tmdbId || item.id}
+          </span>
         </div>
       </div>
     </Link>

@@ -491,57 +491,65 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
   const creds = await resolveProviderCredentials(env);
   const results = [];
 
-  // 1. OpenSubtitles.com
+  // 1. OpenSubtitles.com — search without language filter (returns all langs)
   try {
     if (creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password) {
       const token = await osComLogin(creds.opensubtitles_com);
       if (token) {
-        const searchLangs = lang ? [lang] : Object.keys(LANG_MAP);
-        for (const l of searchLangs) {
-          try {
-            let subs = await osComSearch(creds.opensubtitles_com, token, tmdbId, type, l, season, episode);
-            if (!subs.length && imdbId) {
-              const params = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie', languages: LANG_MAP[l] || l });
-              if (season !== undefined) params.set('season_number', String(season));
-              if (episode !== undefined) params.set('episode_number', String(episode));
-              const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
-                headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
-              });
-              if (res.ok) subs = (await res.json()).data || [];
-            }
-            for (const s of subs.slice(0, 5)) {
-              const attr = s.attributes || {};
-              const file = attr.files?.[0] || {};
-              results.push({
-                provider: 'opensubtitles_com',
-                lang: l,
-                langName: LANG_NAMES[l] || l,
-                title: attr.release || file.file_name || '',
-                downloadCount: attr.download_count || 0,
-                rating: attr.ratings || 0,
-                format: file.format || 'srt',
-                size: file.file_size || 0,
-                fileId: file.file_id,
-                fps: file.fps || null,
-                hearingImpaired: file.hearing_impaired || false,
-              });
-            }
-          } catch { /* skip lang */ }
-        }
+        try {
+          const params = new URLSearchParams({ tmdb_id: String(tmdbId), type: type === 'tv' ? 'episode' : 'movie' });
+          if (lang) params.set('languages', LANG_MAP[lang] || lang);
+          if (season !== undefined) params.set('season_number', String(season));
+          if (episode !== undefined) params.set('episode_number', String(episode));
+          let subs = [];
+          const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
+            headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+          });
+          if (res.ok) subs = (await res.json()).data || [];
+          // Fallback: search by IMDB ID
+          if (!subs.length && imdbId) {
+            const p2 = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie' });
+            if (lang) p2.set('languages', LANG_MAP[lang] || lang);
+            if (season !== undefined) p2.set('season_number', String(season));
+            if (episode !== undefined) p2.set('episode_number', String(episode));
+            const r2 = await fetch(`${OS_COM_BASE}/subtitles?${p2}`, {
+              headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+            });
+            if (r2.ok) subs = (await r2.json()).data || [];
+          }
+          for (const s of subs.slice(0, 15)) {
+            const attr = s.attributes || {};
+            const file = attr.files?.[0] || {};
+            const subLang = LANG_MAP[lang] ? lang : (Object.entries(LANG_MAP).find(([, v]) => v === (attr.language || file.language || ''))?.[0] || attr.language || 'en');
+            results.push({
+              provider: 'opensubtitles_com',
+              lang: subLang,
+              langName: LANG_NAMES[subLang] || subLang,
+              title: attr.release || file.file_name || '',
+              downloadCount: attr.download_count || 0,
+              rating: attr.ratings || 0,
+              format: file.format || 'srt',
+              size: file.file_size || 0,
+              fileId: file.file_id,
+              fps: file.fps || null,
+              hearingImpaired: file.hearing_impaired || false,
+            });
+          }
+        } catch { /* skip */ }
       }
     }
   } catch { /* skip provider */ }
 
-  // 2. OpenSubtitles.org
+  // 2. OpenSubtitles.org — search top 3 languages (API requires sublanguageid)
   try {
     if (creds.opensubtitles_org.username && creds.opensubtitles_org.password) {
       const token = await osOrgLogin(creds.opensubtitles_org);
       if (token) {
-        const searchLangs = lang ? [lang] : Object.keys(LANG_MAP_3);
+        const searchLangs = lang ? [lang] : ['id', 'en', 'ja'];
         for (const l of searchLangs) {
           try {
             const subs = await osOrgSearch(token, tmdbId, type, l, season, episode, imdbId);
-            for (const s of subs.slice(0, 5)) {
+            for (const s of subs.slice(0, 10)) {
               results.push({
                 provider: 'opensubtitles_org',
                 lang: l,
@@ -563,28 +571,26 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     }
   } catch { /* skip provider */ }
 
-  // 3. Subdl
+  // 3. Subdl — search without language filter (returns all langs)
   try {
     if (creds.subdl.apiKey) {
-      const searchLangs = lang ? [lang.toUpperCase()] : Object.keys(LANG_MAP).map(k => LANG_MAP[k].toUpperCase());
-      for (const l of searchLangs) {
-        try {
-          const params = new URLSearchParams({ api_key: creds.subdl.apiKey, tmdb_id: String(tmdbId), type });
-          if (l) params.set('languages', l);
-          if (type === 'tv') {
-            if (season !== undefined) params.set('season_number', String(season));
-            if (episode !== undefined) params.set('episode_number', String(episode));
-          }
-          const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
-          if (!res.ok) continue;
+      try {
+        const params = new URLSearchParams({ api_key: creds.subdl.apiKey, tmdb_id: String(tmdbId), type });
+        if (lang) params.set('languages', lang.toUpperCase());
+        if (type === 'tv') {
+          if (season !== undefined) params.set('season_number', String(season));
+          if (episode !== undefined) params.set('episode_number', String(episode));
+        }
+        const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+        if (res.ok) {
           const data = await res.json();
           const subs = data.subtitles || [];
-          const langLower = l.toLowerCase();
-          for (const s of subs.slice(0, 5)) {
+          for (const s of subs.slice(0, 15)) {
+            const subLang = (s.lang || s.language || 'en').toLowerCase();
             results.push({
               provider: 'subdl',
-              lang: langLower,
-              langName: LANG_NAMES[langLower] || l,
+              lang: subLang,
+              langName: LANG_NAMES[subLang] || subLang,
               title: s.release_name || '',
               downloadCount: s.download_count || 0,
               rating: 0,
@@ -595,8 +601,8 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
               hearingImpaired: false,
             });
           }
-        } catch { /* skip lang */ }
-      }
+        }
+      } catch { /* skip */ }
     }
   } catch { /* skip provider */ }
 

@@ -19,6 +19,7 @@ function mapGenreIds(ids) {
 function transformMovieListItem(movie) {
   return {
     id: movie.id,
+    tmdbId: movie.id,
     title: movie.title,
     year: movie.release_date?.substring(0, 4) || '',
     poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
@@ -35,6 +36,7 @@ function transformMovieListItem(movie) {
 function transformTVListItem(show) {
   return {
     id: show.id,
+    tmdbId: show.id,
     title: show.name,
     year: show.first_air_date?.substring(0, 4) || '',
     poster_url: show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : '',
