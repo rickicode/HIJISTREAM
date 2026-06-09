@@ -1,6 +1,40 @@
-import { Play } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Captions, Check, Loader } from 'lucide-react';
+import api from '../utils/api';
+import { getCurrentLanguage } from '../utils/language';
 
-export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSeasonChange, episodes, onPlayEpisode, isLoading }) {
+function SubtitleBtn({ tvId, season, episode }) {
+  const [state, setState] = useState('idle'); // idle | loading | ok | fail
+
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    if (state === 'loading') return;
+    setState('loading');
+    try {
+      const userLang = getCurrentLanguage();
+      const data = await api.getSubtitles({ type: 'tv', tmdbId: tvId, lang: userLang, season, episode });
+      setState(data?.subtitles?.length > 0 ? 'ok' : 'fail');
+    } catch {
+      setState('fail');
+    }
+    setTimeout(() => setState('idle'), 3000);
+  };
+
+  const color = state === 'ok' ? 'text-green-400' : state === 'fail' ? 'text-red-400' : 'text-[#808080] hover:text-white';
+  const title = state === 'ok' ? 'Subtitle tersedia' : state === 'fail' ? 'Subtitle tidak ditemukan' : 'Download subtitle';
+
+  return (
+    <button onClick={handleClick} title={title}
+      className={`shrink-0 p-2 rounded hover:bg-white/10 transition-colors ${color}`}
+      aria-label={title}>
+      {state === 'loading' ? <Loader size={14} className="animate-spin" /> :
+       state === 'ok' ? <Check size={14} /> :
+       <Captions size={14} />}
+    </button>
+  );
+}
+
+export default function EpisodeList({ tvId, seasons, currentSeason, onSeasonChange, episodes, onPlayEpisode, isLoading }) {
   const seasonOptions = Array.from({ length: seasons }, (_, i) => i + 1);
 
   return (
@@ -15,9 +49,7 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
             aria-label="Select season"
           >
             {seasonOptions.map((num) => (
-              <option key={num} value={num}>
-                Season {num}
-              </option>
+              <option key={num} value={num}>Season {num}</option>
             ))}
           </select>
         )}
@@ -45,26 +77,17 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
             onClick={() => onPlayEpisode(currentSeason, 1)}
             className="mt-4 inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded text-sm font-semibold hover:bg-white/90 transition-colors"
           >
-            <Play size={16} fill="black" />
-            Play Season {currentSeason}
+            <Play size={16} fill="black" /> Play Season {currentSeason}
           </button>
         </div>
       ) : (
         <div className="grid gap-3">
           {episodes.map((episode) => (
-            <div
-              key={episode.episode_number}
-              className="bg-background-card rounded-lg p-4 hover:bg-background-elevated transition-colors group"
-            >
+            <div key={episode.episode_number} className="bg-background-card rounded-lg p-4 hover:bg-background-elevated transition-colors group">
               <div className="flex gap-4">
                 <div className="relative w-40 h-24 bg-background-elevated rounded-lg overflow-hidden shrink-0">
                   {episode.still_path ? (
-                    <img
-                      src={episode.still_path}
-                      alt={episode.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
+                    <img src={episode.still_path} alt={episode.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="text-muted text-xs">Ep {episode.episode_number}</span>
@@ -89,13 +112,16 @@ export default function EpisodeList({ tvId: _tvId, seasons, currentSeason, onSea
                         {episode.runtime && <span>{episode.runtime} min</span>}
                       </div>
                     </div>
-                    <button
-                      onClick={() => onPlayEpisode(currentSeason, episode.episode_number)}
-                      className="shrink-0 bg-white/10 text-white p-2 rounded hover:bg-white/20 transition-colors"
-                      aria-label={`Play episode ${episode.episode_number}`}
-                    >
-                      <Play size={14} fill="white" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <SubtitleBtn tvId={tvId} season={currentSeason} episode={episode.episode_number} />
+                      <button
+                        onClick={() => onPlayEpisode(currentSeason, episode.episode_number)}
+                        className="bg-white/10 text-white p-2 rounded hover:bg-white/20 transition-colors"
+                        aria-label={`Play episode ${episode.episode_number}`}
+                      >
+                        <Play size={14} fill="white" />
+                      </button>
+                    </div>
                   </div>
                   {episode.overview && (
                     <p className="mt-2 text-muted-foreground text-xs line-clamp-2 leading-relaxed">

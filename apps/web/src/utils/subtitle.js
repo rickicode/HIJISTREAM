@@ -1,830 +1,736 @@
 /**
- * Subtitle Service
+ * Subtitle Service — Multi-provider
  *
- * Auto-download subtitles via OpenSubtitles API and cache them in Cloudflare R2.
- * Subtitles are converted to WebVTT format and served from a public R2 bucket.
+ * Providers (tried in order until one succeeds):
+ *   1. opensubtitles_com  — REST API v1, needs apiKey + username + password
+ *   2. opensubtitles_org  — XML-RPC legacy, needs username + password only
+ *   3. subdl              — REST API, needs apiKey only
  *
- * Env vars required:
- *   OPENSUBTITLES_API_KEY
- *   OPENSUBTITLES_USERNAME
- *   OPENSUBTITLES_PASSWORD
- *   R2_ACCOUNT_ID
- *   R2_ACCESS_KEY_ID
- *   R2_SECRET_ACCESS_KEY
- *   R2_BUCKET_NAME
- *   R2_PUBLIC_URL      (e.g. https://pub-xxxxx.r2.dev)
+ * Credentials stored in R2: settings/subtitle-providers.json
+ * Subtitles cached in R2 as WebVTT files.
  */
 
-const OS_BASE = 'https://api.opensubtitles.com/api/v1';
+// ─── Language maps ────────────────────────────────────────────────────────────
 
-// Language map: app locale → OpenSubtitles language code
-const LANG_MAP = {
-  id: 'id',
-  en: 'en',
-  es: 'es',
-  pt: 'pt',
-  hi: 'hi',
-  ja: 'ja',
-  ko: 'ko',
-};
+// app locale → ISO 639-1 (OS.com / Subdl)
+const LANG_MAP = { id: 'id', en: 'en', es: 'es', pt: 'pt', hi: 'hi', ja: 'ja', ko: 'ko' };
+// app locale → ISO 639-2 (OS.org XML-RPC)
+const LANG_MAP_3 = { id: 'ind', en: 'eng', es: 'spa', pt: 'por', hi: 'hin', ja: 'jpn', ko: 'kor' };
+const LANG_NAMES = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
 
-// ============================================================
-//  AWS SigV4 signing for R2 S3-compatible API
-// ============================================================
+// ─── AWS SigV4 signing ────────────────────────────────────────────────────────
 
 async function sha256Hex(data) {
-  const hash = await crypto.subtle.digest(
-    'SHA-256',
-    typeof data === 'string' ? new TextEncoder().encode(data) : data
-  );
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  const hash = await crypto.subtle.digest('SHA-256', typeof data === 'string' ? new TextEncoder().encode(data) : data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function hmac(key, data) {
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    typeof key === 'string' ? new TextEncoder().encode(key) : key,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  return await crypto.subtle.sign(
-    'HMAC',
-    cryptoKey,
-    typeof data === 'string' ? new TextEncoder().encode(data) : data
-  );
+  const k = await crypto.subtle.importKey('raw', typeof key === 'string' ? new TextEncoder().encode(key) : key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return crypto.subtle.sign('HMAC', k, typeof data === 'string' ? new TextEncoder().encode(data) : data);
 }
 
 function toHex(buf) {
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function getSignatureKey(key, dateStamp, regionName, serviceName) {
-  const kDate = await hmac('AWS4' + key, dateStamp);
-  const kRegion = await hmac(kDate, regionName);
-  const kService = await hmac(kRegion, serviceName);
-  const kSigning = await hmac(kService, 'aws4_request');
-  return kSigning;
+async function getSignatureKey(key, dateStamp, region, service) {
+  return hmac(await hmac(await hmac(await hmac('AWS4' + key, dateStamp), region), service), 'aws4_request');
 }
 
-/**
- * Sign an S3 request using AWS Signature V4.
- * Works on both Vercel Edge and Cloudflare Workers via Web Crypto API.
- */
-async function signS3(method, path, headers, body, accessKeyId, secretAccessKey, region, service, dateStr) {
+export async function signS3(method, path, headers, body, accessKeyId, secretAccessKey, region, service, dateStr) {
   const payloadHash = await sha256Hex(body || '');
-
-  const allHeaders = {
-    ...headers,
-    'x-amz-content-sha256': payloadHash,
-    'x-amz-date': dateStr + 'T000000Z',
-  };
-
-  // Determine host
-  const host = path.startsWith('http')
-    ? new URL(path).host
-    : (headers.host || '');
-  if (host) {
-    allHeaders.host = host;
-  }
-
-  const canonicalUri = path.startsWith('http') ? new URL(path).pathname : path;
-  const canonicalQueryString = '';
+  // dateStr can be YYYYMMDD or full ISO — extract both forms
+  const dateOnly = dateStr.length > 8 ? dateStr.slice(0, 8) : dateStr;
+  const dateTime = dateStr.length > 8 ? dateStr.replace(/[-:]/g, '').slice(0, 15) + 'Z' : dateStr + 'T000000Z';
+  const allHeaders = { ...headers, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateTime };
+  const host = path.startsWith('http') ? new URL(path).host : (headers.host || '');
+  if (host) allHeaders.host = host;
+  const canonicalUri = path.startsWith('http') ? new URL(path).pathname : path.split('?')[0];
+  const canonicalQS = path.includes('?') ? path.split('?')[1] : '';
   const sortedKeys = Object.keys(allHeaders).sort();
-  const canonicalHeaders = sortedKeys.map((k) => `${k.toLowerCase()}:${allHeaders[k]}\n`).join('');
-  const signedHeaders = sortedKeys.map((k) => k.toLowerCase()).join(';');
-  const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-
-  const algorithm = 'AWS4-HMAC-SHA256';
-  const credentialScope = `${dateStr}/${region}/${service}/aws4_request`;
-  const stringToSign = `${algorithm}\n${dateStr}T000000Z\n${credentialScope}\n${await sha256Hex(canonicalRequest)}`;
-  const signingKey = await getSignatureKey(secretAccessKey, dateStr, region, service);
-  const signature = toHex(await hmac(signingKey, stringToSign));
-  const authorization = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  return { authorization, payloadHash };
+  const canonicalHeaders = sortedKeys.map(k => `${k.toLowerCase()}:${allHeaders[k]}\n`).join('');
+  const signedHeaders = sortedKeys.map(k => k.toLowerCase()).join(';');
+  const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQS}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  const credentialScope = `${dateOnly}/${region}/${service}/aws4_request`;
+  const stringToSign = `AWS4-HMAC-SHA256\n${dateTime}\n${credentialScope}\n${await sha256Hex(canonicalRequest)}`;
+  const signature = toHex(await hmac(await getSignatureKey(secretAccessKey, dateOnly, region, service), stringToSign));
+  return {
+    authorization: `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
+    payloadHash,
+  };
 }
 
-/**
- * Upload a subtitle file to R2 using S3-compatible PUT.
- */
-async function r2PutObject(env, key, body, contentType) {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+// ─── R2 helpers ───────────────────────────────────────────────────────────────
+
+export function getR2PublicUrl(env, key) {
+  return `${env.R2_PUBLIC_URL.replace(/\/+$/, '')}/${key}`;
+}
+
+export async function r2PutObject(env, key, body, contentType) {
+  const now = new Date();
+  const dateStr = now.toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const dateOnly = dateStr.slice(0, 8);
   const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   const path = `/${env.R2_BUCKET_NAME}/${key}`;
-  const url = `${endpoint}${path}`;
-
-  const bodyBytes = typeof body === 'string'
-    ? new TextEncoder().encode(body)
-    : body;
-
-  const { authorization, payloadHash } = await signS3(
-    'PUT',
-    path,
-    {
-      'content-type': contentType,
-      'content-length': String(bodyBytes.byteLength || bodyBytes.length),
-      host: new URL(endpoint).host,
-    },
-    bodyBytes,
-    env.R2_ACCESS_KEY_ID,
-    env.R2_SECRET_ACCESS_KEY,
-    'auto',
-    's3',
-    dateStr
-  );
-
-  const response = await fetch(url, {
+  const bodyBytes = typeof body === 'string' ? new TextEncoder().encode(body) : body;
+  const { authorization, payloadHash } = await signS3('PUT', path, { 'content-type': contentType, 'content-length': String(bodyBytes.byteLength || bodyBytes.length), host: new URL(endpoint).host }, bodyBytes, env.R2_ACCESS_KEY_ID, env.R2_SECRET_ACCESS_KEY, 'auto', 's3', dateStr);
+  const res = await fetch(`${endpoint}${path}`, {
     method: 'PUT',
-    headers: {
-      Authorization: authorization,
-      'x-amz-content-sha256': payloadHash,
-      'x-amz-date': dateStr + 'T000000Z',
-      'content-type': contentType,
-      'content-length': String(bodyBytes.byteLength || bodyBytes.length),
-    },
+    headers: { Authorization: authorization, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateStr, 'content-type': contentType, 'content-length': String(bodyBytes.byteLength || bodyBytes.length) },
     body: bodyBytes,
   });
-
-  return response.ok;
+  return res.ok;
 }
 
-/**
- * Get the public R2 URL for a subtitle key.
- */
-function getR2PublicUrl(env, key) {
-  const base = env.R2_PUBLIC_URL.replace(/\/+$/, '');
-  return `${base}/${key}`;
+export async function deleteSubtitleFile(env, key) {
+  const dateStr = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const path = `/${env.R2_BUCKET_NAME}/${key}`;
+  const { authorization, payloadHash } = await signS3('DELETE', path, { host: new URL(endpoint).host }, null, env.R2_ACCESS_KEY_ID, env.R2_SECRET_ACCESS_KEY, 'auto', 's3', dateStr);
+  const res = await fetch(`${endpoint}${path}`, { method: 'DELETE', headers: { Authorization: authorization, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateStr } });
+  return res.ok || res.status === 204;
 }
 
-// ============================================================
-//  OpenSubtitles API v2
-// ============================================================
+// ─── SRT → VTT conversion ────────────────────────────────────────────────────
 
-/**
- * Login to OpenSubtitles and get an auth token.
- */
-async function openSubtitlesLogin(env) {
-  const res = await fetch(`${OS_BASE}/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Api-Key': env.OPENSUBTITLES_API_KEY,
-      'User-Agent': 'HIJISTREAM/1.0',
-    },
-    body: JSON.stringify({
-      username: env.OPENSUBTITLES_USERNAME,
-      password: env.OPENSUBTITLES_PASSWORD,
-    }),
-  });
-
-  if (!res.ok) {
-    console.error(`[Subtitle] OpenSubtitles login failed: ${res.status}`);
-    return null;
-  }
-
-  const data = await res.json();
-  return data.token || null;
-}
-
-/**
- * Search for subtitles on OpenSubtitles.
- * For TV shows, pass season_number and episode_number in params.
- */
-async function openSubtitlesSearch(env, token, tmdbId, type, lang, extraParams = {}) {
-  const osLang = LANG_MAP[lang] || lang;
-
-  const params = new URLSearchParams({
-    tmdb_id: String(tmdbId),
-    type: type === 'tv' ? 'episode' : 'movie',
-    languages: osLang,
-  });
-
-  // Add season/episode for TV
-  if (extraParams.season_number !== undefined) {
-    params.set('season_number', String(extraParams.season_number));
-  }
-  if (extraParams.episode_number !== undefined) {
-    params.set('episode_number', String(extraParams.episode_number));
-  }
-
-  const res = await fetch(`${OS_BASE}/subtitles?${params}`, {
-    headers: {
-      'Api-Key': env.OPENSUBTITLES_API_KEY,
-      Authorization: `Bearer ${token}`,
-      'User-Agent': 'HIJISTREAM/1.0',
-    },
-  });
-
-  if (!res.ok) {
-    console.error(`[Subtitle] OpenSubtitles search failed: ${res.status}`);
-    return [];
-  }
-
-  const data = await res.json();
-  return data.data || [];
-}
-
-/**
- * Get download link and fetch subtitle file content.
- */
-async function openSubtitlesDownload(env, token, fileId) {
-  const res = await fetch(`${OS_BASE}/download`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Api-Key': env.OPENSUBTITLES_API_KEY,
-      Authorization: `Bearer ${token}`,
-      'User-Agent': 'HIJISTREAM/1.0',
-    },
-    body: JSON.stringify({ file_id: fileId }),
-  });
-
-  if (!res.ok) {
-    console.error(`[Subtitle] OpenSubtitles download link failed: ${res.status}`);
-    return null;
-  }
-
-  const data = await res.json();
-  if (!data.link) return null;
-
-  // Download the actual subtitle file
-  const fileRes = await fetch(data.link);
-  if (!fileRes.ok) return null;
-  return await fileRes.text();
-}
-
-// ============================================================
-//  Subtitle Processing
-// ============================================================
-
-/**
- * Convert SRT subtitle format to WebVTT.
- * SRT: 00:00:01,000 --> 00:00:04,000
- * VTT:  00:00:01.000 --> 00:00:04.000
- */
-function srtToVtt(srt) {
-  if (!srt || srt.trim().length === 0) return '';
-  let vtt = srt;
-  // Strip BOM if present
-  vtt = vtt.replace(/^\uFEFF/, '');
-  // Replace comma with dot in timestamps (SRT: 00:00:01,000 → VTT: 00:00:01.000)
-  vtt = vtt.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
-  // Add WEBVTT header if not present
-  if (!vtt.startsWith('WEBVTT')) {
-    vtt = 'WEBVTT\n\n' + vtt;
-  }
+export function srtToVtt(srt) {
+  if (!srt || !srt.trim()) return '';
+  let vtt = srt.replace(/^\uFEFF/, '').replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+  if (!vtt.startsWith('WEBVTT')) vtt = 'WEBVTT\n\n' + vtt;
   return vtt;
 }
 
-// ============================================================
-//  R2 Key & URL helpers
-// ============================================================
+// ─── R2 key helpers ───────────────────────────────────────────────────────────
 
 function getSubtitleKey(type, id, lang, season, episode) {
-  if (type === 'tv' && season !== undefined && episode !== undefined) {
-    return `subtitles/tv/${id}/${season}/${episode}/${lang}.vtt`;
-  }
-  return `subtitles/movie/${id}/${lang}.vtt`;
+  return type === 'tv' && season !== undefined && episode !== undefined
+    ? `subtitles/tv/${id}/${season}/${episode}/${lang}.vtt`
+    : `subtitles/movie/${id}/${lang}.vtt`;
 }
-
-// ============================================================
-//  Metadata Management (R2 JSON file)
-// ============================================================
-
-const METADATA_KEY = 'subtitles/metadata.json';
-
-const LANG_NAMES = {
-  id: 'Indonesian',
-  en: 'English',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  hi: 'Hindi',
-  ja: 'Japanese',
-  ko: 'Korean',
-};
 
 function generateId(type, tmdbId, lang, season, episode) {
   const base = `${type}_${tmdbId}_${lang}`;
-  if (type === 'tv' && season !== undefined && episode !== undefined) {
-    return `${base}_s${season}e${episode}`;
-  }
-  return base;
+  return type === 'tv' && season !== undefined ? `${base}_s${season}e${episode}` : base;
 }
 
-/**
- * Read subtitle metadata from R2 metadata.json.
- */
+// ─── Metadata (R2 JSON) ───────────────────────────────────────────────────────
+
+const METADATA_KEY = 'subtitles/metadata.json';
+
 export async function readMetadata(env) {
-  const url = getR2PublicUrl(env, METADATA_KEY);
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      // File doesn't exist yet — return empty
-      return { version: 1, updatedAt: null, subtitleCount: 0, subtitles: [] };
-    }
-    return await res.json();
-  } catch {
-    return { version: 1, updatedAt: null, subtitleCount: 0, subtitles: [] };
-  }
+    const data = await r2GetObject(env, METADATA_KEY);
+    if (!data) return { version: 1, updatedAt: null, subtitleCount: 0, subtitles: [] };
+    return JSON.parse(data);
+  } catch { return { version: 1, updatedAt: null, subtitleCount: 0, subtitles: [] }; }
 }
 
-/**
- * Write subtitle metadata back to R2.
- */
 export async function writeMetadata(env, metadata) {
   metadata.updatedAt = new Date().toISOString();
   metadata.subtitleCount = metadata.subtitles?.length || 0;
-  const json = JSON.stringify(metadata, null, 2);
-  return r2PutObject(env, METADATA_KEY, json, 'application/json; charset=utf-8');
+  return r2PutObject(env, METADATA_KEY, JSON.stringify(metadata, null, 2), 'application/json; charset=utf-8');
 }
 
-/**
- * Add or update a subtitle entry in metadata.
- */
 export async function addToMetadata(env, entry) {
   try {
     const metadata = await readMetadata(env);
-    const existingIdx = metadata.subtitles.findIndex((s) => s.id === entry.id);
-    if (existingIdx >= 0) {
-      metadata.subtitles[existingIdx] = { ...metadata.subtitles[existingIdx], ...entry };
-    } else {
-      metadata.subtitles.push(entry);
-    }
-    return await writeMetadata(env, metadata);
-  } catch (err) {
-    console.error('[Metadata] Failed to add entry:', err.message);
-    return false;
-  }
+    const idx = metadata.subtitles.findIndex(s => s.id === entry.id);
+    if (idx >= 0) metadata.subtitles[idx] = { ...metadata.subtitles[idx], ...entry };
+    else metadata.subtitles.push(entry);
+    return writeMetadata(env, metadata);
+  } catch (err) { console.error('[Metadata] addToMetadata failed:', err.message); return false; }
 }
 
-/**
- * Remove a subtitle entry from metadata.
- */
 export async function removeFromMetadata(env, id) {
   try {
     const metadata = await readMetadata(env);
-    metadata.subtitles = metadata.subtitles.filter((s) => s.id !== id);
-    return await writeMetadata(env, metadata);
-  } catch (err) {
-    console.error('[Metadata] Failed to remove entry:', err.message);
-    return false;
-  }
+    metadata.subtitles = metadata.subtitles.filter(s => s.id !== id);
+    return writeMetadata(env, metadata);
+  } catch (err) { console.error('[Metadata] removeFromMetadata failed:', err.message); return false; }
 }
 
-/**
- * Delete a subtitle file from R2.
- */
-export async function deleteSubtitleFile(env, key) {
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-  const path = `/${env.R2_BUCKET_NAME}/${key}`;
-  const url = `${endpoint}${path}`;
-
-  const { authorization, payloadHash } = await signS3(
-    'DELETE',
-    path,
-    { host: new URL(endpoint).host },
-    null,
-    env.R2_ACCESS_KEY_ID,
-    env.R2_SECRET_ACCESS_KEY,
-    'auto',
-    's3',
-    dateStr
-  );
-
-  const response = await fetch(url, {
-    method: 'DELETE',
-    headers: {
-      Authorization: authorization,
-      'x-amz-content-sha256': payloadHash,
-      'x-amz-date': dateStr + 'T000000Z',
-    },
-  });
-
-  return response.ok || response.status === 204;
-}
-
-// ============================================================
-//  Manual Upload
-// ============================================================
-
-/**
- * Handle manual subtitle upload: convert to VTT, upload to R2, update metadata.
- *
- * @param {object} env
- * @param {object} params
- * @param {string} params.type - 'movie' or 'tv'
- * @param {string|number} params.tmdbId
- * @param {string} params.lang - Language code
- * @param {string} params.content - Raw subtitle content (SRT or VTT)
- * @param {string} [params.imdbId]
- * @param {string} [params.title]
- * @param {number} [params.season]
- * @param {number} [params.episode]
- * @returns {Promise<{url:string, lang:string, format:string}|null>}
- */
-export async function handleUploadSubtitle(env, params) {
-  const { type, tmdbId, lang, content, imdbId, title, season, episode } = params;
-
-  if (!type || !tmdbId || !lang || !content) {
-    console.error('[Upload] Missing required params');
-    return null;
-  }
-
-  const key = getSubtitleKey(type, tmdbId, lang, season, episode);
-  const publicUrl = getR2PublicUrl(env, key);
-
-  // Detect if content is SRT or already VTT
-  const isSrt = /\d{2}:\d{2}:\d{2},\d{3}\s*-->/.test(content);
-  const vttContent = isSrt ? srtToVtt(content) : content;
-
-  if (!vttContent || vttContent.trim().length === 0) {
-    console.error('[Upload] Empty content after conversion');
-    return null;
-  }
-
-  // Ensure VTT header
-  let finalContent = vttContent;
-  if (!finalContent.startsWith('WEBVTT')) {
-    finalContent = 'WEBVTT\n\n' + finalContent;
-  }
-
-  // Upload to R2
-  const uploaded = await r2PutObject(env, key, finalContent, 'text/vtt; charset=utf-8');
-  if (!uploaded) {
-    console.error('[Upload] Failed to upload to R2');
-    return null;
-  }
-
-  // Update metadata
-  const entry = {
-    id: generateId(type, tmdbId, lang, season, episode),
-    type,
-    tmdbId: Number(tmdbId),
-    imdbId: imdbId || null,
-    title: title || null,
-    lang,
-    langName: LANG_NAMES[lang] || lang,
-    key,
-    url: publicUrl,
-    format: 'vtt',
-    season: season ?? null,
-    episode: episode ?? null,
-    downloadedAt: new Date().toISOString(),
-    source: 'manual',
-  };
-  await addToMetadata(env, entry).catch((err) => {
-    console.error('[Upload] Failed to write metadata:', err.message);
-  });
-
-  return { url: publicUrl, lang, format: 'vtt' };
-}
-
-// ============================================================
-//  Main Public API
-// ============================================================
-
-/**
- * Get or fetch subtitle for a given content.
- *
- * @param {object}  env              - Environment variables
- * @param {string}  type             - 'movie' or 'tv'
- * @param {string|number} tmdbId     - TMDB content ID
- * @param {string}  lang             - Language code (id, en, ja, etc.)
- * @param {object}  [options]
- * @param {number}  [options.season]
- * @param {number}  [options.episode]
- * @param {string}  [options.imdbId] - Optional IMDB ID for better OpenSubtitles matching
- * @param {string}  [options.title]  - Content title for metadata
- * @param {boolean} [options.force]  - Skip R2 cache check, always re-download
- * @returns {Promise<{url:string, lang:string, format:string, cached:boolean}|null>}
- */
-export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) {
-  const { season, episode, title, force } = options;
-  const key = getSubtitleKey(type, tmdbId, lang, season, episode);
-  const publicUrl = getR2PublicUrl(env, key);
-
-  // 1. Check if already cached in R2 (HEAD request to public URL)
-  // Skip when force=true (used by refreshSubtitle to force re-download)
-  if (!force) {
-    try {
-      const headRes = await fetch(publicUrl, { method: 'HEAD' });
-      if (headRes.ok) {
-        return { url: publicUrl, lang, format: 'vtt', cached: true };
-      }
-    } catch {
-      // Network error — proceed to download from OpenSubtitles
-    }
-  }
-
-  // 2. Not in R2 — download from OpenSubtitles
-  const token = await openSubtitlesLogin(env);
-  if (!token) {
-    const errMsg = 'OpenSubtitles login failed';
-    console.error('[Subtitle]', errMsg);
-    await appendErrorLog(env, { type: 'login_failed', message: errMsg, subtitleId: generateId(type, tmdbId, lang, season, episode), lang }).catch(() => {});
-    return null;
-  }
-
-  const extraParams = {};
-  if (type === 'tv') {
-    if (season !== undefined) extraParams.season_number = season;
-    if (episode !== undefined) extraParams.episode_number = episode;
-  }
-
-  // Search by TMDB ID
-  let subs = await openSubtitlesSearch(env, token, tmdbId, type, lang, extraParams);
-
-  // If no results and we have IMDB ID, try searching by IMDB ID instead
-  if ((!subs || subs.length === 0) && options.imdbId) {
-    const imdbNumeric = options.imdbId.replace(/^tt/, '');
-    const params = new URLSearchParams({
-      imdb_id: imdbNumeric,
-      type: type === 'tv' ? 'episode' : 'movie',
-      languages: LANG_MAP[lang] || lang,
-    });
-    if (extraParams.season_number) params.set('season_number', String(extraParams.season_number));
-    if (extraParams.episode_number) params.set('episode_number', String(extraParams.episode_number));
-
-    const res = await fetch(`${OS_BASE}/subtitles?${params}`, {
-      headers: {
-        'Api-Key': env.OPENSUBTITLES_API_KEY,
-        Authorization: `Bearer ${token}`,
-        'User-Agent': 'HIJISTREAM/1.0',
-      },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      subs = data.data || [];
-    }
-  }
-
-  if (!subs || subs.length === 0) {
-    const msg = `No subtitles found for ${type}/${tmdbId} (${lang})`;
-    console.log(`[Subtitle] ${msg}`);
-    await appendErrorLog(env, { type: 'not_found', message: msg, subtitleId: generateId(type, tmdbId, lang, season, episode), lang }).catch(() => {});
-    return null;
-  }
-
-  // 3. Pick best match (prefer higher download count)
-  const bestSub = subs.sort((a, b) => {
-    const aCount = a.attributes?.download_count || 0;
-    const bCount = b.attributes?.download_count || 0;
-    return bCount - aCount;
-  })[0];
-
-  const files = bestSub?.attributes?.files;
-  if (!files || files.length === 0) {
-    console.log('[Subtitle] No files in subtitle entry');
-    return null;
-  }
-
-  const fileId = files[0].file_id;
-  if (!fileId) return null;
-
-  // 4. Download subtitle content
-  const content = await openSubtitlesDownload(env, token, fileId);
-  if (!content) {
-    const msg = 'Failed to download subtitle file from OpenSubtitles';
-    console.error('[Subtitle]', msg);
-    await appendErrorLog(env, { type: 'download_failed', message: msg, subtitleId: generateId(type, tmdbId, lang, season, episode), lang }).catch(() => {});
-    return null;
-  }
-
-  // 5. Convert SRT to WebVTT
-  const vttContent = srtToVtt(content);
-  if (!vttContent) {
-    console.error('[Subtitle] Empty subtitle content after conversion');
-    return null;
-  }
-
-  // 6. Upload to R2
-  const uploaded = await r2PutObject(env, key, vttContent, 'text/vtt; charset=utf-8');
-  if (!uploaded) {
-    console.error('[Subtitle] Failed to upload to R2');
-    return null;
-  }
-
-  // 7. Write metadata entry
-  const entry = {
-    id: generateId(type, tmdbId, lang, season, episode),
-    type,
-    tmdbId: Number(tmdbId),
-    imdbId: options.imdbId || null,
-    title: title || null,
-    lang,
-    langName: LANG_NAMES[lang] || lang,
-    key,
-    url: publicUrl,
-    format: 'vtt',
-    season: season ?? null,
-    episode: episode ?? null,
-    downloadedAt: new Date().toISOString(),
-    source: 'opensubtitles',
-  };
-  await addToMetadata(env, entry).catch((err) => {
-    console.error('[Subtitle] Failed to write metadata:', err.message);
-  });
-
-  return { url: publicUrl, lang, format: 'vtt', cached: false };
-}
-
-/**
- * Get subtitles for multiple languages at once.
- * Returns only the ones that were found.
- */
-/**
- * Refresh a subtitle: delete old file from R2, re-download from OpenSubtitles, upload new.
- * Uses the metadata entry to know what content + language to re-fetch.
- *
- * @param {object} env
- * @param {object} entry - Subtitle metadata entry (contains id, type, tmdbId, etc.)
- * @returns {Promise<{url:string, lang:string, format:string, cached:boolean}|null>}
- */
-/**
- * Update a single field in a metadata entry.
- */
 export async function updateMetadataEntry(env, id, updates) {
   const metadata = await readMetadata(env);
-  const idx = metadata.subtitles.findIndex((s) => s.id === id);
+  const idx = metadata.subtitles.findIndex(s => s.id === id);
   if (idx === -1) return false;
   metadata.subtitles[idx] = { ...metadata.subtitles[idx], ...updates };
   return writeMetadata(env, metadata);
 }
 
+// ─── Provider settings (R2) ───────────────────────────────────────────────────
+
+export const PROVIDERS_SETTINGS_KEY = 'settings/subtitle-providers.json';
+
+export async function readProviderSettings(env) {
+  try {
+    const data = await r2GetObject(env, PROVIDERS_SETTINGS_KEY);
+    if (!data) return {};
+    return JSON.parse(data);
+  } catch { return {}; }
+}
+
+async function r2GetObject(env, key) {
+  const dateStr = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+  const path = `/${env.R2_BUCKET_NAME}/${key}`;
+  const { authorization, payloadHash } = await signS3('GET', path, { host: new URL(endpoint).host }, null, env.R2_ACCESS_KEY_ID, env.R2_SECRET_ACCESS_KEY, 'auto', 's3', dateStr);
+  const res = await fetch(`${endpoint}${path}`, {
+    headers: { Authorization: authorization, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateStr },
+  });
+  if (!res.ok) return null;
+  return res.text();
+}
+
+export async function writeProviderSettings(env, settings) {
+  return r2PutObject(env, PROVIDERS_SETTINGS_KEY, JSON.stringify(settings, null, 2), 'application/json; charset=utf-8');
+}
+
 /**
- * Refresh a subtitle: delete old file from R2, re-download from OpenSubtitles, upload new.
- * Updates refreshedAt timestamp on success.
- *
- * @param {object} env
- * @param {object} entry - Subtitle metadata entry (contains id, type, tmdbId, etc.)
- * @returns {Promise<{url:string, lang:string, format:string, cached:boolean}|null>}
+ * Resolve effective credentials for all providers.
+ * Priority: env vars > stored R2 settings.
  */
-export async function refreshSubtitle(env, entry) {
-  if (!entry || !entry.id) {
-    console.error('[Refresh] Invalid entry');
+export async function resolveProviderCredentials(env) {
+  let stored = {};
+  if (env.R2_PUBLIC_URL) {
+    stored = await readProviderSettings(env).catch(() => ({}));
+  }
+
+  return {
+    opensubtitles_com: {
+      apiKey: env.OPENSUBTITLES_API_KEY || stored.opensubtitles_com?.apiKey || '',
+      username: env.OPENSUBTITLES_USERNAME || stored.opensubtitles_com?.username || '',
+      password: env.OPENSUBTITLES_PASSWORD || stored.opensubtitles_com?.password || '',
+    },
+    opensubtitles_org: {
+      username: env.OPENSUBTITLES_ORG_USERNAME || stored.opensubtitles_org?.username || '',
+      password: env.OPENSUBTITLES_ORG_PASSWORD || stored.opensubtitles_org?.password || '',
+    },
+    subdl: {
+      apiKey: env.SUBDL_API_KEY || stored.subdl?.apiKey || '',
+    },
+  };
+}
+
+// ─── Provider: OpenSubtitles.com (REST v1) ────────────────────────────────────
+
+const OS_COM_BASE = 'https://api.opensubtitles.com/api/v1';
+
+async function osComLogin(creds) {
+  const res = await fetch(`${OS_COM_BASE}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Api-Key': creds.apiKey, 'User-Agent': 'HIJISTREAM/1.0' },
+    body: JSON.stringify({ username: creds.username, password: creds.password }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.token || null;
+}
+
+async function osComSearch(creds, token, tmdbId, type, lang, season, episode) {
+  const params = new URLSearchParams({ tmdb_id: String(tmdbId), type: type === 'tv' ? 'episode' : 'movie', languages: LANG_MAP[lang] || lang });
+  if (season !== undefined) params.set('season_number', String(season));
+  if (episode !== undefined) params.set('episode_number', String(episode));
+  const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
+    headers: { 'Api-Key': creds.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.data || [];
+}
+
+async function osComDownload(creds, token, fileId) {
+  const res = await fetch(`${OS_COM_BASE}/download`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Api-Key': creds.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+    body: JSON.stringify({ file_id: fileId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.link) return null;
+  const fileRes = await fetch(data.link);
+  return fileRes.ok ? fileRes.text() : null;
+}
+
+async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId) {
+  if (!creds.apiKey || !creds.username || !creds.password) return null;
+  const token = await osComLogin(creds);
+  if (!token) return null;
+
+  let subs = await osComSearch(creds, token, tmdbId, type, lang, season, episode);
+
+  // Fallback: search by IMDB ID
+  if (!subs.length && imdbId) {
+    const params = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie', languages: LANG_MAP[lang] || lang });
+    if (season !== undefined) params.set('season_number', String(season));
+    if (episode !== undefined) params.set('episode_number', String(episode));
+    const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
+      headers: { 'Api-Key': creds.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+    });
+    if (res.ok) subs = (await res.json()).data || [];
+  }
+
+  if (!subs.length) return null;
+  const best = subs.sort((a, b) => (b.attributes?.download_count || 0) - (a.attributes?.download_count || 0))[0];
+  const fileId = best?.attributes?.files?.[0]?.file_id;
+  if (!fileId) return null;
+  const content = await osComDownload(creds, token, fileId);
+  return content ? { content, source: 'opensubtitles_com' } : null;
+}
+
+// ─── Provider: OpenSubtitles.org (XML-RPC) ───────────────────────────────────
+
+const OS_ORG_ENDPOINT = 'https://api.opensubtitles.org/xml-rpc';
+const OS_ORG_UA = 'HIJISTREAM v1.0'; // must be registered; fallback to temp app name
+
+function xmlRpcCall(methodName, params) {
+  const paramsXml = params.map(p => `<param>${valueToXml(p)}</param>`).join('');
+  return `<?xml version="1.0"?><methodCall><methodName>${methodName}</methodName><params>${paramsXml}</params></methodCall>`;
+}
+
+function valueToXml(v) {
+  if (typeof v === 'string') return `<value><string>${v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</string></value>`;
+  if (typeof v === 'number') return `<value><int>${v}</int></value>`;
+  if (typeof v === 'boolean') return `<value><boolean>${v ? 1 : 0}</boolean></value>`;
+  if (Array.isArray(v)) return `<value><array><data>${v.map(valueToXml).join('')}</data></array></value>`;
+  if (v && typeof v === 'object') {
+    const members = Object.entries(v).map(([k, val]) => `<member><name>${k}</name>${valueToXml(val)}</member>`).join('');
+    return `<value><struct>${members}</struct></value>`;
+  }
+  return `<value><string></string></value>`;
+}
+
+function parseXmlValue(node) {
+  if (!node) return null;
+  const child = node.firstElementChild;
+  if (!child) return node.textContent?.trim() || '';
+  const tag = child.tagName;
+  if (tag === 'string' || tag === 'base64') return child.textContent || '';
+  if (tag === 'int' || tag === 'i4') return parseInt(child.textContent, 10);
+  if (tag === 'boolean') return child.textContent === '1';
+  if (tag === 'double') return parseFloat(child.textContent);
+  if (tag === 'array') {
+    const data = child.querySelector('data');
+    return data ? [...data.children].map(v => parseXmlValue(v)) : [];
+  }
+  if (tag === 'struct') {
+    const obj = {};
+    for (const member of child.querySelectorAll(':scope > member')) {
+      const name = member.querySelector(':scope > name')?.textContent;
+      const val = member.querySelector(':scope > value');
+      if (name) obj[name] = parseXmlValue(val);
+    }
+    return obj;
+  }
+  return child.textContent || '';
+}
+
+async function xmlRpcRequest(body) {
+  const res = await fetch(OS_ORG_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/xml', 'User-Agent': OS_ORG_UA },
+    body,
+  });
+  if (!res.ok) return null;
+  const text = await res.text();
+  // Parse XML response using DOMParser (available in CF Workers / Vercel Edge)
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/xml');
+    const valueNode = doc.querySelector('methodResponse > params > param > value');
+    return parseXmlValue(valueNode);
+  } catch {
+    // DOMParser not available in all runtimes — fallback regex parse for token
+    const tokenMatch = text.match(/<member><name>token<\/name><value><string>([^<]+)<\/string><\/value>/);
+    const statusMatch = text.match(/<member><name>status<\/name><value><string>([^<]+)<\/string><\/value>/);
+    if (tokenMatch) return { token: tokenMatch[1], status: statusMatch?.[1] || '200 OK' };
+    return null;
+  }
+}
+
+async function osOrgLogin(creds) {
+  const result = await xmlRpcRequest(xmlRpcCall('LogIn', [creds.username, creds.password, 'en', OS_ORG_UA]));
+  if (!result?.token || !result.status?.startsWith('200')) return null;
+  return result.token;
+}
+
+async function osOrgSearch(token, tmdbId, type, lang, season, episode, imdbId) {
+  const query = { sublanguageid: LANG_MAP_3[lang] || 'eng' };
+  if (imdbId) query.imdbid = imdbId.replace(/^tt/, '').replace(/^0+/, '');
+  if (type === 'tv') {
+    if (season !== undefined) query.season = String(season);
+    if (episode !== undefined) query.episode = String(episode);
+    if (!imdbId) query.query = `tmdb:${tmdbId}`;
+  } else {
+    if (!imdbId) query.query = `tmdb:${tmdbId}`;
+  }
+
+  const result = await xmlRpcRequest(xmlRpcCall('SearchSubtitles', [token, [query], { limit: 20 }]));
+  return Array.isArray(result?.data) ? result.data : [];
+}
+
+async function fetchFromOsOrg(creds, tmdbId, type, lang, season, episode, imdbId) {
+  if (!creds.username || !creds.password) return null;
+  const token = await osOrgLogin(creds);
+  if (!token) return null;
+
+  const subs = await osOrgSearch(token, tmdbId, type, lang, season, episode, imdbId);
+  if (!subs.length) return null;
+
+  // Sort by download count
+  const best = subs.sort((a, b) => Number(b.SubDownloadsCnt || 0) - Number(a.SubDownloadsCnt || 0))[0];
+  const downloadLink = best?.SubDownloadLink;
+  if (!downloadLink) return null;
+
+  // SubDownloadLink is gzip-compressed — request with /subformat-vtt/ for direct VTT
+  const vttLink = downloadLink.replace('/download/', '/download/subformat-vtt/subencoding-utf8/');
+  const res = await fetch(vttLink, { headers: { 'User-Agent': OS_ORG_UA } });
+  if (!res.ok) return null;
+
+  // Response may be gzip; fetch API auto-decompresses in most runtimes
+  const content = await res.text();
+  // Log out
+  xmlRpcRequest(xmlRpcCall('LogOut', [token])).catch(() => {});
+  return content ? { content, source: 'opensubtitles_org', alreadyVtt: true } : null;
+}
+
+// ─── Provider: Subdl ─────────────────────────────────────────────────────────
+
+const SUBDL_BASE = 'https://api.subdl.com/api/v1';
+
+async function fetchFromSubdl(creds, tmdbId, type, lang, season, episode) {
+  if (!creds.apiKey) return null;
+
+  const langCode = (LANG_MAP[lang] || lang).toUpperCase();
+  const params = new URLSearchParams({ api_key: creds.apiKey, tmdb_id: String(tmdbId), type, languages: langCode });
+  if (type === 'tv') {
+    if (season !== undefined) params.set('season_number', String(season));
+    if (episode !== undefined) params.set('episode_number', String(episode));
+  }
+
+  const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const subtitles = data.subtitles || [];
+  if (!subtitles.length) return null;
+
+  const best = subtitles[0];
+  const dlUrl = `https://dl.subdl.com${best.url}`;
+  const dlRes = await fetch(dlUrl, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+  if (!dlRes.ok) return null;
+
+  // Subdl returns zip files — extract the first .srt/.vtt inside
+  const blob = await dlRes.arrayBuffer();
+  const content = await extractSubtitleFromZip(blob);
+  return content ? { content, source: 'subdl' } : null;
+}
+
+/**
+ * Extract first subtitle file from a ZIP archive.
+ * Minimal ZIP parser — finds local file headers and extracts deflate-compressed entries.
+ */
+async function extractSubtitleFromZip(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const decoder = new TextDecoder('utf-8');
+  let offset = 0;
+
+  while (offset < bytes.length - 4) {
+    // Local file header signature: 0x04034b50
+    if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
+      const compression = bytes[offset+8] | (bytes[offset+9] << 8);
+      const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+      const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
+      const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
+      const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
+      const dataStart = offset + 30 + fnLen + extraLen;
+      const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
+
+      if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
+        let text;
+        if (compression === 0) {
+          text = decoder.decode(compressedData);
+        } else if (compression === 8) {
+          try {
+            const ds = new DecompressionStream('deflate-raw');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
+            writer.write(compressedData);
+            writer.close();
+            const chunks = [];
+            let done = false;
+            while (!done) {
+              const { value, done: d } = await reader.read();
+              if (value) chunks.push(value);
+              done = d;
+            }
+            const total = chunks.reduce((a, c) => a + c.length, 0);
+            const result = new Uint8Array(total);
+            let pos = 0;
+            for (const c of chunks) { result.set(c, pos); pos += c.length; }
+            text = decoder.decode(result);
+          } catch { text = null; }
+        }
+        if (text) return text;
+      }
+      offset = dataStart + compressedSize;
+    } else {
+      offset++;
+    }
+  }
+  return null;
+}
+
+// ─── Provider: Search (no download) ──────────────────────────────────────────
+
+/**
+ * Search subtitles from all providers without downloading.
+ * Returns merged results sorted by download count.
+ */
+export async function searchSubtitlesFromProviders(env, type, tmdbId, options = {}) {
+  const { season, episode, imdbId, lang } = options;
+  const creds = await resolveProviderCredentials(env);
+  const results = [];
+
+  // 1. OpenSubtitles.com
+  try {
+    if (creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password) {
+      const token = await osComLogin(creds.opensubtitles_com);
+      if (token) {
+        const searchLangs = lang ? [lang] : Object.keys(LANG_MAP);
+        for (const l of searchLangs) {
+          try {
+            let subs = await osComSearch(creds.opensubtitles_com, token, tmdbId, type, l, season, episode);
+            if (!subs.length && imdbId) {
+              const params = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie', languages: LANG_MAP[l] || l });
+              if (season !== undefined) params.set('season_number', String(season));
+              if (episode !== undefined) params.set('episode_number', String(episode));
+              const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
+                headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+              });
+              if (res.ok) subs = (await res.json()).data || [];
+            }
+            for (const s of subs.slice(0, 5)) {
+              const attr = s.attributes || {};
+              const file = attr.files?.[0] || {};
+              results.push({
+                provider: 'opensubtitles_com',
+                lang: l,
+                langName: LANG_NAMES[l] || l,
+                title: attr.release || file.file_name || '',
+                downloadCount: attr.download_count || 0,
+                rating: attr.ratings || 0,
+                format: file.format || 'srt',
+                size: file.file_size || 0,
+                fileId: file.file_id,
+                fps: file.fps || null,
+                hearingImpaired: file.hearing_impaired || false,
+              });
+            }
+          } catch { /* skip lang */ }
+        }
+      }
+    }
+  } catch { /* skip provider */ }
+
+  // 2. OpenSubtitles.org
+  try {
+    if (creds.opensubtitles_org.username && creds.opensubtitles_org.password) {
+      const token = await osOrgLogin(creds.opensubtitles_org);
+      if (token) {
+        const searchLangs = lang ? [lang] : Object.keys(LANG_MAP_3);
+        for (const l of searchLangs) {
+          try {
+            const subs = await osOrgSearch(token, tmdbId, type, l, season, episode, imdbId);
+            for (const s of subs.slice(0, 5)) {
+              results.push({
+                provider: 'opensubtitles_org',
+                lang: l,
+                langName: LANG_NAMES[l] || l,
+                title: s.SubFileName || s.SubDownloadLink?.split('/').pop() || '',
+                downloadCount: Number(s.SubDownloadsCnt || 0),
+                rating: Number(s.SubRating || 0),
+                format: s.SubFormat || 'srt',
+                size: Number(s.SubSize || 0),
+                fileId: s.SubDownloadLink || null,
+                fps: s.FPS || null,
+                hearingImpaired: s.HearingImpaired === '1',
+              });
+            }
+          } catch { /* skip lang */ }
+        }
+        xmlRpcRequest(xmlRpcCall('LogOut', [token])).catch(() => {});
+      }
+    }
+  } catch { /* skip provider */ }
+
+  // 3. Subdl
+  try {
+    if (creds.subdl.apiKey) {
+      const searchLangs = lang ? [lang.toUpperCase()] : Object.keys(LANG_MAP).map(k => LANG_MAP[k].toUpperCase());
+      for (const l of searchLangs) {
+        try {
+          const params = new URLSearchParams({ api_key: creds.subdl.apiKey, tmdb_id: String(tmdbId), type });
+          if (l) params.set('languages', l);
+          if (type === 'tv') {
+            if (season !== undefined) params.set('season_number', String(season));
+            if (episode !== undefined) params.set('episode_number', String(episode));
+          }
+          const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const subs = data.subtitles || [];
+          const langLower = l.toLowerCase();
+          for (const s of subs.slice(0, 5)) {
+            results.push({
+              provider: 'subdl',
+              lang: langLower,
+              langName: LANG_NAMES[langLower] || l,
+              title: s.release_name || '',
+              downloadCount: s.download_count || 0,
+              rating: 0,
+              format: s.format || 'srt',
+              size: 0,
+              fileId: s.url || null,
+              fps: null,
+              hearingImpaired: false,
+            });
+          }
+        } catch { /* skip lang */ }
+      }
+    }
+  } catch { /* skip provider */ }
+
+  // Sort by download count descending
+  results.sort((a, b) => b.downloadCount - a.downloadCount);
+  return results;
+}
+
+/**
+ * Download a specific subtitle by provider + fileId.
+ * Used after user selects from search results.
+ */
+export async function downloadSubtitleByProvider(env, provider, fileId, type, tmdbId, lang, options = {}) {
+  const { season, episode, imdbId, title } = options;
+  const creds = await resolveProviderCredentials(env);
+  let result = null;
+
+  if (provider === 'opensubtitles_com' && fileId) {
+    const token = await osComLogin(creds.opensubtitles_com);
+    if (token) {
+      const content = await osComDownload(creds.opensubtitles_com, token, fileId);
+      if (content) result = { content, source: 'opensubtitles_com' };
+    }
+  } else if (provider === 'opensubtitles_org' && fileId) {
+    const vttLink = fileId.replace('/download/', '/download/subformat-vtt/subencoding-utf8/');
+    const res = await fetch(vttLink, { headers: { 'User-Agent': OS_ORG_UA } });
+    if (res.ok) {
+      const content = await res.text();
+      if (content) result = { content, source: 'opensubtitles_org', alreadyVtt: true };
+    }
+  } else if (provider === 'subdl' && fileId) {
+    const dlUrl = `https://dl.subdl.com${fileId}`;
+    const dlRes = await fetch(dlUrl, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+    if (dlRes.ok) {
+      const blob = await dlRes.arrayBuffer();
+      const content = await extractSubtitleFromZip(blob);
+      if (content) result = { content, source: 'subdl' };
+    }
+  }
+
+  if (!result) return null;
+
+  // Convert to VTT
+  const vttContent = result.alreadyVtt ? result.content : srtToVtt(result.content);
+  if (!vttContent?.trim()) return null;
+
+  // Upload to R2
+  const key = getSubtitleKey(type, tmdbId, lang, season, episode);
+  const publicUrl = getR2PublicUrl(env, key);
+  const uploaded = await r2PutObject(env, key, vttContent, 'text/vtt; charset=utf-8');
+  if (!uploaded) return null;
+
+  // Update metadata
+  const entry = {
+    id: generateId(type, tmdbId, lang, season, episode),
+    type, tmdbId: Number(tmdbId), imdbId: imdbId || null, title: title || null,
+    lang, langName: LANG_NAMES[lang] || lang, key, url: publicUrl, format: 'vtt',
+    season: season ?? null, episode: episode ?? null,
+    downloadedAt: new Date().toISOString(), source: result.source,
+  };
+  await addToMetadata(env, entry).catch(() => {});
+
+  return { url: publicUrl, lang, format: 'vtt', cached: false };
+}
+
+// ─── Core: get or fetch subtitle ─────────────────────────────────────────────
+
+/**
+ * Get subtitle from R2 cache, or download from providers.
+ * Tries providers in order: opensubtitles_com → opensubtitles_org → subdl
+ */
+export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) {
+  const { season, episode, imdbId, title, force } = options;
+  const key = getSubtitleKey(type, tmdbId, lang, season, episode);
+  const publicUrl = getR2PublicUrl(env, key);
+
+  // 1. Check R2 cache via signed HEAD
+  if (!force) {
+    try {
+      const dateStr = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+      const endpoint = `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+      const path = `/${env.R2_BUCKET_NAME}/${key}`;
+      const { authorization, payloadHash } = await signS3('HEAD', path, { host: new URL(endpoint).host }, null, env.R2_ACCESS_KEY_ID, env.R2_SECRET_ACCESS_KEY, 'auto', 's3', dateStr);
+      const headRes = await fetch(`${endpoint}${path}`, { method: 'HEAD', headers: { Authorization: authorization, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateStr } });
+      if (headRes.ok) return { url: publicUrl, lang, format: 'vtt', cached: true };
+    } catch { /* proceed */ }
+  }
+
+  // 2. Resolve credentials
+  const creds = await resolveProviderCredentials(env);
+
+  // 3. Try providers in order
+  const providers = [
+    () => fetchFromOsCom(creds.opensubtitles_com, tmdbId, type, lang, season, episode, imdbId),
+    () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId),
+    () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode),
+  ];
+
+  let result = null;
+  let usedSource = null;
+
+  for (const tryProvider of providers) {
+    try {
+      const r = await tryProvider();
+      if (r?.content) { result = r; usedSource = r.source; break; }
+    } catch (err) {
+      console.error(`[Subtitle] Provider error:`, err.message);
+    }
+  }
+
+  if (!result) {
+    await appendErrorLog(env, { type: 'not_found', message: `No subtitle found for ${type}/${tmdbId} (${lang})`, subtitleId: generateId(type, tmdbId, lang, season, episode), lang }).catch(() => {});
     return null;
   }
 
-  // Download fresh from OpenSubtitles (force=true skips R2 cache, overwrites old file)
-  const result = await getOrFetchSubtitle(env, entry.type, entry.tmdbId, entry.lang, {
-    season: entry.season || undefined,
-    episode: entry.episode || undefined,
-    imdbId: entry.imdbId || undefined,
-    title: entry.title || undefined,
-    force: true,
-  });
+  // 4. Convert to VTT
+  const vttContent = result.alreadyVtt ? result.content : srtToVtt(result.content);
+  if (!vttContent?.trim()) return null;
 
-  if (result) {
-    // Update refreshedAt timestamp in metadata
-    const now = new Date().toISOString();
-    await updateMetadataEntry(env, entry.id, { refreshedAt: now }).catch(() => {});
-    console.log(`[Refresh] Successfully refreshed subtitle: ${entry.id}`);
-  } else {
-    console.error(`[Refresh] Failed to refresh subtitle: ${entry.id}`);
-  }
+  // 5. Upload to R2
+  const uploaded = await r2PutObject(env, key, vttContent, 'text/vtt; charset=utf-8');
+  if (!uploaded) { console.error('[Subtitle] R2 upload failed'); return null; }
 
-  return result;
-}
-
-/**
- * Refresh all OpenSubtitles-sourced subtitles at once.
- * Returns array of {id, title, lang, status: 'ok'|'fail'}.
- */
-export async function refreshAllSubtitles(env) {
-  const metadata = await readMetadata(env);
-  const toRefresh = metadata.subtitles.filter(
-    (s) => s.source === 'opensubtitles' || !s.source
-  );
-
-  const results = [];
-  for (const entry of toRefresh) {
-    const result = await refreshSubtitle(env, entry);
-    results.push({
-      id: entry.id,
-      title: entry.title || `TMDB #${entry.tmdbId}`,
-      lang: entry.lang,
-      status: result ? 'ok' : 'fail',
-    });
-  }
-
-  return { total: toRefresh.length, ok: results.filter((r) => r.status === 'ok').length, fail: results.filter((r) => r.status === 'fail').length, results };
-}
-
-// ============================================================
-//  Monitoring & Logs
-// ============================================================
-
-const ERROR_LOG_KEY = 'subtitles/error-log.json';
-const MAX_LOG_ENTRIES = 200;
-
-/**
- * Read error log from R2.
- */
-export async function readErrorLog(env) {
-  const url = getR2PublicUrl(env, ERROR_LOG_KEY);
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Append an entry to the error log. Keeps at most MAX_LOG_ENTRIES.
- */
-export async function appendErrorLog(env, entry) {
-  try {
-    const log = await readErrorLog(env);
-    log.unshift({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      timestamp: new Date().toISOString(),
-      ...entry,
-    });
-    // Trim to max
-    if (log.length > MAX_LOG_ENTRIES) log.length = MAX_LOG_ENTRIES;
-    const json = JSON.stringify(log, null, 2);
-    await r2PutObject(env, ERROR_LOG_KEY, json, 'application/json; charset=utf-8');
-  } catch (err) {
-    console.error('[ErrorLog] Failed to append:', err.message);
-  }
-}
-
-/**
- * Clear error log.
- */
-export async function clearErrorLog(env) {
-  const json = JSON.stringify([], null, 2);
-  return r2PutObject(env, ERROR_LOG_KEY, json, 'application/json; charset=utf-8');
-}
-
-/**
- * Get monitoring dashboard data.
- * Aggregates metadata + error logs into a comprehensive response.
- */
-export async function getMonitoringData(env) {
-  const metadata = await readMetadata(env);
-  const errorLog = await readErrorLog(env);
-  const subtitles = metadata.subtitles || [];
-
-  // ── Per-language stats ──
-  const langStats = {};
-  subtitles.forEach((s) => {
-    if (!langStats[s.lang]) {
-      langStats[s.lang] = { lang: s.lang, total: 0, refreshed: 0, manual: 0, opensubtitles: 0, errors: 0 };
-    }
-    langStats[s.lang].total++;
-    if (s.refreshedAt) langStats[s.lang].refreshed++;
-    if (s.source === 'manual') langStats[s.lang].manual++;
-    else langStats[s.lang].opensubtitles++;
-  });
-
-  // Count errors per language from error log
-  errorLog.forEach((e) => {
-    const l = e.lang || 'unknown';
-    if (langStats[l]) langStats[l].errors++;
-  });
-
-  // ── Refresh activity (last 14 days) ──
-  const refreshActivity = {};
-  const today = new Date();
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    refreshActivity[d.toISOString().slice(0, 10)] = 0;
-  }
-  subtitles.forEach((s) => {
-    const date = (s.refreshedAt || s.downloadedAt || '').slice(0, 10);
-    if (refreshActivity[date] !== undefined) refreshActivity[date]++;
-  });
-
-  // ── Source health ──
-  const totalManual = subtitles.filter((s) => s.source === 'manual').length;
-  const totalOS = subtitles.filter((s) => s.source !== 'manual').length;
-
-  return {
-    summary: {
-      totalSubtitles: subtitles.length,
-      totalMovies: subtitles.filter((s) => s.type === 'movie').length,
-      totalTV: subtitles.filter((s) => s.type === 'tv').length,
-      totalLanguages: Object.keys(langStats).length,
-      totalManual,
-      totalOS,
-      totalRefreshed: subtitles.filter((s) => s.refreshedAt).length,
-      totalErrors: errorLog.length,
-    },
-    langStats: Object.values(langStats).sort((a, b) => b.total - a.total),
-    refreshActivity: Object.entries(refreshActivity).map(([date, count]) => ({ date, count })),
-    recentErrors: errorLog.slice(0, 30),
+  // 6. Update metadata
+  const entry = {
+    id: generateId(type, tmdbId, lang, season, episode),
+    type, tmdbId: Number(tmdbId), imdbId: imdbId || null, title: title || null,
+    lang, langName: LANG_NAMES[lang] || lang, key, url: publicUrl, format: 'vtt',
+    season: season ?? null, episode: episode ?? null,
+    downloadedAt: new Date().toISOString(), source: usedSource,
   };
+  await addToMetadata(env, entry).catch(err => console.error('[Subtitle] metadata write failed:', err.message));
+
+  return { url: publicUrl, lang, format: 'vtt', cached: false };
 }
 
 export async function getOrFetchSubtitles(env, type, tmdbId, languages, options = {}) {
@@ -834,4 +740,123 @@ export async function getOrFetchSubtitles(env, type, tmdbId, languages, options 
     if (sub) results.push(sub);
   }
   return results;
+}
+
+// ─── Refresh ─────────────────────────────────────────────────────────────────
+
+export async function refreshSubtitle(env, entry) {
+  const result = await getOrFetchSubtitle(env, entry.type, entry.tmdbId, entry.lang, {
+    season: entry.season || undefined, episode: entry.episode || undefined,
+    imdbId: entry.imdbId || undefined, title: entry.title || undefined, force: true,
+  });
+  if (result) await updateMetadataEntry(env, entry.id, { refreshedAt: new Date().toISOString() }).catch(() => {});
+  return result;
+}
+
+export async function refreshAllSubtitles(env) {
+  const metadata = await readMetadata(env);
+  const toRefresh = metadata.subtitles.filter(s => s.source !== 'manual');
+  const results = [];
+  for (const entry of toRefresh) {
+    const r = await refreshSubtitle(env, entry);
+    results.push({ id: entry.id, title: entry.title || `TMDB #${entry.tmdbId}`, lang: entry.lang, status: r ? 'ok' : 'fail' });
+  }
+  return { total: toRefresh.length, ok: results.filter(r => r.status === 'ok').length, fail: results.filter(r => r.status === 'fail').length, results };
+}
+
+// ─── Manual upload ────────────────────────────────────────────────────────────
+
+export async function handleUploadSubtitle(env, params) {
+  const { type, tmdbId, lang, content, imdbId, title, season, episode } = params;
+  if (!type || !tmdbId || !lang || !content) return null;
+  const key = getSubtitleKey(type, tmdbId, lang, season, episode);
+  const publicUrl = getR2PublicUrl(env, key);
+  const isSrt = /\d{2}:\d{2}:\d{2},\d{3}\s*-->/.test(content);
+  let finalContent = isSrt ? srtToVtt(content) : content;
+  if (!finalContent.startsWith('WEBVTT')) finalContent = 'WEBVTT\n\n' + finalContent;
+  if (!finalContent.trim()) return null;
+  const uploaded = await r2PutObject(env, key, finalContent, 'text/vtt; charset=utf-8');
+  if (!uploaded) return null;
+  const entry = {
+    id: generateId(type, tmdbId, lang, season, episode), type, tmdbId: Number(tmdbId),
+    imdbId: imdbId || null, title: title || null, lang, langName: LANG_NAMES[lang] || lang,
+    key, url: publicUrl, format: 'vtt', season: season ?? null, episode: episode ?? null,
+    downloadedAt: new Date().toISOString(), source: 'manual',
+  };
+  await addToMetadata(env, entry).catch(() => {});
+  return { url: publicUrl, lang, format: 'vtt' };
+}
+
+// ─── Error log ────────────────────────────────────────────────────────────────
+
+const ERROR_LOG_KEY = 'subtitles/error-log.json';
+const MAX_LOG = 200;
+
+export async function readErrorLog(env) {
+  try {
+    const data = await r2GetObject(env, ERROR_LOG_KEY);
+    if (!data) return [];
+    const d = JSON.parse(data);
+    return Array.isArray(d) ? d : [];
+  } catch { return []; }
+}
+
+export async function appendErrorLog(env, entry) {
+  try {
+    const log = await readErrorLog(env);
+    log.unshift({ id: `${Date.now()}-${Math.random().toString(36).slice(2,6)}`, timestamp: new Date().toISOString(), ...entry });
+    if (log.length > MAX_LOG) log.length = MAX_LOG;
+    await r2PutObject(env, ERROR_LOG_KEY, JSON.stringify(log, null, 2), 'application/json; charset=utf-8');
+  } catch (err) { console.error('[ErrorLog]', err.message); }
+}
+
+export async function clearErrorLog(env) {
+  return r2PutObject(env, ERROR_LOG_KEY, '[]', 'application/json; charset=utf-8');
+}
+
+// ─── Monitoring ───────────────────────────────────────────────────────────────
+
+export async function getMonitoringData(env) {
+  const metadata = await readMetadata(env);
+  const errorLog = await readErrorLog(env);
+  const subtitles = metadata.subtitles || [];
+
+  const langStats = {};
+  subtitles.forEach(s => {
+    if (!langStats[s.lang]) langStats[s.lang] = { lang: s.lang, total: 0, refreshed: 0, manual: 0, opensubtitles: 0, subdl: 0, errors: 0 };
+    langStats[s.lang].total++;
+    if (s.refreshedAt) langStats[s.lang].refreshed++;
+    if (s.source === 'manual') langStats[s.lang].manual++;
+    else if (s.source === 'subdl') langStats[s.lang].subdl++;
+    else langStats[s.lang].opensubtitles++;
+  });
+  errorLog.forEach(e => { const l = e.lang || 'unknown'; if (langStats[l]) langStats[l].errors++; });
+
+  const refreshActivity = {};
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    refreshActivity[d.toISOString().slice(0, 10)] = 0;
+  }
+  subtitles.forEach(s => {
+    const date = (s.refreshedAt || s.downloadedAt || '').slice(0, 10);
+    if (refreshActivity[date] !== undefined) refreshActivity[date]++;
+  });
+
+  return {
+    summary: {
+      totalSubtitles: subtitles.length,
+      totalMovies: subtitles.filter(s => s.type === 'movie').length,
+      totalTV: subtitles.filter(s => s.type === 'tv').length,
+      totalLanguages: Object.keys(langStats).length,
+      totalManual: subtitles.filter(s => s.source === 'manual').length,
+      totalOS: subtitles.filter(s => s.source && s.source !== 'manual' && s.source !== 'subdl').length,
+      totalSubdl: subtitles.filter(s => s.source === 'subdl').length,
+      totalRefreshed: subtitles.filter(s => s.refreshedAt).length,
+      totalErrors: errorLog.length,
+    },
+    langStats: Object.values(langStats).sort((a, b) => b.total - a.total),
+    refreshActivity: Object.entries(refreshActivity).map(([date, count]) => ({ date, count })),
+    recentErrors: errorLog.slice(0, 30),
+  };
 }

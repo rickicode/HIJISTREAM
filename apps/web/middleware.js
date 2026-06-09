@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData } from './src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider } from './src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -202,15 +202,28 @@ async function handleSubtitles(env, url) {
     return { error: 'type must be movie or tv', subtitles: [] };
   }
 
-  // Check if all required env vars are configured
-  const requiredVars = [
-    'OPENSUBTITLES_API_KEY', 'OPENSUBTITLES_USERNAME', 'OPENSUBTITLES_PASSWORD',
-    'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL',
-  ];
-  const missing = requiredVars.filter((v) => !env[v]);
-  if (missing.length > 0) {
-    console.log(`[Subtitle] Missing env vars: ${missing.join(', ')}`);
-    return { error: 'Subtitle service not configured', subtitles: [], missing };
+  // Check R2 infra vars
+  const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
+  const missingR2 = r2Vars.filter((v) => !env[v]);
+  if (missingR2.length > 0) {
+    return { error: 'Subtitle service not configured', subtitles: [], missing: missingR2 };
+  }
+
+  // Resolve OS credentials: env vars > R2-stored settings
+  let osEnv = env;
+  if (!env.OPENSUBTITLES_API_KEY || !env.OPENSUBTITLES_USERNAME || !env.OPENSUBTITLES_PASSWORD) {
+    try {
+      const res = await fetch(getR2PublicUrl(env, PROVIDERS_SETTINGS_KEY));
+      if (res.ok) {
+        const stored = await res.json();
+        if (stored.opensubtitles_com?.apiKey) {
+          osEnv = { ...env, OPENSUBTITLES_API_KEY: stored.opensubtitles_com.apiKey, OPENSUBTITLES_USERNAME: stored.opensubtitles_com.username, OPENSUBTITLES_PASSWORD: stored.opensubtitles_com.password };
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  if (!osEnv.OPENSUBTITLES_API_KEY) {
+    return { error: 'OpenSubtitles credentials not configured', subtitles: [] };
   }
 
   try {
@@ -223,7 +236,7 @@ async function handleSubtitles(env, url) {
     const results = [];
 
     for (const l of languages) {
-      const sub = await getOrFetchSubtitle(env, type, tmdbId, l, options);
+      const sub = await getOrFetchSubtitle(osEnv, type, tmdbId, l, options);
       if (sub) results.push(sub);
     }
 
@@ -248,7 +261,7 @@ export default async function middleware(request) {
       status: 204,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       },
     });
@@ -392,6 +405,79 @@ export default async function middleware(request) {
       result = await handleSubtitles(process.env, url);
       cacheControl = 'public, s-maxage=3600, stale-while-revalidate=7200';
     }
+    // Route: /subtitles/search — search all providers without downloading
+    else if (pathname === '/subtitles/search') {
+      const type = url.searchParams.get('type');
+      const tmdbId = url.searchParams.get('tmdb_id');
+      const lang = url.searchParams.get('lang') || '';
+      const season = url.searchParams.get('season');
+      const episode = url.searchParams.get('episode');
+      const imdbId = url.searchParams.get('imdb_id');
+      if (!type || !tmdbId) {
+        return new Response(JSON.stringify({ error: 'Missing required params: type, tmdb_id', results: [] }), {
+          status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
+      const missingR2 = r2Vars.filter((v) => !process.env[v]);
+      if (missingR2.length > 0) {
+        return new Response(JSON.stringify({ error: 'Subtitle service not configured', results: [], missing: missingR2 }), {
+          status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+      try {
+        const opts = {};
+        if (season) opts.season = Number(season);
+        if (episode) opts.episode = Number(episode);
+        if (imdbId) opts.imdbId = imdbId;
+        if (lang) opts.lang = lang;
+        const results = await searchSubtitlesFromProviders(process.env, type, tmdbId, opts);
+        return new Response(JSON.stringify({ results, total: results.length }), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message, results: [] }), {
+          status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
+    // Route: /subtitles/download — download a specific subtitle from provider
+    else if (pathname === '/subtitles/download' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const { provider, file_id, type, tmdb_id, lang, imdb_id, title, season, episode } = body;
+        if (!provider || !file_id || !type || !tmdb_id || !lang) {
+          return new Response(JSON.stringify({ error: 'provider, file_id, type, tmdb_id, lang required' }), {
+            status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+        const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
+        const missingR2 = r2Vars.filter((v) => !process.env[v]);
+        if (missingR2.length > 0) {
+          return new Response(JSON.stringify({ error: 'R2 not configured' }), {
+            status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+        const sub = await downloadSubtitleByProvider(process.env, provider, file_id, type, String(tmdb_id), lang, {
+          season: season ? Number(season) : undefined,
+          episode: episode ? Number(episode) : undefined,
+          imdbId: imdb_id || undefined,
+          title: title || undefined,
+        });
+        if (!sub) {
+          return new Response(JSON.stringify({ error: 'Download failed' }), {
+            status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+        return new Response(JSON.stringify({ success: true, subtitle: sub }), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      }
+    }
     // Admin routes
     else if (pathname.startsWith('/admin/')) {
       const authResult = checkAdminAuth(process.env, request);
@@ -496,6 +582,27 @@ export default async function middleware(request) {
           });
         }
       }
+      if (pathname === '/admin/subtitles/download') {
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const { type, tmdb_id, lang, imdb_id, title, season, episode } = body;
+          if (!type || !tmdb_id || !lang) {
+            return new Response(JSON.stringify({ error: 'type, tmdb_id, lang required' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          }
+          const langs = String(lang).split(',').map(l => l.trim()).filter(Boolean);
+          const results = [];
+          for (const l of langs) {
+            const sub = await getOrFetchSubtitle(process.env, type, String(tmdb_id), l, {
+              imdbId: imdb_id || undefined, title: title || undefined,
+              season: season ? Number(season) : undefined,
+              episode: episode ? Number(episode) : undefined,
+              force: true,
+            });
+            results.push({ lang: l, success: !!sub, url: sub?.url || null });
+          }
+          return new Response(JSON.stringify({ results, ok: results.filter(r => r.success).length }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+      }
       if (pathname === '/admin/subtitles/upload') {
         if (request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
@@ -517,6 +624,108 @@ export default async function middleware(request) {
           return new Response(JSON.stringify({ success: true, subtitle: result }), {
             status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
+        }
+      }
+      if (pathname === '/admin/settings') {
+        if (request.method === 'GET') {
+          try {
+            const settingsUrl = getR2PublicUrl(process.env, PROVIDERS_SETTINGS_KEY);
+            const settings = await readProviderSettings(process.env).catch(() => ({}));
+            return new Response(JSON.stringify(settings), {
+              status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+            });
+          } catch {
+            return new Response(JSON.stringify({}), {
+              status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+            });
+          }
+        }
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          // Accept either full object or per-provider patch
+          const existing = await readProviderSettings(process.env).catch(() => ({}));
+          const { provider, ...rest } = body;
+          const updated = provider
+            ? { ...existing, [provider]: rest }
+            : { ...existing, ...rest };
+          const ok = await writeProviderSettings(process.env, updated);
+          return new Response(JSON.stringify(ok ? { success: true } : { error: 'Failed to save' }), {
+            status: ok ? 200 : 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          });
+        }
+      }
+      if (pathname === '/admin/settings/check') {
+        if (request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const { provider, apiKey, username, password } = body;
+          try {
+            let success = false, message = '';
+            if (provider === 'opensubtitles_com' || (!provider && apiKey)) {
+              if (!apiKey || !username || !password) return new Response(JSON.stringify({ success: false, message: 'apiKey, username, password required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+              const r = await fetch('https://api.opensubtitles.com/api/v1/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Api-Key': apiKey, 'User-Agent': 'HIJISTREAM/1.0' }, body: JSON.stringify({ username, password }) });
+              const d = await r.json().catch(() => ({}));
+              success = r.ok; message = r.ok ? `Login OK! Sisa download: ${d.user?.allowed_downloads ?? '?'}` : (d.message || `Login failed (${r.status})`);
+            } else if (provider === 'opensubtitles_org') {
+              if (!username || !password) return new Response(JSON.stringify({ success: false, message: 'username & password required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+              const xml = `<?xml version="1.0"?><methodCall><methodName>LogIn</methodName><params><param><value><string>${username}</string></value></param><param><value><string>${password}</string></value></param><param><value><string>en</string></value></param><param><value><string>HIJISTREAM v1.0</string></value></param></params></methodCall>`;
+              const r = await fetch('https://api.opensubtitles.org/xml-rpc', { method: 'POST', headers: { 'Content-Type': 'text/xml', 'User-Agent': 'HIJISTREAM v1.0' }, body: xml });
+              const text = await r.text();
+              success = r.ok && text.includes('200 OK');
+              message = success ? 'Login ke OpenSubtitles.org berhasil!' : 'Login gagal (cek username/password)';
+            } else if (provider === 'subdl') {
+              if (!apiKey) return new Response(JSON.stringify({ success: false, message: 'apiKey required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+              const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+              success = r.ok; message = r.ok ? 'API Key Subdl valid!' : `API Key tidak valid (${r.status})`;
+            } else {
+              message = 'Provider tidak dikenal';
+            }
+            return new Response(JSON.stringify({ success, message }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          } catch (err) {
+            return new Response(JSON.stringify({ success: false, message: err.message }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          }
+        }
+      }
+      if (pathname === '/admin/r2-status') {
+        if (request.method === 'GET') {
+          const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
+          const missing = r2Vars.filter((v) => !process.env[v]);
+          if (missing.length > 0) {
+            return new Response(JSON.stringify({ configured: false, missing }), {
+              status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
+          try {
+            const dateStr = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+            const endpoint = `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+            const path = `/${process.env.R2_BUCKET_NAME}`;
+            const { authorization, payloadHash } = await signS3(
+              'GET', path + '?list-type=2&max-keys=1000',
+              { host: new URL(endpoint).host }, null,
+              process.env.R2_ACCESS_KEY_ID, process.env.R2_SECRET_ACCESS_KEY,
+              'auto', 's3', dateStr
+            );
+            const r2Res = await fetch(`${endpoint}${path}?list-type=2&max-keys=1000`, {
+              headers: { Authorization: authorization, 'x-amz-content-sha256': payloadHash, 'x-amz-date': dateStr },
+            });
+            let objectCount = 0, totalSize = 0;
+            if (r2Res.ok) {
+              const xml = await r2Res.text();
+              const sizes = [...xml.matchAll(/<Size>(\d+)<\/Size>/g)].map((m) => Number(m[1]));
+              objectCount = sizes.length;
+              totalSize = sizes.reduce((a, b) => a + b, 0);
+            }
+            return new Response(JSON.stringify({
+              configured: true,
+              bucket: process.env.R2_BUCKET_NAME,
+              publicUrl: process.env.R2_PUBLIC_URL,
+              objectCount, totalSize,
+              osConfigured: !!(process.env.OPENSUBTITLES_API_KEY && process.env.OPENSUBTITLES_USERNAME),
+            }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          } catch (err) {
+            return new Response(JSON.stringify({ configured: true, error: err.message }), {
+              status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+            });
+          }
         }
       }
       // 404 for unknown admin route

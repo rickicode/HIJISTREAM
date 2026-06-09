@@ -160,6 +160,41 @@ const api = {
     return fetchWithCache(`/subtitles?${params}`, cacheKey, TTL.CONTENT_DETAIL);
   },
 
+  /**
+   * Search subtitles from all providers without downloading.
+   */
+  searchSubtitles({ type, tmdbId, lang = '', season, episode, imdbId }) {
+    const params = new URLSearchParams({ type, tmdb_id: String(tmdbId) });
+    if (lang) params.set('lang', lang);
+    if (season !== undefined) params.set('season', String(season));
+    if (episode !== undefined) params.set('episode', String(episode));
+    if (imdbId) params.set('imdb_id', imdbId);
+    return fetch(`${BASE_URL}/subtitles/search?${params}`, {
+      headers: { 'Cache-Control': 'no-store' },
+    }).then(res => {
+      if (!res.ok) throw new Error('Search failed');
+      return res.json();
+    });
+  },
+
+  /**
+   * Download a specific subtitle from a provider by fileId.
+   */
+  downloadSubtitle({ provider, fileId, type, tmdbId, lang, imdbId, title, season, episode }) {
+    return fetch(`${BASE_URL}/subtitles/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider, file_id: fileId, type, tmdb_id: String(tmdbId), lang,
+        imdb_id: imdbId || null, title: title || null,
+        season: season || null, episode: episode || null,
+      }),
+    }).then(res => {
+      if (!res.ok) return res.json().then(d => { throw new Error(d.error || 'Download failed'); });
+      return res.json();
+    });
+  },
+
   // ============================================================
   // Admin API
   // ============================================================
@@ -278,9 +313,6 @@ const api = {
   },
 
   /**
-   * Upload a subtitle file manually.
-   */
-  /**
    * Get monitoring dashboard data.
    */
   getAdminMonitoring() {
@@ -292,6 +324,66 @@ const api = {
         throw new Error('Unauthorized');
       }
       if (!res.ok) throw new Error('Failed to fetch monitoring data');
+      return res.json();
+    });
+  },
+
+  getR2Status() {
+    return fetch(`${BASE_URL}/admin/r2-status`, {
+      headers: { Authorization: this._getAdminAuth() },
+    }).then((res) => {
+      if (!res.ok) throw new Error('Failed to fetch R2 status');
+      return res.json();
+    });
+  },
+
+  /**
+   * Get stored OpenSubtitles settings.
+   */
+  getAdminSettings() {
+    return fetch(`${BASE_URL}/admin/settings`, {
+      headers: { Authorization: this._getAdminAuth() },
+    }).then((res) => {
+      if (!res.ok) throw new Error('Failed to fetch settings');
+      return res.json();
+    });
+  },
+
+  /**
+   * Save OpenSubtitles credentials.
+   */
+  saveAdminSettings({ apiKey, username, password }) {
+    return fetch(`${BASE_URL}/admin/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },
+      body: JSON.stringify({ apiKey, username, password }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Save failed'); });
+      return res.json();
+    });
+  },
+
+  /**
+   * Check OpenSubtitles credentials by attempting login.
+   */
+  checkOSAccount({ provider, apiKey, username, password }) {
+    return fetch(`${BASE_URL}/admin/settings/check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },
+      body: JSON.stringify({ provider, apiKey, username, password }),
+    }).then((res) => {
+      if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Check failed'); });
+      return res.json();
+    });
+  },
+
+  downloadAdminSubtitle({ type, tmdbId, lang, imdbId, title, season, episode }) {
+    return fetch(`${BASE_URL}/admin/subtitles/download`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },
+      body: JSON.stringify({ type, tmdb_id: String(tmdbId), lang, imdb_id: imdbId || null, title: title || null, season: season || null, episode: episode || null }),
+    }).then(res => {
+      if (!res.ok) return res.json().then(d => { throw new Error(d.error || 'Download failed'); });
       return res.json();
     });
   },
