@@ -59,7 +59,6 @@ export default function Home() {
         <ContentRail
           title={t('common.continueWatching')}
           items={watchProgress}
-          type="movie"
         />
       )}
 

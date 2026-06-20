@@ -24,10 +24,12 @@ export default function TVDetail() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === 'true';
-  const [selectedSeason, setSelectedSeason] = useState(1);
+  const initialSeason = Number(searchParams.get('s')) || 1;
+  const initialEpisode = Number(searchParams.get('e')) || 1;
+  const [selectedSeason, setSelectedSeason] = useState(initialSeason);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentSeason, setCurrentSeason] = useState(1);
-  const [currentEpisode, setCurrentEpisode] = useState(1);
+  const [currentSeason, setCurrentSeason] = useState(initialSeason);
+  const [currentEpisode, setCurrentEpisode] = useState(initialEpisode);
   const [availableSubtitles, setAvailableSubtitles] = useState([]);
   const [selectedSubtitle, setSelectedSubtitle] = useState(null);
   const [snapshotEmbedUrl, setSnapshotEmbedUrl] = useState(null);
@@ -200,6 +202,8 @@ export default function TVDetail() {
     title: show.title || '',
     poster_url: show.poster_url || '',
     type: 'tv',
+    season: currentSeason,
+    episode: currentEpisode,
   };
 
   const numberOfSeasons = show.number_of_seasons || 1;

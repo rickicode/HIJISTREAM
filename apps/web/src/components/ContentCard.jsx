@@ -6,7 +6,11 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
   const [imgLoaded, setImgLoaded] = useState(false);
   const effectiveType = item.type || item._detectedType || type;
   const itemId = item.id || item.tmdb_id;
-  const href = effectiveType === 'movie' ? `/movies/${itemId}` : `/tv/${itemId}`;
+  const href = effectiveType === 'movie' 
+    ? `/movies/${itemId}` 
+    : item.season && item.episode 
+      ? `/tv/${itemId}?autoplay=true&s=${item.season}&e=${item.episode}`
+      : `/tv/${itemId}`;
 
   return (
     <Link to={href} className="group block">
@@ -55,6 +59,11 @@ export default function ContentCard({ item, type = 'movie', watchProgress = null
         <h3 className="text-sm text-white truncate">{item.title}</h3>
         <div className="flex items-center gap-2 mt-0.5">
           {item.year && <span className="text-xs text-muted-foreground">{item.year}</span>}
+          {effectiveType === 'tv' && item.season && item.episode && (
+            <span className="text-[10px] text-[#E50914] font-medium">
+              S{item.season} E{item.episode}
+            </span>
+          )}
         </div>
       </div>
     </Link>
