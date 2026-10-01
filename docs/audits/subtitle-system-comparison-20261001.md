@@ -237,10 +237,20 @@ kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan s
   import `Captions`/`Loader`/`Check`, unused `getCurrentLanguage`/`getLangLabel`/
   `getLangFlag`, dan peringatan `useEffect ... 'selectedSubtitle'` dari perbaikan autoplay).
 - Test: **99/99 lulus** di 9 berkas. Termasuk `tests/subtitle-search-modal.test.jsx` baru
-  (3 tes), yang **gagal 3/3 di baseline** `b81f0cf` dan lulus setelah perubahan.
+  (3 tes), yang **gagal 3/3 di baseline** `b810acf` dan lulus setelah perubahan.
 - Build: `vite build` sukses.
 - Live: `/api/subtitles/search` mengembalikan 25 hasil stabil di 6 judul (§3.2).
-- Commit: `301d401` (fflate fix), `0c898ef` (bersihkan probe), sesi perbaikan UX 2026-10-01.
+- Verifikasi live produksi (`hijistream-web.vercel.app`, commit `28a91cd` terkonfirmasi di
+  chunk `SubtitleSearchModal-09ax3_S7.js`): halaman `/pengatur` 200; `/api/subtitles/search`
+  19-25 hasil (OS.com + Subdl); unduh Subdl di UI → baris "Gagal" + banner
+  `Subdl menolak unduhan: HTTP 429`; unduh OS.com → banner kuota harian asli
+  (`...allowed 20 subtitles for 24h...`). Tidak ada lagi pesan generik "Download failed".
+- Pipeline unduh end-to-end dibuktikan lokal (smoke throwaway, jaringan di-stub): pilih berkas →
+  SRT→VTT → PUT R2 → metadata → baca balik `cached:true`; 8 pemeriksaan lulus.
+- Catatan: dua provider sama-sama tidak bisa mengunggah saat verifikasi (Subdl free tier 429,
+  kuota 24 jam OS.com habis), jadi bukti sukses-unggah berasal dari smoke, bukan produksi.
+- Commit: `301d401` (fflate fix), `0c898ef` (bersihkan probe), `28a91cd` (sesi perbaikan
+  2026-10-01: error provider, loading model, hapus Podnapisi).
 
 Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `DecompressionStream`
 (`delete globalThis.DecompressionStream`) — persis kondisi Edge yang menyebabkan kegagalan.
