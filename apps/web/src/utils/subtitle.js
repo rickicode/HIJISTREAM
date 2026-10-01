@@ -695,32 +695,35 @@ const YIFY_LANG_SLUGS = {
   de: 'german', it: 'italian', ru: 'russian', ar: 'arabic',
 };
 
+// Throws a descriptive error when the search page or the ZIP cannot be used.
+// The search branch reports those reasons; returning a bare null used to make
+// "blocked by egress", "no row for this language" and "markup changed" all
+// read as an indistinguishable 'empty'.
 async function fetchFromYify(tmdbId, type, lang, imdbId) {
   if (type === 'tv' || !imdbId) return null;
   const slug = YIFY_LANG_SLUGS[lang.toLowerCase()] || lang.toLowerCase();
   const idStr = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-  try {
-    const res = await fetch(`${YIFY_BASE}/movie-imdb/${idStr}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-      },
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    const re = new RegExp(`href="(/subtitles/[^"]*?-${slug}-yify-\\d+)"`);
-    const match = html.match(re);
-    if (!match) return null;
-    const slugID = match[1].split('/').pop();
-    const dlRes = await fetch(`${YIFY_BASE}/subtitle/${slugID}.zip`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-      },
-    });
-    if (!dlRes.ok) return null;
-    const blob = await dlRes.arrayBuffer();
-    const content = await extractSubtitleFromZip(blob);
-    return content ? { content, source: 'yify' } : null;
-  } catch { return null; }
+  const res = await fetch(`${YIFY_BASE}/movie-imdb/${idStr}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    },
+  });
+  if (!res.ok) throw new Error(`situs menolak: HTTP ${res.status}`);
+  const html = await res.text();
+  const re = new RegExp(`href="(/subtitles/[^"]*?-${slug}-yify-\\d+)"`);
+  const match = html.match(re);
+  if (!match) throw new Error(`tidak ada baris ${slug} (${html.length} byte halaman)`);
+  const slugID = match[1].split('/').pop();
+  const dlRes = await fetch(`${YIFY_BASE}/subtitle/${slugID}.zip`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+    },
+  });
+  if (!dlRes.ok) throw new Error(`unduhan menolak: HTTP ${dlRes.status}`);
+  const blob = await dlRes.arrayBuffer();
+  const content = await extractSubtitleFromZip(blob);
+  if (!content) throw new Error(`arsip ${blob.byteLength} byte tanpa berkas subtitle`);
+  return { content, source: 'yify' };
 }
 
 // ─── Provider: SubtitleCat (Free, Movie & TV, direct .srt) ─────────────────
