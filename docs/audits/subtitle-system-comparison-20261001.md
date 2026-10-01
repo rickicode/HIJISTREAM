@@ -222,10 +222,10 @@ kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan s
 | `console.error` pada cabang `catch` ekstraksi | **Selesai** — `extractSubtitlesFromZip` kini mencatat `ZIP inflate failed` sebelum mengembalikan `[]`. |
 | Pesan error provider-spesifik di `/subtitles/download` | **Selesai** — HTTP 500 membawa pesan provider (kuota OS.com, `HTTP 403` Subdl, dst.); 404 bila provider tak menghasilkan apa pun. Berlaku di `middleware.js` dan `functions/api/[[path]].js`. |
 | Hapus provider Podnapisi | **Selesai** — domain upstream `podnapisi.net` tidak lagi punya alamat A/AAAA (NXDOMAIN di DoH Google + Cloudflare); setiap pencarian/unduhan pasti gagal. |
-| Pantau kuota OS.com | **Belum** — masih operasional (rotasi akun / `apiKey` berbayar). |
-| Skor berbobot ala hijitv | **Belum** — `rankSubtitles`/`computeScore` ada di `subtitle-providers.js` tetapi tidak terpasang di jalur mana pun. |
-| Preferensi sumber per judul | **Belum** — pilihan tetap hidup di state klien. |
-| Provider yang selalu 0 hasil (§3.2) | **Belum** — perlu logging per-provider lebih dulu agar penyebabnya terlihat. |
+| Pantau kuota OS.com | **Sebagian** — `osComLogin` sudah membaca `user.allowed_downloads`, angka kuota muncul di diagnostics search (`kuota unduhan tersisa N`), dan penolakan unduhan (406/429) dicatat ke error log admin (`type: 'quota'`). Rotasi akun / `apiKey` berbayar tetap **belum**. |
+| Skor berbobot ala hijitv | **Selesai** — `searchSubtitlesFromProviders` kini mengurutkan lewat `rankSubtitles`/`computeScore` (title + year + language match + provider pilihan + downloadCount), menggantikan sort downloadCount mentah. `title`/`year` dikirim detail page → `api.searchSubtitles` → handler (`middleware.js` + `functions/api/[[path]].js`). |
+| Preferensi sumber per judul | **Selesai** — `preferredProviderFor` membaca `subtitles/metadata.json` (sumber terakhir untuk judul+musim+episode+bahasa yang sama) dan memberi boost `preferred_source` (+25). Setara `active_*.txt` hijitv; tidak ada state klien. |
+| Provider yang selalu 0 hasil (§3.2) | **Selesai** — tiap provider menyatakan dirinya di `diagnostics` (`ok`/`empty`/`skipped`/`error` + pesan), di-log saat search, dikirim di response API, dan dirender di modal sebagai strip "Provider bermasalah". OS.org kini ketahuan `empty`/`XML-RPC mengembalikan 0 baris`, YIFY `skipped (butuh imdb_id)`, SubtitleCat `skipped (TMDB_API_KEY belum diisi)` — bukan lagi diam. |
 
 
 ---
@@ -254,3 +254,40 @@ kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan s
 
 Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `DecompressionStream`
 (`delete globalThis.DecompressionStream`) — persis kondisi Edge yang menyebabkan kegagalan.
+
+### Sesi 2026-10-01 (kedua): diagnostics, skor berbobot, kuota
+
+- Test: **100/100 lulus** di 9 berkas. Bertambah 1 tes modal (strip "Provider
+  bermasalah" muncul untuk `error`, tidak untuk `skipped: belum dikonfigurasi`)
+  dan tes `searchSubtitlesFromProviders` kini memverifikasi bentuk `diagnostics`.
+- Build: `vite build` sukses (`SubtitleSearchModal-DiOpe2jt.js`, 15.38 kB).
+- Lint: **72 masalah (66 error, 6 warning)** — identik dengan baseline `HEAD`
+  (`git stash` + `npx eslint .` menghasilkan angka yang sama). **0 temuan baru.**
+  3 error sisa di `subtitle.js` (`dateOnly`, escape `\/`, `catch {}`) sudah ada di
+  `HEAD`.
+- Smoke throwaway (jaringan di-stub, `subtitle.js` asli):
+  - Diagnostics per provider: `subdl ok(3)`, `opensubtitles_com ok(2) kuota unduhan
+    tersisa 20`, sisanya `skipped` dengan alasan eksplisit.
+  - Urutan hasil: baris `id` + judul cocok + tahun cocok mengalahkan baris `en`
+    ber-downloadCount lebih besar; baris tak terkait (9999 unduhan) jatuh ke bawah.
+  - `preferredProviderFor`: dengan metadata menunjuk `subdl`, baris Subdl `id`
+    (5 unduhan) naik di atas OS.com `id` (30 unduhan) — boost +25 mengalahkan
+    bonus downloadCount.
+  - Jalur unduh: 406 OS.com ("allowed 20 subtitles for 24h") tetap dilempar ke
+    pemanggil **dan** tercatat di `subtitles/error-log.json` sebagai
+    `{type:'quota', provider, lang, message}`.
+  - Row API bersih: `score`/`matches` tidak bocor ke `results`.
+- Yang **belum**: provider yang selalu 0 hasil belum *diperbaiki*, hanya kini
+  terlihat. OS.org masih bergantung pada `DOMParser` (`xmlRpcRequest` fallback
+  hanya mengenali `<member><name>token`/`status`, bukan struktur `SearchSubtitles`),
+  jadi bila runtime tidak punya `DOMParser`, `osOrgSearch` selalu mengembalikan
+  `[]` — kini tercatat sebagai `empty`/`XML-RPC mengembalikan 0 baris` di
+  diagnostics, bukan tebakan. Pelacakan berikutnya harus memverifikasi apakah
+  Edge runtime menyediakan `DOMParser`; kalau tidak, parser XML perlu ditulis
+  manual. YIFY/SubtitleCat juga belum dipanggil dalam kondisi normal di produksi
+  (YIFY butuh `imdb_id`, SubtitleCat butuh `TMDB_API_KEY`), dan keduanya sekarang
+  menyebut alasannya.
+- Catatan ruang lingkup: singgahan `?lang=` di modal membuat chip bahasa dan
+  status provider tetap terlihat sinkron; tetapi bila `lang` diberikan, provider
+  yang mendukungnya akan mengembalikan hasil terfilter — diagnostik `empty`
+  harus dibaca bersama filter itu.

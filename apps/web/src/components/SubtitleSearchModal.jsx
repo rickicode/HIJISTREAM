@@ -26,6 +26,10 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
   const [downloadError, setDownloadError] = useState('');
   const [selectedLang, setSelectedLang] = useState('');
   const [providers, setProviders] = useState([]); // which providers found results
+  // One row per provider per search: which ones actually ran, and what they said
+  // when they returned nothing. Without this a silent provider failure is
+  // indistinguishable from "this title genuinely has no subtitles".
+  const [diagnostics, setDiagnostics] = useState([]);
 
   const handleSearch = useCallback(async (langFilter) => {
     if (!item) return;
@@ -39,6 +43,8 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
         tmdbId: item.id,
         lang: langFilter || '',
         imdbId: item.imdb_id || undefined,
+        title: item.title || undefined,
+        year: item.year || undefined,
       };
       if (item.type === 'tv') {
         if (season) params.season = season;
@@ -47,6 +53,7 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
       const data = await api.searchSubtitles(params);
       const list = data.results || [];
       setResults(list);
+      setDiagnostics(data.diagnostics || []);
       // Extract unique providers
       const provs = [...new Set(list.map(r => r.provider))];
       setProviders(provs);
@@ -65,6 +72,7 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
     setDownloadStatus({});
     setSelectedLang('');
     setProviders([]);
+    setDiagnostics([]);
     handleSearch();
   }, [open, item?.id, season, episode, handleSearch]);
 
@@ -106,6 +114,9 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
   const filtered = selectedLang ? results.filter(r => r.lang === selectedLang) : results;
   const uniqueLangs = [...new Set(results.map(r => r.lang))].sort();
   const isTV = item?.type === 'tv';
+  // Providers that refused the request or never ran. `skipped` is only worth
+  // showing when it is not the boring "not configured" case.
+  const failed = diagnostics.filter(d => d.status === 'error' || (d.status === 'skipped' && d.message !== 'belum dikonfigurasi'));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -182,6 +193,18 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
             <div className="flex flex-col items-center justify-center py-12">
               <Globe size={36} className="text-[#333] mb-3" />
               <p className="text-[#808080] text-sm">Tidak ada subtitle untuk bahasa ini</p>
+            </div>
+          )}
+
+          {!searching && failed.length > 0 && (
+            <div className="mb-3 px-3 py-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 space-y-1">
+              <p className="text-[10px] uppercase tracking-wide text-yellow-500/70 font-medium">Provider bermasalah</p>
+              {failed.map(d => (
+                <p key={d.provider} className="text-[11px] text-yellow-500/90">
+                  <span className="font-medium">{PROVIDER_LABELS[d.provider] || d.provider}</span>
+                  {': '}{d.message || (d.status === 'skipped' ? 'dilewati' : 'gagal')}
+                </p>
+              ))}
             </div>
           )}
 

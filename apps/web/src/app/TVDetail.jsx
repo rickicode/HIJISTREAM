@@ -326,7 +326,7 @@ export default function TVDetail() {
       <SubtitleSearchModal
         open={showSearchModal}
         onClose={() => setShowSearchModal(false)}
-        item={show ? { id: show.id, title: show.title, type: 'tv', imdb_id: show.imdb_id, number_of_seasons: show.number_of_seasons } : null}
+        item={show ? { id: show.id, title: show.title, type: 'tv', imdb_id: show.imdb_id, number_of_seasons: show.number_of_seasons, year: show.year } : null}
         season={currentSeason}
         episode={currentEpisode}
         onDownloaded={(sub) => {
@@ -366,7 +366,7 @@ export default function TVDetail() {
           episodes={seasonData?.episodes || []}
           onPlayEpisode={handlePlayEpisode}
           isLoading={seasonLoading}
-          item={show ? { id: show.id, title: show.title, type: 'tv', imdb_id: show.imdb_id, number_of_seasons: show.number_of_seasons } : null}
+          item={show ? { id: show.id, title: show.title, type: 'tv', imdb_id: show.imdb_id, number_of_seasons: show.number_of_seasons, year: show.year } : null}
         />
         {recommendedItems.length > 0 && (
           <div className="mt-10">

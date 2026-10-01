@@ -55,7 +55,7 @@ describe('searchSubtitlesFromProviders AI candidates', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('offers one EN→ID candidate per English result, encoding the source file', async () => {
-    const results = await searchSubtitlesFromProviders(
+    const { results } = await searchSubtitlesFromProviders(
       { ...AI_ENV, SUBDL_API_KEY: 'k' },
       'movie',
       550,
@@ -78,7 +78,7 @@ describe('searchSubtitlesFromProviders AI candidates', () => {
   });
 
   it('omits candidates when AI is unconfigured or disabled, keeping EN results', async () => {
-    const unconfigured = await searchSubtitlesFromProviders(
+    const { results: unconfigured } = await searchSubtitlesFromProviders(
       { SUBDL_API_KEY: 'k' },
       'movie',
       550,
@@ -86,7 +86,7 @@ describe('searchSubtitlesFromProviders AI candidates', () => {
     );
     expect(unconfigured.some(r => r.provider === 'ai_translate')).toBe(false);
 
-    const disabled = await searchSubtitlesFromProviders(
+    const { results: disabled } = await searchSubtitlesFromProviders(
       { ...AI_ENV, SUBDL_API_KEY: 'k', AI_TRANSLATE_ENABLED: 'false' },
       'movie',
       550,
@@ -111,7 +111,7 @@ describe('searchSubtitlesFromProviders AI candidate cap', () => {
       }
       return EMPTY_RESPONSE;
     }));
-    const results = await searchSubtitlesFromProviders(
+    const { results } = await searchSubtitlesFromProviders(
       { ...AI_ENV, SUBDL_API_KEY: 'k' },
       'movie',
       550,

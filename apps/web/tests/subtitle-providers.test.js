@@ -184,7 +184,7 @@ describe('Provider Throttling', () => {
 // ─── API Methods ──────────────────────────────────────────────────────────────
 
 describe('API subtitle methods', () => {
-  it('searchSubtitlesFromProviders returns array', async () => {
+  it('searchSubtitlesFromProviders returns results plus per-provider diagnostics', async () => {
     // Mock env with no credentials
     const env = {
       R2_ACCOUNT_ID: 'test',
@@ -194,8 +194,23 @@ describe('API subtitle methods', () => {
       R2_PUBLIC_URL: 'https://test.com',
       TMDB_API_KEY: 'test',
     };
-    const results = await searchSubtitlesFromProviders(env, 'movie', 27205, {});
+    const { results, diagnostics } = await searchSubtitlesFromProviders(env, 'movie', 27205, {});
     expect(Array.isArray(results)).toBe(true);
+    expect(results).toEqual([]);
+    // Every provider must account for itself: with no credentials configured
+    // each one reports `skipped`, never a silent absence from the list.
+    expect(diagnostics.length).toBeGreaterThan(0);
+    for (const row of diagnostics) {
+      expect(row).toHaveProperty('provider');
+      expect(['ok', 'empty', 'skipped', 'error']).toContain(row.status);
+      expect(typeof row.count).toBe('number');
+    }
+    expect(diagnostics.find(d => d.provider === 'opensubtitles_com')?.status).toBe('skipped');
+    expect(diagnostics.find(d => d.provider === 'subdl')?.status).toBe('skipped');
+    // YIFY is movie-capable but has no imdb_id here — it must say so rather
+    // than vanish.
+    expect(diagnostics.find(d => d.provider === 'yify')?.status).toBe('skipped');
+    expect(diagnostics.find(d => d.provider === 'yify')?.message).toBe('butuh imdb_id');
   });
 });
 

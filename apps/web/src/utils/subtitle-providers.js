@@ -559,6 +559,8 @@ export const DEFAULT_SCORES = {
   video_codec: 2,      // Video codec match
   hearing_impaired: 1, // Hearing impaired preference
   streaming_service: 0,// Streaming service match
+  language: 40,        // Requested language matches the subtitle language
+  preferred_source: 25,// Provider that already delivered this title (R2 metadata)
 };
 
 /**
@@ -593,7 +595,19 @@ export function computeScore(subtitle, video) {
       score += DEFAULT_SCORES.season + DEFAULT_SCORES.episode;
     }
   }
-  
+  // Requested-language match — the provider list is unfiltered when the user
+  // searches across all languages, so language is the strongest usable signal.
+  if (video.lang && subtitle.lang === video.lang) {
+    matches.add('language');
+    score += DEFAULT_SCORES.language;
+  }
+
+  // Provider preference for this title, remembered server-side in R2 metadata.
+  if (video.preferredProvider && subtitle.provider === video.preferredProvider) {
+    matches.add('preferred_source');
+    score += DEFAULT_SCORES.preferred_source;
+  }
+
   // Download count bonus (normalized)
   const dlBonus = Math.min(20, Math.floor((subtitle.downloadCount || 0) / 100));
   score += dlBonus;

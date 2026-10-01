@@ -163,12 +163,15 @@ const api = {
   /**
    * Search subtitles from all providers without downloading.
    */
-  searchSubtitles({ type, tmdbId, lang = '', season, episode, imdbId }) {
+  searchSubtitles({ type, tmdbId, lang = '', season, episode, imdbId, title, year }) {
     const params = new URLSearchParams({ type, tmdb_id: String(tmdbId) });
     if (lang) params.set('lang', lang);
     if (season !== undefined) params.set('season', String(season));
     if (episode !== undefined) params.set('episode', String(episode));
     if (imdbId) params.set('imdb_id', imdbId);
+    // title/year drive release-name scoring in the backend; optional.
+    if (title) params.set('title', title);
+    if (year) params.set('year', String(year));
     return fetch(`${BASE_URL}/subtitles/search?${params}`, {
       headers: { 'Cache-Control': 'no-store' },
     }).then(res => {

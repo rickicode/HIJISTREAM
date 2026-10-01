@@ -246,7 +246,7 @@ export default function MovieDetail() {
       <SubtitleSearchModal
         open={showSearchModal}
         onClose={() => setShowSearchModal(false)}
-        item={movie ? { id: movie.id, title: movie.title, type: 'movie', imdb_id: movie.imdb_id } : null}
+        item={movie ? { id: movie.id, title: movie.title, type: 'movie', imdb_id: movie.imdb_id, year: movie.year } : null}
         onDownloaded={(sub) => {
           // Refresh subtitle list; a manual download also clears an earlier
           // provider failure, so the panel stops showing the error state.

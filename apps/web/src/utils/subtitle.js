@@ -12,6 +12,9 @@
 
 import { unzipSync, strFromU8 } from 'fflate';
 import { translateSrtToIndonesian } from './ai-translate.js';
+// subtitle-providers.js is a leaf (no imports) — pulling rankSubtitles here
+// creates no cycle and keeps scoring in one place.
+import { rankSubtitles } from './subtitle-providers.js';
 
 // ─── Language maps ────────────────────────────────────────────────────────────
 
@@ -297,7 +300,12 @@ async function osComLogin(creds) {
   });
   if (!res.ok) return null;
   const data = await res.json();
-  return data.token || null;
+  if (!data.token) return null;
+  // Free-tier quota lives on the login payload (`user.allowed_downloads`);
+  // surface it in logs so operators see the budget before downloads start failing.
+  const quota = typeof data.user?.allowed_downloads === 'number' ? data.user.allowed_downloads : null;
+  if (quota !== null) console.log(`[Subtitle] OS.com kuota: ${quota} unduhan tersisa`);
+  return { token: data.token, quota };
 }
 
 async function osComSearch(creds, token, tmdbId, type, lang, season, episode) {
@@ -331,10 +339,10 @@ async function osComDownload(creds, token, fileId) {
 
 async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId) {
   if (!creds.apiKey || !creds.username || !creds.password) return null;
-  const token = await osComLogin(creds);
-  if (!token) return null;
+  const login = await osComLogin(creds);
+  if (!login) return null;
 
-  let subs = await osComSearch(creds, token, tmdbId, type, lang, season, episode);
+  let subs = await osComSearch(creds, login.token, tmdbId, type, lang, season, episode);
 
   // Fallback: search by IMDB ID
   if (!subs.length && imdbId) {
@@ -342,7 +350,7 @@ async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId
     if (season !== undefined) params.set('season_number', String(season));
     if (episode !== undefined) params.set('episode_number', String(episode));
     const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
-      headers: { 'Api-Key': creds.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+      headers: { 'Api-Key': creds.apiKey, Authorization: `Bearer ${login.token}`, 'User-Agent': 'HIJISTREAM/1.0' },
     });
     if (res.ok) subs = (await res.json()).data || [];
   }
@@ -351,7 +359,7 @@ async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId
   const best = subs.sort((a, b) => (b.attributes?.download_count || 0) - (a.attributes?.download_count || 0))[0];
   const fileId = best?.attributes?.files?.[0]?.file_id;
   if (!fileId) return null;
-  const content = await osComDownload(creds, token, fileId);
+  const content = await osComDownload(creds, login.token, fileId);
   return content ? { content, source: 'opensubtitles_com' } : null;
 }
 
@@ -919,68 +927,113 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
 // ─── Provider: Search (no download) ──────────────────────────────────────────
 
 /**
+ * Which provider already delivered this exact title, per the R2 metadata index.
+ * Mirrors hijitv's `active_*.txt` marker: a title's own history beats a global
+ * provider priority. Returns null when nothing is remembered.
+ */
+async function preferredProviderFor(env, { type, tmdbId, season, episode, lang }) {
+  try {
+    const { subtitles } = await readMetadata(env);
+    const sameTitle = (subtitles || []).filter(s =>
+      s.type === type
+      && String(s.tmdbId) === String(tmdbId)
+      && (type !== 'tv' || ((s.season ?? null) === (season ?? null) && (s.episode ?? null) === (episode ?? null)))
+    );
+    if (!sameTitle.length) return null;
+    const exactLang = lang ? sameTitle.filter(s => s.lang === lang) : [];
+    const pool = exactLang.length ? exactLang : sameTitle;
+    pool.sort((a, b) => String(b.downloadedAt || '').localeCompare(String(a.downloadedAt || '')));
+    const source = pool[0]?.source || '';
+    if (!source || source === 'manual' || source === 'upload') return null;
+    // AI tracks are stored as `ai-translate:<source>`; the searchable provider is the source.
+    return source.startsWith('ai-translate:') ? 'ai_translate' : source;
+  } catch { return null; }
+}
+
+/**
  * Search subtitles from all providers without downloading.
- * Returns merged results sorted by download count.
+ *
+ * Returns { results, diagnostics }: results ranked by weighted score
+ * (title / year / language / preferred provider / download count), plus one row
+ * per provider saying whether it ran and what it returned. Silent provider
+ * failure was why a bare "0 results" used to be unexplainable in the UI.
  */
 export async function searchSubtitlesFromProviders(env, type, tmdbId, options = {}) {
-  const { season, episode, imdbId, lang } = options;
+  const { season, episode, imdbId, lang, title, year } = options;
   const creds = await resolveProviderCredentials(env);
   const results = [];
+  const diagnostics = [];
+  /** Record one provider outcome; console mirrors it so logs and API agree. */
+  const record = (provider, status, count, message = null) => {
+    diagnostics.push({ provider, status, count: count || 0, message });
+    if (status === 'error') console.error(`[Subtitle] ${provider} search failed: ${message}`);
+    else console.log(`[Subtitle] ${provider} search: ${status} (${count || 0} hasil)${message ? ` — ${message}` : ''}`);
+  };
 
   // 1. OpenSubtitles.com — search without language filter (returns all langs)
-  try {
-    if (creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password) {
-      const token = await osComLogin(creds.opensubtitles_com);
-      if (token) {
-        try {
-          const params = new URLSearchParams({ tmdb_id: String(tmdbId), type: type === 'tv' ? 'episode' : 'movie' });
-          if (lang) params.set('languages', LANG_MAP[lang] || lang);
-          if (season !== undefined) params.set('season_number', String(season));
-          if (episode !== undefined) params.set('episode_number', String(episode));
-          let subs = [];
-          const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
-            headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+  if (creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password) {
+    const login = await osComLogin(creds.opensubtitles_com);
+    if (!login) {
+      record('opensubtitles_com', 'error', 0, 'login gagal (cek API key / username / password)');
+    } else {
+      let count = 0;
+      try {
+        const params = new URLSearchParams({ tmdb_id: String(tmdbId), type: type === 'tv' ? 'episode' : 'movie' });
+        if (lang) params.set('languages', LANG_MAP[lang] || lang);
+        if (season !== undefined) params.set('season_number', String(season));
+        if (episode !== undefined) params.set('episode_number', String(episode));
+        let subs = [];
+        const res = await fetch(`${OS_COM_BASE}/subtitles?${params}`, {
+          headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${login.token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+        });
+        if (res.ok) subs = (await res.json()).data || [];
+        else console.error(`[Subtitle] opensubtitles_com search: ${await readApiError(res, 'HTTP gagal')}`);
+        // Fallback: search by IMDB ID
+        if (!subs.length && imdbId) {
+          const p2 = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie' });
+          if (lang) p2.set('languages', LANG_MAP[lang] || lang);
+          if (season !== undefined) p2.set('season_number', String(season));
+          if (episode !== undefined) p2.set('episode_number', String(episode));
+          const r2 = await fetch(`${OS_COM_BASE}/subtitles?${p2}`, {
+            headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${login.token}`, 'User-Agent': 'HIJISTREAM/1.0' },
           });
-          if (res.ok) subs = (await res.json()).data || [];
-          // Fallback: search by IMDB ID
-          if (!subs.length && imdbId) {
-            const p2 = new URLSearchParams({ imdb_id: imdbId.replace(/^tt/, ''), type: type === 'tv' ? 'episode' : 'movie' });
-            if (lang) p2.set('languages', LANG_MAP[lang] || lang);
-            if (season !== undefined) p2.set('season_number', String(season));
-            if (episode !== undefined) p2.set('episode_number', String(episode));
-            const r2 = await fetch(`${OS_COM_BASE}/subtitles?${p2}`, {
-              headers: { 'Api-Key': creds.opensubtitles_com.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
-            });
-            if (r2.ok) subs = (await r2.json()).data || [];
-          }
-          for (const s of subs.slice(0, 15)) {
-            const attr = s.attributes || {};
-            const file = attr.files?.[0] || {};
-            const subLang = normalizeLang(lang) || normalizeLang(attr.language) || normalizeLang(file.language) || detectLangFromFilename(file.file_name) || 'en';
-            results.push({
-              provider: 'opensubtitles_com',
-              lang: subLang,
-              langName: LANG_NAMES[subLang] || subLang,
-              title: attr.release || file.file_name || '',
-              downloadCount: attr.download_count || 0,
-              rating: attr.ratings || 0,
-              format: file.format || 'srt',
-              size: file.file_size || 0,
-              fileId: file.file_id,
-              fps: file.fps || null,
-              hearingImpaired: file.hearing_impaired || false,
-            });
-          }
-        } catch { /* skip */ }
-      }
+          if (r2.ok) subs = (await r2.json()).data || [];
+        }
+        for (const s of subs.slice(0, 15)) {
+          const attr = s.attributes || {};
+          const file = attr.files?.[0] || {};
+          const subLang = normalizeLang(lang) || normalizeLang(attr.language) || normalizeLang(file.language) || detectLangFromFilename(file.file_name) || 'en';
+          results.push({
+            provider: 'opensubtitles_com',
+            lang: subLang,
+            langName: LANG_NAMES[subLang] || subLang,
+            title: attr.release || file.file_name || '',
+            downloadCount: attr.download_count || 0,
+            rating: attr.ratings || 0,
+            format: file.format || 'srt',
+            size: file.file_size || 0,
+            fileId: file.file_id,
+            fps: file.fps || null,
+            hearingImpaired: file.hearing_impaired || false,
+          });
+          count++;
+        }
+        record('opensubtitles_com', count > 0 ? 'ok' : 'empty', count,
+          login.quota !== null ? `kuota unduhan tersisa ${login.quota}` : null);
+      } catch (err) { record('opensubtitles_com', 'error', count, err.message); }
     }
-  } catch { /* skip provider */ }
+  } else {
+    record('opensubtitles_com', 'skipped', 0, 'belum dikonfigurasi');
+  }
 
   // 2. OpenSubtitles.org — search top 3 languages (API requires sublanguageid)
-  try {
-    if (creds.opensubtitles_org.username && creds.opensubtitles_org.password) {
+  if (creds.opensubtitles_org.username && creds.opensubtitles_org.password) {
+    let count = 0;
+    try {
       const token = await osOrgLogin(creds.opensubtitles_org);
-      if (token) {
+      if (!token) {
+        record('opensubtitles_org', 'error', 0, 'login XML-RPC gagal (status bukan 200)');
+      } else {
         const searchLangs = lang ? [lang] : ['id', 'en', 'ja'];
         for (const l of searchLangs) {
           try {
@@ -999,52 +1052,62 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
                 fps: s.FPS || null,
                 hearingImpaired: s.HearingImpaired === '1',
               });
+              count++;
             }
-          } catch { /* skip lang */ }
+          } catch (err) { record('opensubtitles_org', 'error', count, `${l}: ${err.message}`); }
         }
+        record('opensubtitles_org', count > 0 ? 'ok' : 'empty', count, count > 0 ? null : 'XML-RPC mengembalikan 0 baris');
         xmlRpcRequest(xmlRpcCall('LogOut', [token])).catch(() => {});
       }
-    }
-  } catch { /* skip provider */ }
+    } catch (err) { record('opensubtitles_org', 'error', count, err.message); }
+  } else {
+    record('opensubtitles_org', 'skipped', 0, 'belum dikonfigurasi');
+  }
 
   // 3. Subdl — search without language filter (returns all langs)
-  try {
-    if (creds.subdl.apiKey) {
-      try {
-        const params = new URLSearchParams({ api_key: creds.subdl.apiKey, tmdb_id: String(tmdbId), type });
-        if (lang) params.set('languages', lang.toUpperCase());
-        if (type === 'tv') {
-          if (season !== undefined) params.set('season_number', String(season));
-          if (episode !== undefined) params.set('episode_number', String(episode));
+  if (creds.subdl.apiKey) {
+    let count = 0;
+    try {
+      const params = new URLSearchParams({ api_key: creds.subdl.apiKey, tmdb_id: String(tmdbId), type });
+      if (lang) params.set('languages', lang.toUpperCase());
+      if (type === 'tv') {
+        if (season !== undefined) params.set('season_number', String(season));
+        if (episode !== undefined) params.set('episode_number', String(episode));
+      }
+      const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+      if (!res.ok) {
+        record('subdl', 'error', 0, await readApiError(res, 'pencarian gagal'));
+      } else {
+        const data = await res.json();
+        const subs = data.subtitles || [];
+        for (const s of subs.slice(0, 15)) {
+          const subLang = normalizeLang(s.lang || s.language) || detectLangFromFilename(s.release_name) || 'en';
+          results.push({
+            provider: 'subdl',
+            lang: subLang,
+            langName: LANG_NAMES[subLang] || subLang,
+            title: s.release_name || '',
+            downloadCount: s.download_count || 0,
+            rating: 0,
+            format: s.format || 'srt',
+            size: 0,
+            fileId: s.url || null,
+            fps: null,
+            hearingImpaired: false,
+          });
+          count++;
         }
-        const res = await fetch(`${SUBDL_BASE}/subtitles?${params}`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
-        if (res.ok) {
-          const data = await res.json();
-          const subs = data.subtitles || [];
-          for (const s of subs.slice(0, 15)) {
-            const subLang = normalizeLang(s.lang || s.language) || detectLangFromFilename(s.release_name) || 'en';
-            results.push({
-              provider: 'subdl',
-              lang: subLang,
-              langName: LANG_NAMES[subLang] || subLang,
-              title: s.release_name || '',
-              downloadCount: s.download_count || 0,
-              rating: 0,
-              format: s.format || 'srt',
-              size: 0,
-              fileId: s.url || null,
-              fps: null,
-              hearingImpaired: false,
-            });
-          }
-        }
-      } catch { /* skip */ }
-    }
-  } catch { /* skip provider */ }
+        record('subdl', count > 0 ? 'ok' : 'empty', count);
+      }
+    } catch (err) { record('subdl', 'error', count, err.message); }
+  } else {
+    record('subdl', 'skipped', 0, 'belum dikonfigurasi');
+  }
 
-
-  // 5. YIFY (Free, Movie only, by IMDB ID)
-  if (type === 'movie' && imdbId) {
+  // 4. YIFY (free, movie-only, IMDB keyed)
+  if (type !== 'movie' || !imdbId) {
+    record('yify', 'skipped', 0, type !== 'movie' ? 'hanya untuk movie' : 'butuh imdb_id');
+  } else {
     try {
       const yifySubs = await fetchFromYify(tmdbId, type, lang || 'en', imdbId);
       if (yifySubs) {
@@ -1052,7 +1115,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
           provider: 'yify',
           lang: lang || 'en',
           langName: LANG_NAMES[lang || 'en'] || (lang || 'en'),
-          title: `${options.title || tmdbId} (YIFY)`,
+          title: `${title || tmdbId} (YIFY)`,
           downloadCount: 0,
           rating: 0,
           format: 'srt',
@@ -1061,50 +1124,76 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
           fps: null,
           hearingImpaired: false,
         });
+        record('yify', 'ok', 1);
+      } else {
+        record('yify', 'empty', 0);
       }
-    } catch { /* skip */ }
+    } catch (err) {
+      record('yify', 'error', 0, err.message);
+      console.error(`[Subtitle] yify search error:`, err.message);
+    }
   }
 
-  // 6. SubtitleCat (Free, Movie & TV)
-  try {
-    let catTitle = '';
+  // 5. SubtitleCat (free, movie & TV, needs a TMDB title lookup)
+  {
     const tmdbKey = env.TMDB_API_KEY;
-    if (tmdbKey) {
-      const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
-      const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
-      if (tRes.ok) {
-        const d = await tRes.json();
-        catTitle = d.title || d.name || '';
-      }
+    if (!tmdbKey) {
+      record('subtitlecat', 'skipped', 0, 'TMDB_API_KEY belum diisi');
+    } else {
+      try {
+        const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+        const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        const catTitle = tRes.ok ? ((await tRes.json()).title || (await tRes.json()).name || '') : '';
+        if (!catTitle) {
+          record('subtitlecat', 'error', 0, 'judul TMDB tidak ditemukan');
+        } else {
+          const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
+          if (catSub) {
+            results.push({
+              provider: 'subtitlecat',
+              lang: lang || 'id',
+              langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
+              title: `${catTitle} (SubtitleCat)`,
+              downloadCount: 0,
+              rating: 0,
+              format: 'srt',
+              size: 0,
+              fileId: 'direct',
+              fps: null,
+              hearingImpaired: false,
+            });
+            record('subtitlecat', 'ok', 1);
+          } else {
+            record('subtitlecat', 'empty', 0);
+          }
+        }
+      } catch (err) { record('subtitlecat', 'error', 0, err.message); }
     }
-    if (catTitle) {
-      const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
-      if (catSub) {
-        results.push({
-          provider: 'subtitlecat',
-          lang: lang || 'id',
-          langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
-          title: `${catTitle} (SubtitleCat)`,
-          downloadCount: 0,
-          rating: 0,
-          format: 'srt',
-          size: 0,
-          fileId: 'direct',
-          fps: null,
-          hearingImpaired: false,
-        });
-      }
-    }
-  } catch { /* skip */ }
-  // Sort by download count descending
-  results.sort((a, b) => b.downloadCount - a.downloadCount);
+  }
+
+  // Rank what the providers returned: weighted score (title, year, language,
+  // preferred provider, download count) instead of a raw download-count sort.
+  // Scoring fields stay inside this scope — the API contract is unchanged.
+  const preferredProvider = await preferredProviderFor(env, { type, tmdbId, season, episode, lang });
+  const scorable = {
+    type,
+    title: title || '',
+    year,
+    season: season ?? null,
+    episode: episode ?? null,
+    lang: lang ?? null,
+    preferredProvider,
+  };
+  const ranked = rankSubtitles(results, scorable).map(({ score: _score, matches: _matches, ...sub }) => sub);
+  results.length = 0;
+  results.push(...ranked);
 
   // AI translation candidates (parity with hijitv HandleSubtitleSearch): every
   // English result also offers an "EN -> ID via AI" option. Only offered when a
   // concrete EN source file exists in this result set and AI is configured —
   // no fake candidates for a source we cannot actually translate.
   if (aiTranslateEnabled(creds)) {
-    const enResults = results.filter(r => r.lang === 'en' && r.provider !== 'ai_translate').slice(0, 5);
+    const enResults = ranked.filter(r => r.lang === 'en' && r.provider !== 'ai_translate' && r.fileId).slice(0, 5);
     for (const en of enResults) {
       results.push({
         provider: 'ai_translate',
@@ -1123,7 +1212,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
       });
     }
   }
-  return results;
+  return { results, diagnostics };
 }
 
 // ─── AI translation wiring ──────────────────────────────────────────────────
@@ -1158,9 +1247,9 @@ export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmd
   let result = null;
 
   if (provider === 'opensubtitles_com' && fileId) {
-    const token = await osComLogin(creds.opensubtitles_com);
-    if (!token) throw new Error('Login OpenSubtitles.com gagal (cek API key / username / password)');
-    const content = await osComDownload(creds.opensubtitles_com, token, fileId);
+    const login = await osComLogin(creds.opensubtitles_com);
+    if (!login) throw new Error('Login OpenSubtitles.com gagal (cek API key / username / password)');
+    const content = await osComDownload(creds.opensubtitles_com, login.token, fileId);
     if (content) result = { content, source: 'opensubtitles_com' };
   } else if (provider === 'opensubtitles_org' && fileId) {
     const vttLink = fileId.replace('/download/', '/download/subformat-vtt/subencoding-utf8/');
@@ -1190,6 +1279,23 @@ export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmd
 }
 
 /**
+ * fetchSubtitleFromProvider + failure bookkeeping: provider refusals that
+ * carry a reason (OpenSubtitles.com quota notice, HTTP 429/406) are recorded
+ * in the admin error log — otherwise the reason dies with the HTTP response.
+ */
+async function fetchProviderTracked(env, provider, fileId, type, tmdbId, lang, options) {
+  try {
+    return await fetchSubtitleFromProvider(env, provider, fileId, type, tmdbId, lang, options);
+  } catch (err) {
+    if (/quota|allowed|429|406/i.test(String(err.message))) {
+      console.error(`[Subtitle] ${provider} menolak unduhan: ${err.message}`);
+      await appendErrorLog(env, { type: 'quota', provider, lang, message: err.message });
+    }
+    throw err;
+  }
+}
+
+/**
  * Download a specific subtitle by provider + fileId, convert to VTT, and cache it
  * in R2. Used after the user picks a search result.
  *
@@ -1209,7 +1315,7 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
       console.error('[Subtitle] AI translate requested but not configured');
       return null;
     }
-    const src = await fetchSubtitleFromProvider(env, srcProvider, srcFileId, type, tmdbId, 'en', { season, episode, imdbId, title });
+    const src = await fetchProviderTracked(env, srcProvider, srcFileId, type, tmdbId, 'en', { season, episode, imdbId, title });
     if (!src?.content) return null;
     const srcVtt = src.alreadyVtt ? src.content : srtToVtt(src.content);
     if (!srcVtt?.includes('-->')) return null;
@@ -1217,7 +1323,7 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
     if (!translated?.includes('-->')) return null;
     result = { content: translated, source: `ai-translate:${srcProvider}`, alreadyVtt: true };
   } else {
-    result = await fetchSubtitleFromProvider(env, provider, fileId, type, tmdbId, lang, { season, episode, imdbId, title });
+    result = await fetchProviderTracked(env, provider, fileId, type, tmdbId, lang, { season, episode, imdbId, title });
   }
 
   if (!result) return null;

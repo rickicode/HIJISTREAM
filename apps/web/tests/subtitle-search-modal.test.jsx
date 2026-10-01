@@ -55,4 +55,25 @@ describe('SubtitleSearchModal', () => {
     ).toBeTruthy();
     expect(await screen.findByText('Gagal')).toBeTruthy();
   });
+
+  it('shows a provider-problems strip for failures/odd skips, not for unconfigured ones', async () => {
+    vi.spyOn(api, 'searchSubtitles').mockResolvedValue({
+      results: [],
+      diagnostics: [
+        { provider: 'opensubtitles_com', status: 'error', count: 0, message: 'login gagal (cek API key / username / password)' },
+        { provider: 'subdl', status: 'skipped', count: 0, message: 'belum dikonfigurasi' },
+        { provider: 'subtitlecat', status: 'empty', count: 0, message: null },
+      ],
+    });
+
+    render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
+
+    // The failure is named: provider + the server's reason, under a heading.
+    expect(await screen.findByText('Provider bermasalah')).toBeTruthy();
+    expect(screen.getByText('OS.com')).toBeTruthy();
+    expect(screen.getByText(/login gagal \(cek API key/)).toBeTruthy();
+    // An unconfigured provider is boring configuration state, not a "problem"
+    // the user needs to see, and a plain empty result needs no explanation.
+    expect(screen.queryByText(/belum dikonfigurasi/)).toBeNull();
+  });
 });

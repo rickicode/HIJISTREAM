@@ -425,6 +425,9 @@ export default async function middleware(request) {
       const season = url.searchParams.get('season');
       const episode = url.searchParams.get('episode');
       const imdbId = url.searchParams.get('imdb_id');
+      // title/year feed the ranked scoring (release-name match), optional.
+      const title = url.searchParams.get('title');
+      const year = url.searchParams.get('year');
       if (!type || !tmdbId) {
         return new Response(JSON.stringify({ error: 'Missing required params: type, tmdb_id', results: [] }), {
           status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -443,8 +446,10 @@ export default async function middleware(request) {
         if (episode) opts.episode = Number(episode);
         if (imdbId) opts.imdbId = imdbId;
         if (lang) opts.lang = lang;
-        const results = await searchSubtitlesFromProviders(process.env, type, tmdbId, opts);
-        return new Response(JSON.stringify({ results, total: results.length }), {
+        if (title) opts.title = title;
+        if (year) opts.year = Number(year);
+        const { results, diagnostics } = await searchSubtitlesFromProviders(process.env, type, tmdbId, opts);
+        return new Response(JSON.stringify({ results, total: results.length, diagnostics }), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
         });
       } catch (err) {

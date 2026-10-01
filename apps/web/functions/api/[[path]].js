@@ -391,6 +391,9 @@ export async function onRequest(context) {
       const season = url.searchParams.get('season');
       const episode = url.searchParams.get('episode');
       const imdbId = url.searchParams.get('imdb_id');
+      // title/year feed the ranked scoring (release-name match), optional.
+      const title = url.searchParams.get('title');
+      const year = url.searchParams.get('year');
       if (!type || !tmdbId) return jsonRes({ error: 'Missing type, tmdb_id', results: [] }, 400);
       const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
       if (r2Vars.some(v => !env[v])) return jsonRes({ error: 'R2 not configured', results: [] }, 503);
@@ -399,8 +402,10 @@ export async function onRequest(context) {
       if (episode) opts.episode = Number(episode);
       if (imdbId) opts.imdbId = imdbId;
       if (lang) opts.lang = lang;
-      const results = await searchSubtitlesFromProviders(env, type, tmdbId, opts);
-      return jsonRes({ results, total: results.length });
+      if (title) opts.title = title;
+      if (year) opts.year = Number(year);
+      const { results, diagnostics } = await searchSubtitlesFromProviders(env, type, tmdbId, opts);
+      return jsonRes({ results, total: results.length, diagnostics });
     }
     else if (pathname === '/metrics/visit' && method === 'POST') {
       const body = await context.request.json().catch(() => ({}));
