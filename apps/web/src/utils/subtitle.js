@@ -16,6 +16,9 @@ import { translateSrtToIndonesian } from './ai-translate.js';
 // subtitle-providers.js is a leaf (no imports) — pulling rankSubtitles here
 // creates no cycle and keeps scoring in one place.
 import { rankSubtitles } from './subtitle-providers.js';
+// Language display names live in one place; subtitle-constants.js imports
+// nothing, so pulling LANG_LABELS here cannot create a cycle.
+import { LANG_LABELS } from './subtitle-constants.js';
 
 // ─── Language maps ────────────────────────────────────────────────────────────
 
@@ -23,7 +26,7 @@ import { rankSubtitles } from './subtitle-providers.js';
 const LANG_MAP = { id: 'id', en: 'en', es: 'es', pt: 'pt', hi: 'hi', ja: 'ja', ko: 'ko' };
 // app locale → ISO 639-2 (Subdl / legacy provider codes)
 const LANG_MAP_3 = { id: 'ind', en: 'eng', es: 'spa', pt: 'por', hi: 'hin', ja: 'jpn', ko: 'kor' };
-const LANG_NAMES = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
+const LANG_NAMES = LANG_LABELS;
 
 /**
  * Language vocabularies differ per provider: OpenSubtitles.com answers ISO
@@ -67,6 +70,10 @@ function normalizeLang(raw) {
   if (LANG_MAP[s]) return s;
   // Provider language names
   if (LANG_NAME_TO_CODE[bare]) return LANG_NAME_TO_CODE[bare];
+  // Qualifiers arrive loose as well as parenthesised: "Chinese Traditional",
+  // "Portuguese Brazil". The leading word carries the language.
+  const head = bare.split(/\s+/)[0];
+  if (LANG_NAME_TO_CODE[head]) return LANG_NAME_TO_CODE[head];
   // Subdl's legacy archive tags some rows with two letters that are not ISO
   // 639-1 (Chinese ships as CH, Turkish as TU, Albanian as AL), and those
   // reached the picker as unmapped chips. Its own catalogue lists them under

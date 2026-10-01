@@ -193,6 +193,43 @@ const EMPTY_ENV = {
 };
 
 describe('API subtitle methods', () => {
+  it('resolves the language vocabulary each provider actually sends', async () => {
+    // Subdl answers ISO codes for its own uploads but plain English names for
+    // its Subscene legacy archive. Truncating a name to two characters produced
+    // fake codes (tu, ch, al) that reached the picker as unmapped chips and
+    // split one language across two filter entries.
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).includes('api.subdl.com')) {
+        return {
+          ok: true,
+          json: async () => ({
+            subtitles: [
+              { lang: 'Chinese Traditional', release_name: 'A.2026.1080p', url: '/dl/1.zip' },
+              { lang: 'CH', release_name: 'B.2026.1080p', url: '/dl/2.zip' },
+              { lang: 'Turkish', release_name: 'C.2026.1080p', url: '/dl/3.zip' },
+              { lang: 'Albanian', release_name: 'D.2026.1080p', url: '/dl/4.zip' },
+              { lang: 'zh-cn', release_name: 'E.2026.1080p', url: '/dl/5.zip' },
+            ],
+          }),
+          text: async () => '',
+        };
+      }
+      return { ok: false, json: async () => ({}), text: async () => '' };
+    }));
+    try {
+      const { results } = await searchSubtitlesFromProviders(
+        { ...EMPTY_ENV, SUBDL_API_KEY: 'k' }, 'movie', 27205, {},
+      );
+      const subdl = results.filter(r => r.provider === 'subdl');
+      expect(subdl.map(r => r.lang)).toEqual(['zh', 'zh', 'tr', 'sq', 'zh']);
+      // The label follows the resolved code, so two spellings of one language
+      // no longer appear as two different languages.
+      expect(new Set(subdl.map(r => r.langName))).toEqual(new Set(['Chinese', 'Turkish', 'Albanian']));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('searchSubtitlesFromProviders returns results plus per-provider diagnostics', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}), text: async () => '' })));
     try {
