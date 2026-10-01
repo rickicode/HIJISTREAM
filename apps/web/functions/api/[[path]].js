@@ -248,9 +248,6 @@ async function handleAdmin(pathname, method, env, request) {
         const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
         return jsonRes({ success: r.ok, message: r.ok ? 'API Key Subdl valid!' : `Tidak valid (${r.status})` });
       }
-      if (provider === 'podnapisi') {
-        return jsonRes({ success: true, message: 'Podnapisi aktif! (Free, tanpa API key)' });
-      }
       if (provider === 'yify') {
         return jsonRes({ success: true, message: 'YIFY aktif! (Free, tanpa API key)' });
       }
@@ -431,14 +428,20 @@ export async function onRequest(context) {
       if (!provider || !file_id || !type || !tmdb_id || !lang) return jsonRes({ error: 'provider, file_id, type, tmdb_id, lang required' }, 400);
       const r2Vars = ['R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET_NAME', 'R2_PUBLIC_URL'];
       if (r2Vars.some(v => !env[v])) return jsonRes({ error: 'R2 not configured' }, 503);
-      const sub = await downloadSubtitleByProvider(env, provider, file_id, type, String(tmdb_id), lang, {
-        season: season ? Number(season) : undefined,
-        episode: episode ? Number(episode) : undefined,
-        imdbId: imdb_id || undefined,
-        title: title || undefined,
-      });
-      if (!sub) return jsonRes({ error: 'Download failed' }, 500);
-      return jsonRes({ success: true, subtitle: sub });
+      // Mirror middleware.js: a provider refusal must surface its own reason
+      // (quota notice, HTTP status), not a generic 500.
+      try {
+        const sub = await downloadSubtitleByProvider(env, provider, file_id, type, String(tmdb_id), lang, {
+          season: season ? Number(season) : undefined,
+          episode: episode ? Number(episode) : undefined,
+          imdbId: imdb_id || undefined,
+          title: title || undefined,
+        });
+        if (!sub) return jsonRes({ error: 'Provider tidak mengembalikan subtitle untuk judul/bahasa ini' }, 404);
+        return jsonRes({ success: true, subtitle: sub });
+      } catch (err) {
+        return jsonRes({ error: err.message }, 500);
+      }
     }
     else if (pathname.startsWith('/admin/')) {
       const authErr = checkAdminAuth(env, context.request);

@@ -13,7 +13,7 @@ import SubtitlePicker from '../components/SubtitlePicker';
 import SubtitleSearchModal from '../components/SubtitleSearchModal';
 import { getTVEmbedUrl, loadWatchProgress } from '../utils/player';
 import { getCurrentLanguage } from '../utils/language';
-import { Search, Globe } from 'lucide-react';
+import { Search, Globe, Loader } from 'lucide-react';
 
 const LANG_FLAGS = { id: '🇮🇩', en: '🇺🇸', es: '🇪🇸', pt: '🇧🇷', hi: '🇮🇳', ja: '🇯🇵', ko: '🇰🇷' };
 
@@ -33,9 +33,17 @@ export default function TVDetail() {
   const [availableSubtitles, setAvailableSubtitles] = useState([]);
   const [selectedSubtitle, setSelectedSubtitle] = useState(null);
   const [snapshotEmbedUrl, setSnapshotEmbedUrl] = useState(null);
+  // Fetch lifecycle for the subtitle list: loading → ok | error.
+  const [subtitleStatus, setSubtitleStatus] = useState('loading');
   const [showSearchModal, setShowSearchModal] = useState(false);
   const { t } = useTranslation();
   const [_langVersion, setLangVersion] = useState(0);
+  // Player handed non-null, final subtitle: set on user play or on the
+  // post-fetch autoplay re-capture, so it never overrides a user's choice.
+  const subtitlePinned = useRef(false);
+  // Distinguishes "play pressed" from "autoplay merely started": only the
+  // former should stop autoplay from waiting for the subtitle fetch.
+  const playPressed = useRef(false);
   const autoplayCaptured = useRef(false);
 
   useEffect(() => {
@@ -77,6 +85,7 @@ export default function TVDetail() {
     if (!show) return;
     const currentLang = getCurrentLanguage();
     const otherLangs = ALL_SUBTITLE_LANGS.split(',').filter(l => l !== currentLang);
+    setSubtitleStatus('loading');
 
     // Priority: fetch user language immediately
     api.getSubtitles({
@@ -92,6 +101,7 @@ export default function TVDetail() {
       const match = list.find((s) => s.lang === currentLang);
       if (match) setSelectedSubtitle(match);
       else if (list.length > 0) setSelectedSubtitle(list[0]);
+      setSubtitleStatus('ok');
 
       // Deferred: fetch remaining languages in background
       if (otherLangs.length > 0) {
@@ -120,6 +130,7 @@ export default function TVDetail() {
       console.error('[Subtitle] Failed to fetch:', err);
       setAvailableSubtitles([]);
       setSelectedSubtitle(null);
+      setSubtitleStatus('error');
     });
   }, [show?.id, currentSeason, currentEpisode, _langVersion]);
 
@@ -136,14 +147,27 @@ export default function TVDetail() {
     setSnapshotEmbedUrl(getTVEmbedUrl(tvId, s, e, resumeAt, opts));
   }, [tvId, resumeAt, currentSeason, currentEpisode]);
 
-  // Autoplay: capture once with whatever subtitle is available at mount time
+  // Autoplay: wait for the first subtitle fetch to settle so the deep-linked
+  // playback starts with the user's language instead of a subtitle-less URL.
   useEffect(() => {
-    if (autoplay && !autoplayCaptured.current) {
-      autoplayCaptured.current = true;
-      captureEmbedUrl(selectedSubtitle);
-      setIsPlaying(true);
-    }
-  }, [autoplay, captureEmbedUrl]);
+    if (!autoplay || autoplayCaptured.current) return;
+    if (subtitlePinned.current) return; // user already played with their own choice
+    if (!playPressed.current && subtitleStatus === 'loading') return;
+    autoplayCaptured.current = true;
+    if (selectedSubtitle) subtitlePinned.current = true;
+    captureEmbedUrl(selectedSubtitle);
+    setIsPlaying(true);
+  }, [autoplay, subtitleStatus, selectedSubtitle, captureEmbedUrl]);
+
+  // The autoplay path may start the player with no subtitle; when the list
+  // finally arrives and the user has not touched anything, re-capture once so
+  // playback picks up the subtitle that is now available.
+  useEffect(() => {
+    if (!autoplay || !isPlaying || subtitlePinned.current || playPressed.current) return;
+    if (!selectedSubtitle) return;
+    subtitlePinned.current = true;
+    captureEmbedUrl(selectedSubtitle);
+  }, [autoplay, isPlaying, selectedSubtitle, captureEmbedUrl]);
 
   // Record one play per play-session, keyed off the currently selected
   // episode so switching episodes counts as a new play. Resets when closed.
@@ -168,6 +192,8 @@ export default function TVDetail() {
   }, [isPlaying, currentSeason, currentEpisode]);
 
   const handlePlayEpisode = useCallback((season, episodeNumber) => {
+    playPressed.current = true;
+    if (selectedSubtitle) subtitlePinned.current = true;
     setCurrentSeason(season);
     setCurrentEpisode(episodeNumber);
     captureEmbedUrl(selectedSubtitle, season, episodeNumber);
@@ -176,6 +202,8 @@ export default function TVDetail() {
   }, [setSearchParams, selectedSubtitle, captureEmbedUrl]);
 
   const handlePlay = useCallback(() => {
+    playPressed.current = true;
+    if (selectedSubtitle) subtitlePinned.current = true;
     captureEmbedUrl(selectedSubtitle);
     setIsPlaying(true);
     setSearchParams({}, { replace: true });
@@ -258,7 +286,22 @@ export default function TVDetail() {
                 <Search size={11} /> Cari & Download
               </button>
             </div>
-            {availableSubtitles.length > 0 ? (
+            {subtitleStatus === 'loading' ? (
+              <div className="flex items-center gap-2" aria-busy="true">
+                <Loader size={12} className="animate-spin text-[#666]" />
+                <span className="text-[11px] text-[#666]">Memuat subtitle...</span>
+              </div>
+            ) : subtitleStatus === 'error' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-red-400/80">Gagal memuat subtitle</span>
+                <button
+                  onClick={() => setShowSearchModal(true)}
+                  className="text-[11px] text-[#E50914] hover:underline"
+                >
+                  Cari manual
+                </button>
+              </div>
+            ) : availableSubtitles.length > 0 ? (
               <SubtitlePicker
                 subtitles={availableSubtitles}
                 selected={selectedSubtitle}
@@ -287,8 +330,10 @@ export default function TVDetail() {
         season={currentSeason}
         episode={currentEpisode}
         onDownloaded={(sub) => {
-          // Refresh subtitle list
+          // Refresh subtitle list; a manual download also clears an earlier
+          // provider failure, so the panel stops showing the error state.
           if (show) {
+            if (subtitleStatus === 'error') setSubtitleStatus('loading');
             const currentLang = getCurrentLanguage();
             api.getSubtitles({ type: 'tv', tmdbId: show.id, lang: currentLang, season: currentSeason, episode: currentEpisode, imdbId: show.imdb_id }).then((data) => {
               const list = data?.subtitles || [];
@@ -301,7 +346,10 @@ export default function TVDetail() {
               if (sub && sub.url) {
                 setSelectedSubtitle({ url: sub.url, lang: sub.lang, format: 'vtt', cached: false });
               }
-            }).catch(() => {});
+              setSubtitleStatus('ok');
+            }).catch(() => {
+              if (sub && sub.url) setSubtitleStatus('ok');
+            });
           }
         }}
       />
@@ -318,6 +366,7 @@ export default function TVDetail() {
           episodes={seasonData?.episodes || []}
           onPlayEpisode={handlePlayEpisode}
           isLoading={seasonLoading}
+          item={show ? { id: show.id, title: show.title, type: 'tv', imdb_id: show.imdb_id, number_of_seasons: show.number_of_seasons } : null}
         />
         {recommendedItems.length > 0 && (
           <div className="mt-10">

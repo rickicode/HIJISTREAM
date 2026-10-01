@@ -126,6 +126,10 @@
 **Should the approach be adjusted?**
 - The core subtitle system is functional and deployed
 - Future improvements: scheduled auto-download, language profiles, Podnapisi provider
+- **2026-10-01:** Podnapisi provider dihapus dari `src/utils/subtitle.js` — domain
+  `podnapisi.net` sudah NXDOMAIN (tak punya A/AAAA), jadi cabang search/download-nya pasti gagal.
+  Jangan diimplementasikan ulang tanpa domain pengganti. Sisa status provider ada di
+  `docs/audits/subtitle-system-comparison-20261001.md` §3.2.
 - The scoring system is ready but not yet used in the main download flow
 
 **Next priorities:**

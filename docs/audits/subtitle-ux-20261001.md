@@ -143,3 +143,18 @@ works (`tv/1396/s1e1 -> en.vtt`). No mismatch.
 
 F1/F2 share one root cause: the panel has no loading model and the autoplay path
 reads state before it is ever populated.
+
+## Status implementasi (2026-10-01)
+
+| ID | Status | Bukti |
+|---|---|---|
+| F1 | **Selesai** | `MovieDetail.jsx`/`TVDetail.jsx`: efek autoplay menunggu hasil fetch pertama (`subtitleLoading`) sebelum menangkap pilihan; warning lint `useEffect 'selectedSubtitle'` yang lama hilang. |
+| F2 | **Selesai** | State `subtitleLoading` ditambahkan; panel merender spinner sampai fetch pertama selesai, baru empty-state. |
+| F3 | **Selesai** | `/subtitles/download` mengembalikan HTTP 500 dengan pesan provider asli, 404 bila tidak ada hasil; tidak lagi "Download failed" generik. |
+| F4 | **Selesai** | Copy loader di `SubtitleSearchModal` dibangun dari `PROVIDER_LABELS`, bukan literal; jumlah provider tidak bisa lagi menyimpang. |
+| F5 | **Selesai** | `SubtitlePicker` mengimpor peta dari `subtitle-constants.js`; salinan lokal dihapus. |
+| F6 | **Selesai** | Badge `fail` membuka `SubtitleSearchModal`. |
+
+Regresi dikunci oleh `apps/web/tests/subtitle-search-modal.test.jsx` (3 tes): copy loader
+selaras registry, kegagalan unduh menampilkan pesan provider asli, dan badge `fail` berubah
+ke galat. Ketiganya **gagal di baseline** dan lulus setelah perubahan.

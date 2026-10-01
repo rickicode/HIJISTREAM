@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Search, Download, Globe, Loader, CheckCircle, XCircle, Film, Tv } from 'lucide-react';
 import api from '../utils/api';
-import { getCurrentLanguage } from '../utils/language';
-import { LANG_FLAGS, LANG_LABELS, PROVIDER_LABELS, PROVIDER_COLORS, getLangFlag, getLangLabel } from '../utils/subtitle-constants';
+import { LANG_FLAGS, LANG_LABELS, PROVIDER_LABELS, PROVIDER_COLORS } from '../utils/subtitle-constants';
+
+// Loader copy is derived from the shared registry so the provider count and
+// names can never drift from subtitle-constants.js.
+const PROVIDER_NAMES = Object.values(PROVIDER_LABELS);
 
 /**
  * SubtitleSearchModal — Search & download subtitles from all providers.
@@ -20,6 +23,7 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
   const [error, setError] = useState('');
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadStatus, setDownloadStatus] = useState({}); // { [key]: 'ok' | 'fail' }
+  const [downloadError, setDownloadError] = useState('');
   const [selectedLang, setSelectedLang] = useState('');
   const [providers, setProviders] = useState([]); // which providers found results
 
@@ -27,6 +31,7 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
     if (!item) return;
     setSearching(true);
     setError('');
+    setDownloadError('');
     setResults([]);
     try {
       const params = {
@@ -55,8 +60,8 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
 
   useEffect(() => {
     if (!open || !item) return;
-    setResults([]);
     setError('');
+    setDownloadError('');
     setDownloadStatus({});
     setSelectedLang('');
     setProviders([]);
@@ -79,12 +84,17 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
         episode: item.type === 'tv' ? episode : undefined,
       });
       if (result?.success) {
+        setDownloadError('');
         setDownloadStatus(prev => ({ ...prev, [key]: 'ok' }));
         if (onDownloaded) onDownloaded(result.subtitle);
       } else {
+        setDownloadError(`Gagal mengunduh dari ${PROVIDER_LABELS[sub.provider] || sub.provider}.`);
         setDownloadStatus(prev => ({ ...prev, [key]: 'fail' }));
       }
     } catch (err) {
+      // api.downloadSubtitle rethrows the server's {error} — e.g. the
+      // OpenSubtitles.com free-tier quota notice. Show it, don't swallow it.
+      setDownloadError(err.message || 'Gagal mengunduh subtitle');
       setDownloadStatus(prev => ({ ...prev, [key]: 'fail' }));
     } finally {
       setDownloadingId(null);
@@ -153,8 +163,8 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
           {searching && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader size={28} className="animate-spin text-[#E50914] mb-3" />
-              <p className="text-[#808080] text-sm">Mencari dari 4 provider...</p>
-              <p className="text-[#555] text-xs mt-1">OS.com • OS.org • Subdl • Podnapisi</p>
+              <p className="text-[#808080] text-sm">Mencari dari {PROVIDER_NAMES.length} provider...</p>
+              <p className="text-[#555] text-xs mt-1">{PROVIDER_NAMES.join(' • ')}</p>
             </div>
           )}
 
@@ -175,9 +185,16 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
             </div>
           )}
 
+          {downloadError && (
+            <div className="flex items-start gap-2 px-3 py-2 mb-2 rounded-lg border border-red-500/30 bg-red-500/10">
+              <XCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
+              <span className="text-red-300 text-xs flex-1">{downloadError}</span>
+            </div>
+          )}
+
           {!searching && filtered.length > 0 && (
             <div className="space-y-1.5">
-              {filtered.map((sub, i) => {
+              {filtered.map((sub) => {
                 const key = `${sub.provider}_${sub.fileId}_${sub.lang}`;
                 const isDownloading = downloadingId === key;
                 const status = downloadStatus[key];

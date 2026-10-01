@@ -9,7 +9,6 @@ import {
   rankSubtitles,
   OpenSubtitlesComProvider,
   SubdlProvider,
-  PodnapisiProvider,
   providerRegistry,
 } from '../src/utils/subtitle-providers.js';
 
@@ -100,7 +99,6 @@ describe('ProviderRegistry', () => {
   it('has all providers registered', () => {
     expect(providerRegistry.get('opensubtitles_com')).toBeDefined();
     expect(providerRegistry.get('subdl')).toBeDefined();
-    expect(providerRegistry.get('podnapisi')).toBeDefined();
     expect(providerRegistry.get('yify')).toBeDefined();
     expect(providerRegistry.get('subtitlecat')).toBeDefined();
     expect(providerRegistry.get('ai_translate')).toBeDefined();
@@ -108,7 +106,7 @@ describe('ProviderRegistry', () => {
 
   it('returns all providers', () => {
     const all = providerRegistry.getAll();
-    expect(all.length).toBeGreaterThanOrEqual(6);
+    expect(all.length).toBe(5);
   });
 });
 
@@ -161,24 +159,6 @@ describe('SubdlProvider', () => {
     expect(provider._normalizeLang('id')).toBe('id');
     expect(provider._normalizeLang('indonesian')).toBe('id');
     expect(provider._normalizeLang('english')).toBe('en');
-  });
-});
-
-// ─── PodnapisiProvider ────────────────────────────────────────────────────────
-
-describe('PodnapisiProvider', () => {
-  const provider = new PodnapisiProvider();
-
-  it('has correct name', () => {
-    expect(provider.name).toBe('podnapisi');
-    expect(provider.displayName).toBe('Podnapisi');
-  });
-
-  it('does not require credentials', async () => {
-    // Podnapisi is free - no auth needed
-    // This test verifies the search function exists and can be called
-    expect(provider.search).toBeDefined();
-    expect(typeof provider.search).toBe('function');
   });
 });
 

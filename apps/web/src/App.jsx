@@ -70,7 +70,7 @@ export default function App() {
                 <Route path="/genre/:id" element={<GenreDetail />} />
                 <Route path="/country/:code" element={<CountryDetail />} />
               </Route>
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/pengatur" element={<Admin />} />
             </Routes>
           </Suspense>
           </ErrorBoundary>

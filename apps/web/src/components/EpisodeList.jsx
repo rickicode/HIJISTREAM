@@ -2,12 +2,18 @@ import { useState } from 'react';
 import { Play, Captions, Check, Loader } from 'lucide-react';
 import api from '../utils/api';
 import { getCurrentLanguage } from '../utils/language';
+import SubtitleSearchModal from './SubtitleSearchModal';
 
-function SubtitleBtn({ tvId, season, episode }) {
+function SubtitleBtn({ tvId, season, episode, onSearch }) {
   const [state, setState] = useState('idle'); // idle | loading | ok | fail
 
   const handleClick = async (e) => {
     e.stopPropagation();
+    // A failed probe is a dead end: the only way forward is the search modal.
+    if (state === 'fail') {
+      if (onSearch) onSearch(episode);
+      return;
+    }
     if (state === 'loading') return;
     setState('loading');
     try {
@@ -20,8 +26,12 @@ function SubtitleBtn({ tvId, season, episode }) {
     setTimeout(() => setState('idle'), 3000);
   };
 
-  const color = state === 'ok' ? 'text-green-400' : state === 'fail' ? 'text-red-400' : 'text-[#808080] hover:text-white';
-  const title = state === 'ok' ? 'Subtitle tersedia' : state === 'fail' ? 'Subtitle tidak ditemukan' : 'Download subtitle';
+  const color = state === 'ok' ? 'text-green-400' : state === 'fail' ? 'text-red-400 hover:text-red-300' : 'text-[#808080] hover:text-white';
+  const title = state === 'ok'
+    ? 'Subtitle tersedia'
+    : state === 'fail'
+      ? 'Subtitle tidak ditemukan — klik untuk mencari & mengunduh'
+      : 'Download subtitle';
 
   return (
     <button onClick={handleClick} title={title}
@@ -34,8 +44,10 @@ function SubtitleBtn({ tvId, season, episode }) {
   );
 }
 
-export default function EpisodeList({ tvId, seasons, currentSeason, onSeasonChange, episodes, onPlayEpisode, isLoading }) {
+export default function EpisodeList({ tvId, seasons, currentSeason, onSeasonChange, episodes, onPlayEpisode, isLoading, item }) {
   const seasonOptions = Array.from({ length: seasons }, (_, i) => i + 1);
+  // Episode whose failed subtitle probe should open the search modal.
+  const [searchEpisode, setSearchEpisode] = useState(null);
 
   return (
     <div className="mt-8">
@@ -113,7 +125,7 @@ export default function EpisodeList({ tvId, seasons, currentSeason, onSeasonChan
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <SubtitleBtn tvId={tvId} season={currentSeason} episode={episode.episode_number} />
+                      <SubtitleBtn tvId={tvId} season={currentSeason} episode={episode.episode_number} onSearch={setSearchEpisode} />
                       <button
                         onClick={() => onPlayEpisode(currentSeason, episode.episode_number)}
                         className="bg-white/10 text-white p-2 rounded hover:bg-white/20 transition-colors"
@@ -134,6 +146,13 @@ export default function EpisodeList({ tvId, seasons, currentSeason, onSeasonChan
           ))}
         </div>
       )}
+      <SubtitleSearchModal
+        open={searchEpisode !== null}
+        onClose={() => setSearchEpisode(null)}
+        item={item}
+        season={currentSeason}
+        episode={searchEpisode ?? undefined}
+      />
     </div>
   );
 }

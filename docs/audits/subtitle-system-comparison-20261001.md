@@ -17,8 +17,8 @@ Dua sistem menyelesaikan masalah yang sama dengan kompromi berbeda:
 | Metadata | `metadata.json` di R2 (indeks global) | Nama file (`.vtt`) + `CacheFile` hasil pemindaian |
 | Kunci file | `subtitles/{type}/{id}/{lang}.vtt` | `{type}_{id}_{lang}[-s_se].vtt` (mis. `movie_385687_id.vtt`) |
 | Override pilihan | Tidak ada — `/subtitles/download` menyimpan langsung file yang dipilih user | File penanda `active_movie_385687.txt` / `active_tv_1399_s1_e1.txt` |
-| Provider | 6 (OS.com, OS.org, subdl, podnapisi, yify, subtitlecat) | 5 (YIFY, SubtitleCat, OpenSubtitles, SubDL, Podnapisi) |
-| Penjadwalan provider | `Promise.allSettled` — 6 serentak | Per-provider, dinilai berbobot |
+| Provider | 5 dikonfigurasi (OS.com, OS.org, subdl, yify, subtitlecat) + AI translate; podnapisi dihapus 2026-10-01 | 5 (YIFY, SubtitleCat, OpenSubtitles, SubDL, Podnapisi) |
+| Penjadwalan provider | Jalur otomatis `Promise.allSettled` 5 serentak; jalur pencarian berurutan | Per-provider, dinilai berbobot |
 | Pemilihan hasil | Prioritas sumber, lalu skor seed | Skor berbobot (downloadCount, langmatch, format) |
 | AI translate | Fallback otomatis saat lang=`id` | Otomatis saat Indo (`subtitle.go:977`) |
 | Konversi SRT→VTT | JS (`srtToVtt`) | Go (`SRTToVTT`, `subtitle.go:57`) |
@@ -49,12 +49,14 @@ Probe live (`/debug/ziptest`, commit sementara `4dad32b`, kini dihapus):
 (`catch { text = null; }` menelan kegagalan). Akibatnya `downloadSubtitleByProvider` → `null` →
 HTTP 500 `{"error":"Download failed"}`.
 
-Dampak: **semua** jalur
+Dampak: **semua** jalur berikut (sebelum perbaikan):
+
 - `src/utils/subtitle.js:488` (subdl)
-- `:527`, `:541` (podnapisi)
-- `:577` (yify)
+- `:527`, `:541` (podnapisi — sudah dihapus)
 - `:710` (`extractAllSubtitlesFromZip` — subtitlecat)
 - `:1223` (fallback saat unduhan vendor gagal)
+
+Catatan: nomor baris mengacu ke kode **sebelum** perbaikan; `fflate` memindahkan semuanya.
 
 ### 2.2 Perbaikan
 
@@ -142,18 +144,63 @@ graph TD
    `downloadSubtitleByProvider` dengan `provider` + `file_id` persis yang dikirim klien lalu
    menyimpan hasilnya sebagai `.vtt` untuk `{type}/{id}/{lang}`. Pilihan hidup di state klien.
    hijitv mempersistensinya sebagai file `active_*.txt`, jadi pilihan bertahan lintas sesi/klien.
-3. **Provider paralel vs berurutan.** hijistream menembak 6 provider serentak melalui
-   `Promise.allSettled` (`:1300`); hijitv memanggil per-provider lalu menilai berbobot. Paralel
-   lebih cepat kalah latency; berurutan lebih hemat kuota API per unduhan.
-4. **Pemilihan hasil.** hijistream menyortir berdasarkan prioritas sumber
-   (`opensubtitles_com > opensubtitles_org > subdl > yify > subtitlecat > podnapisi`, `:1321`)
-   setelah skor seed. hijitv memakai skor berbobot `downloadCount` + `langmatch` + format — lebih
-   tahan terhadap provider yang "menang karena prioritas" walau kualitas cue lebih rendah.
+3. **Provider paralel vs berurutan.** jalur otomatis `getOrFetchSubtitle` menembak 5 provider
+   serentak melalui `Promise.allSettled` (`subtitle.js:1280`); jalur pencarian modal memanggil
+   per-provider secara berurutan (`:925`). hijitv memanggil per-provider lalu menilai
+   berbobot. Paralel lebih cepat kalah latency; berurutan lebih hemat kuota API per unduhan.
+4. **Pemilihan hasil.** jalur pencarian modal mengurutkan `downloadCount` menurun
+   (`subtitle.js:1100`); jalur otomatis memilih lewat `sourcePriority`
+   (`opensubtitles_com > opensubtitles_org > subdl > yify > subtitlecat`, `:1301`).
+   hijitv memakai skor berbobot `downloadCount` + `langmatch` + format — lebih tahan
+   terhadap provider yang "menang karena prioritas" walau kualitas cue lebih rendah.
 5. **Ekstraksi ZIP.** hijistream kini memakai fflate (pure JS) untuk memenuhi batasan Edge;
    hijitv memakai `archive/zip` native Go — lebih sedikit kode dan tanpa ketergantungan platform.
 6. **Titik masuk.** hijistream merutekan subtitle lewat Vercel Edge middleware
    (`middleware.js` `/subtitles/*`) dan `functions/api/[[path]].js` sebagai jalur cadangan;
    hijitv seluruhnya di satu biner Go yang juga melayani berkas lewat `/api/subtitles/file/{file}`.
+
+### 3.2 Temuan live 2026-10-01: tiga provider tidak pernah berkontribusi
+
+Probe produksi (`hijistream-web.vercel.app`, 6 judul, dengan dan tanpa `imdb_id`) selalu
+mengembalikan set identik:
+
+```
+tmdb_id=27205|155|550|680|496243 ± imdb_id  ->  25 hasil
+{opensubtitles_com: 15, subdl: 10}          ->  0 dari opensubtitles_org, yify, subtitlecat
+```
+
+`opensubtitles_org`, `yify`, `subtitlecat` **tidak pernah** muncul di satu pun hasil. Ketiganya
+bergantung pada `DOMParser` (OS.org, `subtitle.js:415`) atau regex atas HTML situs pihak ketiga
+(YIFY, SubtitleCat).
+
+Uji terpisah **dari mesin ini** dengan User-Agent identik dengan kode menunjukkan situs-situs itu
+sehat dan markup-nya cocok:
+
+| Host | HTTP | Markup yang dicari kode |
+|---|---|---|
+| `yifysubtitles.ch/movie-imdb/tt1375666` | 200, 980 KB | `href="/subtitles/inception-2010-english-yify-244676"` cocok |
+| `subtitlecat.com/index.php?search=Inception` | 200, 67 KB | `href="subs/1655/Inception.2010....html"` cocok |
+| `podnapisi.net` (sudah dihapus) | DNS NXDOMAIN | tak punya alamat A/AAAA (DoH Google + Cloudflare) |
+
+**Belum terbukti** penyebab pastinya; hipotesis yang masih hidup dan cara membedakannya:
+
+1. `DOMParser` tidak ada di runtime function (Edge/Node) sehingga `xmlRpcRequest` selalu gagal
+   → OS.org 0 hasil. Node 22 dan Bun 1.4.2 di mesin ini: `typeof DOMParser === 'undefined'`;
+   runtime Vercel belum diverifikasi. Bukti lebih lanjut: `try/catch` di `xmlRpcRequest`
+   (`:419`) jatuh ke regex fallback yang hanya mengenali dua bentuk `<member>` — cukup untuk
+   token `LogIn`, tetapi seluruh payload `SearchSubtitles` akan hilang.
+2. Egress function ke domain non-API diblokir/timeout. Ini tidak bisa diverifikasi tanpa
+   men-deploy probe, jadi **tidak** diklaim.
+3. SubtitleCat bergantung pada `title` dari TMDB di dalam `searchSubtitlesFromProviders`
+   (`:1070-1080`); bila `TMDB_API_KEY` tidak terpasang di environment function, cabang itu
+   di-skip diam-diam.
+
+Yang pasti: ketiga provider gagal **tanpa jejak** karena setiap cabang dibungkus
+`catch { /* skip */ }`, dan pesan kegagalan tidak pernah sampai ke klien.
+
+**Rekomendasi penambahan:** cabang `catch` di `searchSubtitlesFromProviders` harus mencatat
+kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan sudah melakukannya
+(`subtitle.js:1286`), supaya provider mati terlihat dan bukan sekadar "hasil kosong".
 
 ---
 
@@ -163,21 +210,37 @@ graph TD
 |---|---|
 | Tinggi | Pantau kuota OS.com; tambah rotasi akun / `apiKey` berbayar. |
 | Tinggi | Tambah `console.error` pada cabang `catch` ekstraksi agar kegagalan seperti §2.1 tidak senyap. |
-| Sedang | Kembalikan pesan error provider-spesifik di `/subtitles/download` (sekarang generik "Download failed"). |
+| Sedang | Kembalikan pesan error provider-spesifik di `/subtitles/download` (**selesai 2026-10-01**; §2.2). |
+| Tinggi | Investigasi provider yang tidak berkontribusi (§3.2): OS.org, YIFY, SubtitleCat selalu 0 hasil di produksi. |
 | Sedang | Adopsi skor berbobot ala hijitv (downloadCount + langmatch) agar tidak bergantung urutan prioritas. |
 | Rendah | Simpan preferensi sumber per judul di metadata R2 (setara `active_*.txt` hijitv) agar pilihan provider terbaik tidak bergantung state klien. |
+
+**Status implementasi (2026-10-01, sesi perbaikan):**
+
+| Rekomendasi | Status |
+|---|---|
+| `console.error` pada cabang `catch` ekstraksi | **Selesai** — `extractSubtitlesFromZip` kini mencatat `ZIP inflate failed` sebelum mengembalikan `[]`. |
+| Pesan error provider-spesifik di `/subtitles/download` | **Selesai** — HTTP 500 membawa pesan provider (kuota OS.com, `HTTP 403` Subdl, dst.); 404 bila provider tak menghasilkan apa pun. Berlaku di `middleware.js` dan `functions/api/[[path]].js`. |
+| Hapus provider Podnapisi | **Selesai** — domain upstream `podnapisi.net` tidak lagi punya alamat A/AAAA (NXDOMAIN di DoH Google + Cloudflare); setiap pencarian/unduhan pasti gagal. |
+| Pantau kuota OS.com | **Belum** — masih operasional (rotasi akun / `apiKey` berbayar). |
+| Skor berbobot ala hijitv | **Belum** — `rankSubtitles`/`computeScore` ada di `subtitle-providers.js` tetapi tidak terpasang di jalur mana pun. |
+| Preferensi sumber per judul | **Belum** — pilihan tetap hidup di state klien. |
+| Provider yang selalu 0 hasil (§3.2) | **Belum** — perlu logging per-provider lebih dulu agar penyebabnya terlihat. |
+
 
 ---
 
 ## 5. Catatan verifikasi
 
-- Lint: 42 masalah (34 error) di `apps/web` — **semua pre-existing** (`91c90de` punya 5 error
-  identik di `src/utils/subtitle.js`; sisanya di komponen lain). Nol regresi.
-- Typecheck: 42 error, semuanya pre-existing (`seasonFilter`, properti `error` pada objek
-  progress, `PromiseSettledResult.value`). Nol regresi.
-- Test: **92/92 lulus** (88 lama + 4 baru di `tests/subtitle-zip.test.js`).
+- Lint: **26 masalah (20 error, 6 warning)** di `apps/web`, turun dari 42 (34 error). Diff
+  per-finding terhadap baseline HEAD: **0 temuan baru, 12 temuan hilang** (mis. unused
+  import `Captions`/`Loader`/`Check`, unused `getCurrentLanguage`/`getLangLabel`/
+  `getLangFlag`, dan peringatan `useEffect ... 'selectedSubtitle'` dari perbaikan autoplay).
+- Test: **99/99 lulus** di 9 berkas. Termasuk `tests/subtitle-search-modal.test.jsx` baru
+  (3 tes), yang **gagal 3/3 di baseline** `b81f0cf` dan lulus setelah perubahan.
 - Build: `vite build` sukses.
-- Commit: `301d401` (fix), `0c898ef` (bersihkan probe).
+- Live: `/api/subtitles/search` mengembalikan 25 hasil stabil di 6 judul (§3.2).
+- Commit: `301d401` (fflate fix), `0c898ef` (bersihkan probe), sesi perbaikan UX 2026-10-01.
 
 Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `DecompressionStream`
 (`delete globalThis.DecompressionStream`) — persis kondisi Edge yang menyebabkan kegagalan.

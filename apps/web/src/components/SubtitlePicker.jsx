@@ -1,17 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Globe, Check, ChevronDown } from 'lucide-react';
-
-const LANG_FLAGS = {
-  id: '🇮🇩', en: '🇺🇸', es: '🇪🇸', pt: '🇧🇷', hi: '🇮🇳', ja: '🇯🇵', ko: '🇰🇷',
-};
-
-const LANG_SHORT = {
-  id: 'ID', en: 'EN', es: 'ES', pt: 'PT', hi: 'HI', ja: 'JA', ko: 'KO',
-};
-
-const LANG_FULL = {
-  id: 'Indonesian', en: 'English', es: 'Español', pt: 'Português', hi: 'हिन्दी', ja: '日本語', ko: '한국어',
-};
+import { Check, ChevronDown } from 'lucide-react';
+import { LANG_FLAGS, LANG_SHORT, LANG_LABELS } from '../utils/subtitle-constants';
 
 /**
  * SubtitlePicker — horizontal chip selector for subtitle languages.
@@ -70,7 +59,7 @@ export default function SubtitlePicker({ subtitles, selected, onSelect, disabled
                   ? 'border-[#E50914] bg-[#E50914]/15 text-white shadow-[0_0_8px_rgba(229,9,20,0.15)]'
                   : 'border-[#2a2a2a] text-[#b3b3b3] hover:border-[#555] hover:text-white'
             }`}
-            title={LANG_FULL[sub.lang] || sub.lang}
+            title={LANG_LABELS[sub.lang] || sub.lang}
           >
             <span className="text-xs">{flag}</span>
             <span>{short}</span>

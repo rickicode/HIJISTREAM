@@ -1,3 +1,5 @@
+import { PROVIDER_LABELS } from '../../utils/subtitle-constants';
+
 import { useState, useEffect } from 'react';
 import { Save, CheckCircle, XCircle, Loader, Eye, EyeOff, HardDrive, RefreshCw } from 'lucide-react';
 import api from '../../utils/api';
@@ -116,7 +118,7 @@ export default function SettingsTab() {
         <div className="space-y-2 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-[#808080]">Providers</span>
-            <span className="text-white">4 aktif (OS.com, OS.org, Subdl, Podnapisi)</span>
+            <span className="text-white">{Object.values(PROVIDER_LABELS).join(', ')}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-[#808080]">Search Mode</span>

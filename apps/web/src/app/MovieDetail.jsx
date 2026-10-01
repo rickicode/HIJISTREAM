@@ -12,7 +12,7 @@ import SubtitlePicker from '../components/SubtitlePicker';
 import SubtitleSearchModal from '../components/SubtitleSearchModal';
 import { getMovieEmbedUrl, loadWatchProgress } from '../utils/player';
 import { getCurrentLanguage } from '../utils/language';
-import { Captions, Check, Loader, Search, Globe } from 'lucide-react';
+import { Loader, Search, Globe } from 'lucide-react';
 
 const LANG_FLAGS = { id: '🇮🇩', en: '🇺🇸', es: '🇪🇸', pt: '🇧🇷', hi: '🇮🇳', ja: '🇯🇵', ko: '🇰🇷' };
 
@@ -22,13 +22,23 @@ export default function MovieDetail() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const autoplay = searchParams.get('autoplay') === 'true';
-  const [isPlaying, setIsPlaying] = useState(autoplay);
+  // Start paused even with ?autoplay=true: the autoplay effect below flips
+  // this once the first subtitle fetch has settled (or playback is forced).
+  const [isPlaying, setIsPlaying] = useState(false);
   const [availableSubtitles, setAvailableSubtitles] = useState([]);
   const [selectedSubtitle, setSelectedSubtitle] = useState(null);
+  // Fetch lifecycle for the subtitle list: loading → ok | error.
+  const [subtitleStatus, setSubtitleStatus] = useState('loading');
   const [snapshotEmbedUrl, setSnapshotEmbedUrl] = useState(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const { t } = useTranslation();
   const [_langVersion, setLangVersion] = useState(0);
+  // Player handed non-null, final subtitle: set on user play or on the
+  // post-fetch autoplay re-capture, so it never overrides a user's choice.
+  const subtitlePinned = useRef(false);
+  // Distinguishes "play pressed" from "autoplay merely started": only the
+  // former should stop autoplay from waiting for the subtitle fetch.
+  const playPressed = useRef(false);
   const autoplayCaptured = useRef(false);
 
   useEffect(() => {
@@ -61,6 +71,7 @@ export default function MovieDetail() {
     if (!movie) return;
     const currentLang = getCurrentLanguage();
     const otherLangs = ALL_SUBTITLE_LANGS.split(',').filter(l => l !== currentLang);
+    setSubtitleStatus('loading');
 
     // Priority: fetch user language immediately
     api.getSubtitles({
@@ -74,6 +85,7 @@ export default function MovieDetail() {
       const match = list.find((s) => s.lang === currentLang);
       if (match) setSelectedSubtitle(match);
       else if (list.length > 0) setSelectedSubtitle(list[0]);
+      setSubtitleStatus('ok');
 
       // Deferred: fetch remaining languages in background
       if (otherLangs.length > 0) {
@@ -96,9 +108,11 @@ export default function MovieDetail() {
           }).catch(() => {});
         }, 1500);
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[Subtitle] Failed to fetch:', err);
       setAvailableSubtitles([]);
       setSelectedSubtitle(null);
+      setSubtitleStatus('error');
     });
   }, [movie?.id, _langVersion]);
 
@@ -109,12 +123,27 @@ export default function MovieDetail() {
   }, [playId, resumeAt]);
 
   useEffect(() => {
-    if (autoplay && !autoplayCaptured.current) {
-      autoplayCaptured.current = true;
-      captureEmbedUrl(selectedSubtitle);
-      setIsPlaying(true);
-    }
-  }, [autoplay, captureEmbedUrl]);
+    if (!autoplay || autoplayCaptured.current) return;
+    if (subtitlePinned.current) return; // user already played with their own choice
+    // Wait for the first subtitle fetch to settle so the deep-linked autoplay
+    // starts with the user's language instead of a subtitle-less URL. The
+    // player starts either way once the fetch is done.
+    if (!playPressed.current && subtitleStatus === 'loading') return;
+    autoplayCaptured.current = true;
+    if (selectedSubtitle) subtitlePinned.current = true;
+    captureEmbedUrl(selectedSubtitle);
+    setIsPlaying(true);
+  }, [autoplay, subtitleStatus, selectedSubtitle, captureEmbedUrl]);
+
+  // The autoplay path may start the player with no subtitle; when the list
+  // finally arrives and the user has not touched anything, re-capture once so
+  // playback picks up the subtitle that is now available.
+  useEffect(() => {
+    if (!autoplay || !isPlaying || subtitlePinned.current || playPressed.current) return;
+    if (!selectedSubtitle) return;
+    subtitlePinned.current = true;
+    captureEmbedUrl(selectedSubtitle);
+  }, [autoplay, isPlaying, selectedSubtitle, captureEmbedUrl]);
 
   // Record a play once per play-session, as soon as the player is active and
   // the title is known. Autoplay can flip `isPlaying` before the query
@@ -132,6 +161,8 @@ export default function MovieDetail() {
   }, [isPlaying, movie]);
 
   const handlePlay = useCallback(() => {
+    playPressed.current = true;
+    if (selectedSubtitle) subtitlePinned.current = true;
     captureEmbedUrl(selectedSubtitle);
     setIsPlaying(true);
     setSearchParams({}, { replace: true });
@@ -180,7 +211,22 @@ export default function MovieDetail() {
                 <Search size={11} /> Cari & Download
               </button>
             </div>
-            {availableSubtitles.length > 0 ? (
+            {subtitleStatus === 'loading' ? (
+              <div className="flex items-center gap-2" aria-busy="true">
+                <Loader size={12} className="animate-spin text-[#666]" />
+                <span className="text-[11px] text-[#666]">Memuat subtitle...</span>
+              </div>
+            ) : subtitleStatus === 'error' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-red-400/80">Gagal memuat subtitle</span>
+                <button
+                  onClick={() => setShowSearchModal(true)}
+                  className="text-[11px] text-[#E50914] hover:underline"
+                >
+                  Cari manual
+                </button>
+              </div>
+            ) : availableSubtitles.length > 0 ? (
               <SubtitlePicker subtitles={availableSubtitles} selected={selectedSubtitle} onSelect={setSelectedSubtitle} disabled={isPlaying} />
             ) : (
               <div className="flex items-center gap-2">
@@ -202,8 +248,10 @@ export default function MovieDetail() {
         onClose={() => setShowSearchModal(false)}
         item={movie ? { id: movie.id, title: movie.title, type: 'movie', imdb_id: movie.imdb_id } : null}
         onDownloaded={(sub) => {
-          // Refresh subtitle list
+          // Refresh subtitle list; a manual download also clears an earlier
+          // provider failure, so the panel stops showing the error state.
           if (movie) {
+            if (subtitleStatus === 'error') setSubtitleStatus('loading');
             const currentLang = getCurrentLanguage();
             api.getSubtitles({ type: 'movie', tmdbId: movie.id, lang: currentLang, imdbId: movie.imdb_id }).then((data) => {
               const list = data?.subtitles || [];
@@ -216,7 +264,10 @@ export default function MovieDetail() {
               if (sub && sub.url) {
                 setSelectedSubtitle({ url: sub.url, lang: sub.lang, format: 'vtt', cached: false });
               }
-            }).catch(() => {});
+              setSubtitleStatus('ok');
+            }).catch(() => {
+              if (sub && sub.url) setSubtitleStatus('ok');
+            });
           }
         }}
       />
