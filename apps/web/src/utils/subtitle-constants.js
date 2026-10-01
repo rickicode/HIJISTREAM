@@ -15,6 +15,8 @@ export const LANG_FLAGS = {
   uk: '🇺🇦', el: '🇬🇷', he: '🇮🇱', ms: '🇲🇾', bn: '🇧🇩',
   ta: '🇮🇳', te: '🇮🇳', mr: '🇮🇳', gu: '🇮🇳', kn: '🇮🇳',
   ml: '🇮🇳', pa: '🇮🇳', ur: '🇵🇰', fa: '🇮🇷', sw: '🇰🇪',
+  sq: '🇦🇱', zh: '🇨🇳', lt: '🇱🇹', lv: '🇱🇻', et: '🇪🇪',
+  is: '🇮🇸', mk: '🇲🇰', bs: '🇧🇦', ca: '🇪🇸',
   'zh-CN': '🇨🇳', 'zh-TW': '🇹🇼', 'pt-BR': '🇧🇷', 'es-MX': '🇲🇽',
 };
 
@@ -28,13 +30,21 @@ export const LANG_LABELS = {
   sr: 'Serbian', sl: 'Slovenian', uk: 'Ukrainian', el: 'Greek', he: 'Hebrew',
   ms: 'Malay', bn: 'Bengali', ta: 'Tamil', te: 'Telugu', mr: 'Marathi',
   gu: 'Gujarati', kn: 'Kannada', ml: 'Malayalam', pa: 'Punjabi', ur: 'Urdu',
-  fa: 'Persian', sw: 'Swahili', 'zh-CN': 'Chinese (Simplified)', 'zh-TW': 'Chinese (Traditional)',
+  fa: 'Persian', sw: 'Swahili', sq: 'Albanian', zh: 'Chinese',
+  lt: 'Lithuanian', lv: 'Latvian', et: 'Estonian', is: 'Icelandic',
+  mk: 'Macedonian', bs: 'Bosnian', ca: 'Catalan',
+  'zh-CN': 'Chinese (Simplified)', 'zh-TW': 'Chinese (Traditional)',
   'pt-BR': 'Brazilian Portuguese', 'es-MX': 'Mexican Spanish',
 };
 
 export const LANG_SHORT = {
   id: 'ID', en: 'EN', es: 'ES', pt: 'PT', hi: 'HI', ja: 'JA', ko: 'KO',
   th: 'TH', vi: 'VI', fr: 'FR', de: 'DE', it: 'IT', ru: 'RU',
+  ar: 'AR', tr: 'TR', pl: 'PL', nl: 'NL', sv: 'SV', da: 'DA', fi: 'FI',
+  no: 'NO', cs: 'CS', sk: 'SK', hu: 'HU', ro: 'RO', bg: 'BG', hr: 'HR',
+  sr: 'SR', sl: 'SL', uk: 'UK', el: 'EL', he: 'HE', ms: 'MS', bn: 'BN',
+  ta: 'TA', te: 'TE', mr: 'MR', ur: 'UR', fa: 'FA', sw: 'SW', tl: 'TL',
+  sq: 'SQ', zh: 'ZH',
 };
 
 // ─── Provider Info ────────────────────────────────────────────────────────────

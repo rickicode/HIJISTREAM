@@ -1,14 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import { X, Search, Download, Globe, Loader, CheckCircle, XCircle, Film, Tv } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { X, Search, Globe, Film, RefreshCw, Tv, XCircle } from 'lucide-react';
 import api from '../utils/api';
-import { LANG_FLAGS, LANG_LABELS, PROVIDER_LABELS, PROVIDER_COLORS } from '../utils/subtitle-constants';
+import { LANG_LABELS, PROVIDER_LABELS, PROVIDER_COLORS } from '../utils/subtitle-constants';
+import SubtitleResultRow from './SubtitleResultRow';
 
 // Loader copy is derived from the shared registry so the provider count and
 // names can never drift from subtitle-constants.js.
 const PROVIDER_NAMES = Object.values(PROVIDER_LABELS);
 
+const SKELETON_ROWS = 5;
+
 /**
- * SubtitleSearchModal — Search & download subtitles from all providers.
+ * SubtitleSearchModal — search and download subtitles from every provider.
+ *
+ * Layout note: the language filter is a native select, not a row of pills. With
+ * one result per language the pill row measured 1988px inside a 670px panel and
+ * forced a horizontal scrollbar; a select cannot overflow at any width and
+ * hands the choice to the platform picker on touch devices.
  *
  * @param {boolean} open
  * @param {() => void} onClose
@@ -30,23 +38,35 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
   // when they returned nothing. Without this a silent provider failure is
   // indistinguishable from "this title genuinely has no subtitles".
   const [diagnostics, setDiagnostics] = useState([]);
+  const panelRef = useRef(null);
+  const closeRef = useRef(null);
+
+  // Search parameters are read from primitives, not from the `item` object:
+  // callers build that object inline, so a parent re-render produces a new
+  // identity and an object dependency would silently re-run the search and wipe
+  // the per-row download state.
+  const itemId = item?.id ?? null;
+  const isTV = item?.type === 'tv';
+  const title = item?.title ?? '';
+  const imdbId = item?.imdb_id ?? '';
+  const year = item?.year ?? '';
 
   const handleSearch = useCallback(async (langFilter) => {
-    if (!item) return;
+    if (!itemId) return;
     setSearching(true);
     setError('');
     setDownloadError('');
     setResults([]);
     try {
       const params = {
-        type: item.type,
-        tmdbId: item.id,
+        type: isTV ? 'tv' : 'movie',
+        tmdbId: itemId,
         lang: langFilter || '',
-        imdbId: item.imdb_id || undefined,
-        title: item.title || undefined,
-        year: item.year || undefined,
+        imdbId: imdbId || undefined,
+        title: title || undefined,
+        year: year || undefined,
       };
-      if (item.type === 'tv') {
+      if (isTV) {
         if (season) params.season = season;
         if (episode) params.episode = episode;
       }
@@ -57,16 +77,15 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
       // Extract unique providers
       const provs = [...new Set(list.map(r => r.provider))];
       setProviders(provs);
-      if (list.length === 0) setError('Tidak ditemukan subtitle dari semua provider.');
     } catch (err) {
       setError(err.message || 'Gagal mencari subtitle');
     } finally {
       setSearching(false);
     }
-  }, [item, season, episode]);
+  }, [itemId, title, isTV, imdbId, year, season, episode]);
 
   useEffect(() => {
-    if (!open || !item) return;
+    if (!open || !itemId) return;
     setError('');
     setDownloadError('');
     setDownloadStatus({});
@@ -74,7 +93,45 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
     setProviders([]);
     setDiagnostics([]);
     handleSearch();
-  }, [open, item?.id, season, episode, handleSearch]);
+  }, [open, itemId, season, episode, handleSearch]);
+
+  // Escape closes, Tab stays inside, and focus returns to whatever opened the
+  // dialog once it is gone. Keyed on `open` alone: callers pass an inline
+  // onClose, so including it would re-run this on every parent render, refocus
+  // the dialog, and lose the element that opened it.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement;
+    closeRef.current?.focus();
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const focusables = panelRef.current?.querySelectorAll(
+        'button:not([disabled]), select, [href], input, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusables?.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, [open]);
 
   const handleDownload = async (sub) => {
     const key = `${sub.provider}_${sub.fileId}_${sub.lang}`;
@@ -83,13 +140,13 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
       const result = await api.downloadSubtitle({
         provider: sub.provider,
         fileId: sub.fileId,
-        type: item.type,
-        tmdbId: item.id,
+        type: isTV ? 'tv' : 'movie',
+        tmdbId: itemId,
         lang: sub.lang,
-        imdbId: item.imdb_id || undefined,
-        title: item.title || undefined,
-        season: item.type === 'tv' ? season : undefined,
-        episode: item.type === 'tv' ? episode : undefined,
+        imdbId: imdbId || undefined,
+        title: title || undefined,
+        season: isTV ? season : undefined,
+        episode: isTV ? episode : undefined,
       });
       if (result?.success) {
         setDownloadError('');
@@ -109,96 +166,161 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
     }
   };
 
+  // Languages ordered by how much they offer, so the common choice sits first
+  // in the picker instead of wherever the provider happened to sort it.
+  const languages = useMemo(() => {
+    const counts = new Map();
+    for (const r of results) counts.set(r.lang, (counts.get(r.lang) || 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [results]);
+
   if (!open) return null;
 
   const filtered = selectedLang ? results.filter(r => r.lang === selectedLang) : results;
-  const uniqueLangs = [...new Set(results.map(r => r.lang))].sort();
-  const isTV = item?.type === 'tv';
   // Providers that refused the request or never ran. `skipped` is only worth
   // showing when it is not the boring "not configured" case.
   const failed = diagnostics.filter(d => d.status === 'error' || (d.status === 'skipped' && d.message !== 'belum dikonfigurasi'));
+  const showEmpty = !searching && !error && results.length === 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col mx-4"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="subtitle-modal-title"
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2a2a2a]">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-[#E50914]/10 flex items-center justify-center shrink-0">
-              {isTV ? <Tv size={18} className="text-[#E50914]" /> : <Film size={18} className="text-[#E50914]" />}
+        <div className="flex items-center justify-between gap-3 border-b border-[#2a2a2a] px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#E50914]/10">
+              {isTV
+                ? <Tv size={18} className="text-[#E50914]" aria-hidden="true" />
+                : <Film size={18} className="text-[#E50914]" aria-hidden="true" />}
             </div>
             <div className="min-w-0">
-              <h3 className="text-white font-semibold text-sm truncate">{item?.title || 'Search Subtitles'}</h3>
-              <p className="text-[#808080] text-xs">
+              <h2 id="subtitle-modal-title" className="truncate text-sm font-semibold text-white">
+                {item?.title || 'Cari Subtitle'}
+              </h2>
+              <p className="truncate text-xs text-[#a3a3a3]">
                 TMDB #{item?.id}
                 {item?.imdb_id && ` • ${item.imdb_id}`}
                 {isTV && season && ` • S${season}${episode ? `:E${episode}` : ''}`}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-[#808080] hover:text-white hover:bg-[#333] rounded-lg transition-colors shrink-0">
-            <X size={18} />
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[#a3a3a3] transition-colors hover:bg-[#333] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-9 sm:w-9"
+          >
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        {/* Language filter tabs */}
-        {results.length > 0 && (
-          <div className="flex items-center gap-1.5 px-5 py-3 border-b border-[#2a2a2a] overflow-x-auto">
-            <button
-              onClick={() => { setSelectedLang(''); }}
-              className={`shrink-0 px-3 py-1 text-xs rounded-full border transition-colors ${
-                !selectedLang ? 'border-[#E50914] text-[#E50914] bg-[#E50914]/10' : 'border-[#333] text-[#808080] hover:border-[#555] hover:text-white'
-              }`}
+        {/* Language filter: one native control instead of a pill row that
+            overflowed the panel and forced a horizontal scrollbar. */}
+        {(searching || results.length > 0) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#2a2a2a] px-4 py-3 sm:px-5">
+            <label htmlFor="subtitle-lang" className="text-xs font-medium text-[#a3a3a3]">Bahasa</label>
+            <select
+              id="subtitle-lang"
+              value={selectedLang}
+              onChange={e => setSelectedLang(e.target.value)}
+              disabled={searching || results.length === 0}
+              className="h-11 w-full rounded-lg border border-[#333] bg-[#212121] px-3 text-sm text-white transition-colors hover:border-[#444] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:h-9 sm:w-auto sm:min-w-56"
             >
-              Semua ({results.length})
-            </button>
-            {uniqueLangs.map(lang => (
-              <button
-                key={lang}
-                onClick={() => setSelectedLang(lang)}
-                className={`shrink-0 px-3 py-1 text-xs rounded-full border transition-colors ${
-                  selectedLang === lang ? 'border-[#E50914] text-[#E50914] bg-[#E50914]/10' : 'border-[#333] text-[#808080] hover:border-[#555] hover:text-white'
-                }`}
-              >
-                {LANG_FLAGS[lang] || '🌐'} {LANG_LABELS[lang] || lang.toUpperCase()} ({results.filter(r => r.lang === lang).length})
-              </button>
-            ))}
+              <option value="">Semua bahasa ({results.length})</option>
+              {languages.map(([lang, count]) => (
+                <option key={lang} value={lang}>
+                  {LANG_LABELS[lang] || lang.toUpperCase()} ({count})
+                </option>
+              ))}
+            </select>
+            {!searching && results.length > 0 && (
+              <span className="text-xs text-[#a3a3a3]">
+                {filtered.length} dari {results.length} subtitle
+              </span>
+            )}
           </div>
         )}
 
         {/* Results */}
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5">
           {searching && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader size={28} className="animate-spin text-[#E50914] mb-3" />
-              <p className="text-[#808080] text-sm">Mencari dari {PROVIDER_NAMES.length} provider...</p>
-              <p className="text-[#555] text-xs mt-1">{PROVIDER_NAMES.join(' • ')}</p>
+            <div aria-busy="true" aria-label="Mencari subtitle">
+              <p className="mb-2 text-xs text-[#a3a3a3]">
+                Mencari di {PROVIDER_NAMES.length} provider: {PROVIDER_NAMES.join(', ')}
+              </p>
+              <ul className="space-y-1.5">
+                {Array.from({ length: SKELETON_ROWS }).map((_, i) => (
+                  <li key={i} className="flex items-center gap-3 rounded-lg border border-[#2a2a2a] px-3 py-2.5">
+                    <div className="h-6 w-6 shrink-0 animate-pulse rounded bg-[#2a2a2a]" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="h-3.5 w-2/3 animate-pulse rounded bg-[#2a2a2a]" />
+                      <div className="h-3 w-1/3 animate-pulse rounded bg-[#2a2a2a]" />
+                    </div>
+                    <div className="h-9 w-11 shrink-0 animate-pulse rounded-md bg-[#2a2a2a] sm:w-20" />
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
           {!searching && error && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Search size={36} className="text-[#333] mb-3" />
-              <p className="text-[#808080] text-sm">{error}</p>
-              <button onClick={() => handleSearch(selectedLang)} className="mt-3 text-xs text-[#E50914] hover:underline">
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <XCircle size={32} className="mb-3 text-[#4d4d4d]" aria-hidden="true" />
+              <p className="text-sm text-[#a3a3a3]">{error}</p>
+              <button
+                type="button"
+                onClick={() => handleSearch(selectedLang)}
+                className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg border border-[#333] px-4 text-xs font-medium text-white transition-colors hover:border-[#555] hover:bg-[#212121] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <RefreshCw size={14} aria-hidden="true" />
                 Coba lagi
               </button>
             </div>
           )}
 
-          {!searching && !error && filtered.length === 0 && results.length > 0 && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Globe size={36} className="text-[#333] mb-3" />
-              <p className="text-[#808080] text-sm">Tidak ada subtitle untuk bahasa ini</p>
+          {showEmpty && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Globe size={32} className="mb-3 text-[#4d4d4d]" aria-hidden="true" />
+              <p className="text-sm text-[#a3a3a3]">Tidak ada subtitle dari provider yang aktif.</p>
+              <button
+                type="button"
+                onClick={() => handleSearch(selectedLang)}
+                className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg border border-[#333] px-4 text-xs font-medium text-white transition-colors hover:border-[#555] hover:bg-[#212121] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <RefreshCw size={14} aria-hidden="true" />
+                Cari ulang
+              </button>
+            </div>
+          )}
+
+          {!searching && !error && results.length > 0 && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Globe size={32} className="mb-3 text-[#4d4d4d]" aria-hidden="true" />
+              <p className="text-sm text-[#a3a3a3]">Tidak ada subtitle untuk bahasa ini.</p>
+              <button
+                type="button"
+                onClick={() => setSelectedLang('')}
+                className="mt-4 inline-flex h-11 items-center rounded-lg border border-[#333] px-4 text-xs font-medium text-white transition-colors hover:border-[#555] hover:bg-[#212121] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                Tampilkan semua bahasa
+              </button>
             </div>
           )}
 
           {!searching && failed.length > 0 && (
-            <div className="mb-3 px-3 py-2 rounded-lg border border-yellow-500/20 bg-yellow-500/5 space-y-1">
-              <p className="text-[10px] uppercase tracking-wide text-yellow-500/70 font-medium">Provider bermasalah</p>
+            <div className="mb-3 space-y-1 rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-yellow-500/80">Provider bermasalah</p>
               {failed.map(d => (
                 <p key={d.provider} className="text-[11px] text-yellow-500/90">
                   <span className="font-medium">{PROVIDER_LABELS[d.provider] || d.provider}</span>
@@ -209,115 +331,43 @@ export default function SubtitleSearchModal({ open, onClose, item, onDownloaded,
           )}
 
           {downloadError && (
-            <div className="flex items-start gap-2 px-3 py-2 mb-2 rounded-lg border border-red-500/30 bg-red-500/10">
-              <XCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
-              <span className="text-red-300 text-xs flex-1">{downloadError}</span>
+            <div className="mb-2 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+              <XCircle size={14} className="mt-0.5 shrink-0 text-red-400" aria-hidden="true" />
+              <span className="flex-1 text-xs text-red-300">{downloadError}</span>
             </div>
           )}
 
           {!searching && filtered.length > 0 && (
-            <div className="space-y-1.5">
+            <ul className="space-y-1.5">
               {filtered.map((sub) => {
                 const key = `${sub.provider}_${sub.fileId}_${sub.lang}`;
-                const isDownloading = downloadingId === key;
-                const status = downloadStatus[key];
-                const flag = LANG_FLAGS[sub.lang] || '🌐';
-                const langName = LANG_LABELS[sub.lang] || sub.lang.toUpperCase();
-                const provColor = PROVIDER_COLORS[sub.provider] || 'text-gray-400 bg-gray-400/10';
-
-                return (
-                  <div
-                    key={key}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors ${
-                      status === 'ok'
-                        ? 'border-green-500/30 bg-green-500/5'
-                        : status === 'fail'
-                        ? 'border-red-500/30 bg-red-500/5'
-                        : 'border-[#2a2a2a] hover:border-[#444] hover:bg-[#222]'
-                    }`}
-                  >
-                    {/* Language */}
-                    <span className="text-lg w-6 text-center shrink-0">{flag}</span>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white text-sm font-medium truncate">
-                          {sub.title || `${langName} subtitle`}
-                        </span>
-                        {sub.hearingImpaired && (
-                          <span className="text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded font-medium shrink-0">
-                            HI
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${provColor}`}>
-                          {PROVIDER_LABELS[sub.provider] || sub.provider}
-                        </span>
-                        <span className="text-[#666] text-[10px]">{langName}</span>
-                        {sub.downloadCount > 0 && (
-                          <span className="text-[#666] text-[10px]">↓ {sub.downloadCount.toLocaleString()}</span>
-                        )}
-                        {sub.rating > 0 && (
-                          <span className="text-[#666] text-[10px]">★ {sub.rating}</span>
-                        )}
-                        {sub.format && (
-                          <span className="text-[#555] text-[10px] uppercase">{sub.format}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Download button */}
-                    <div className="shrink-0">
-                      {status === 'ok' ? (
-                        <div className="flex items-center gap-1 text-green-400 text-xs font-medium">
-                          <CheckCircle size={14} />
-                          <span className="hidden sm:inline">Tersimpan</span>
-                        </div>
-                      ) : status === 'fail' ? (
-                        <div className="flex items-center gap-1 text-red-400 text-xs font-medium">
-                          <XCircle size={14} />
-                          <span className="hidden sm:inline">Gagal</span>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => handleDownload(sub)}
-                          disabled={isDownloading}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#E50914] rounded-md hover:bg-[#f6121d] disabled:opacity-50 transition-colors"
-                        >
-                          {isDownloading ? (
-                            <Loader size={12} className="animate-spin" />
-                          ) : (
-                            <Download size={12} />
-                          )}
-                          <span className="hidden sm:inline">{isDownloading ? '...' : 'Download'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
+                const state = downloadingId === key ? 'downloading' : (downloadStatus[key] || 'idle');
+                return <SubtitleResultRow key={key} sub={sub} state={state} onDownload={handleDownload} />;
               })}
-            </div>
+            </ul>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-[#2a2a2a] flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[10px] text-[#555]">
-            {providers.map(p => (
-              <span key={p} className={`px-1.5 py-0.5 rounded ${PROVIDER_COLORS[p] || 'text-gray-400 bg-gray-400/10'}`}>
-                {PROVIDER_LABELS[p] || p}
-              </span>
-            ))}
+        <div className="flex items-center justify-between gap-3 border-t border-[#2a2a2a] px-4 py-3 sm:px-5">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-[10px] text-[#a3a3a3]">
+            <span className="shrink-0">Hasil dari</span>
+            {providers.length === 0
+              ? <span className="shrink-0">belum ada</span>
+              : providers.map(p => (
+                <span key={p} className={`rounded px-1.5 py-0.5 ${PROVIDER_COLORS[p] || 'text-gray-400 bg-gray-400/10'}`}>
+                  {PROVIDER_LABELS[p] || p}
+                </span>
+              ))}
           </div>
           <button
+            type="button"
             onClick={() => handleSearch(selectedLang)}
             disabled={searching}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-[#808080] hover:text-white hover:bg-[#333] rounded-lg transition-colors"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-xs text-[#a3a3a3] transition-colors hover:bg-[#333] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 sm:h-9"
           >
-            <Search size={12} />
-            Refresh
+            <Search size={14} aria-hidden="true" />
+            Cari ulang
           </button>
         </div>
       </div>

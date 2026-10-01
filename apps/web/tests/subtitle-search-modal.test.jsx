@@ -23,10 +23,10 @@ describe('SubtitleSearchModal', () => {
     render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
 
     const names = Object.values(PROVIDER_LABELS);
-    expect(
-      await screen.findByText(`Mencari dari ${names.length} provider...`),
-    ).toBeTruthy();
-    expect(screen.getByText(names.join(' • '))).toBeTruthy();
+    // The loading state names every provider it is querying, so the copy can
+    // never claim a provider the registry does not have.
+    const loader = await screen.findByText(new RegExp(`Mencari di ${names.length} provider`));
+    for (const name of names) expect(loader.textContent).toContain(name);
   });
 
   it('surfaces the server error message when a download fails', async () => {
@@ -36,7 +36,7 @@ describe('SubtitleSearchModal', () => {
     );
 
     render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Download/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Unduh subtitle/ }));
 
     expect(await screen.findByText(/menolak unduhan/)).toBeTruthy();
     // Row reflects the failure instead of staying actionable-looking.
@@ -48,12 +48,49 @@ describe('SubtitleSearchModal', () => {
     vi.spyOn(api, 'downloadSubtitle').mockResolvedValue({ success: false });
 
     render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Download/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Unduh subtitle/ }));
 
     expect(
       await screen.findByText(`Gagal mengunduh dari ${PROVIDER_LABELS[RESULT.provider]}.`),
     ).toBeTruthy();
     expect(await screen.findByText('Gagal')).toBeTruthy();
+  });
+
+  it('keeps the download state when the caller re-renders with a fresh item object', async () => {
+    vi.spyOn(api, 'searchSubtitles').mockResolvedValue({ results: [RESULT], diagnostics: [] });
+    vi.spyOn(api, 'downloadSubtitle').mockResolvedValue({ success: true, subtitle: { url: 'x.vtt' } });
+
+    const { rerender } = render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Unduh subtitle/ }));
+    expect(await screen.findByText('Tersimpan')).toBeTruthy();
+    expect(api.searchSubtitles).toHaveBeenCalledTimes(1);
+
+    // MovieDetail and EpisodeList build the item inline, so every parent render
+    // hands over a new identity. Depending on the object itself re-ran the
+    // search and wiped the row state the user had just produced.
+    rerender(<SubtitleSearchModal open onClose={() => {}} item={{ ...ITEM }} />);
+    expect(screen.getByText('Tersimpan')).toBeTruthy();
+    expect(api.searchSubtitles).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters the list by language and reports how many rows remain', async () => {
+    vi.spyOn(api, 'searchSubtitles').mockResolvedValue({
+      results: [RESULT, { ...RESULT, fileId: '99', lang: 'id', title: 'Indonesian' }],
+      diagnostics: [],
+    });
+
+    render(<SubtitleSearchModal open onClose={() => {}} item={ITEM} />);
+    const select = await screen.findByLabelText('Bahasa');
+    // The control must offer every language present, with its count.
+    expect(screen.getByRole('option', { name: 'English (1)' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Indonesian (1)' })).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: 'id' } });
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('1 dari 2 subtitle')).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: '' } });
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
 
   it('shows a provider-problems strip for failures/odd skips, not for unconfigured ones', async () => {

@@ -26,20 +26,52 @@ const LANG_MAP_3 = { id: 'ind', en: 'eng', es: 'spa', pt: 'por', hi: 'hin', ja: 
 const LANG_NAMES = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
 
 /**
- * Normalize any language string to our standard locale code.
- * Handles: ISO 639-1 (id, en), ISO 639-2 (ind, eng), full names (Indonesian, english),
- * Subdl codes (ID, IND), etc.
+ * Language vocabularies differ per provider: OpenSubtitles.com answers ISO
+ * 639-1 plus regional variants (zh-cn, pt-br), Subdl answers ISO codes for its
+ * own uploads but English names ("Turkish", "Chinese", "Albanian") for its
+ * Subscene legacy archive. Taking the first two characters of a name produced
+ * fake codes ("tu", "ch", "al") that then surfaced as unmapped filter chips in
+ * the subtitle picker, so names are resolved here. Table mirrors the published
+ * OpenSubtitles.com language list.
  */
+const LANG_NAME_TO_CODE = {
+  abkhazian: 'ab', afrikaans: 'af', albanian: 'sq', amharic: 'am', arabic: 'ar',
+  aragonese: 'an', armenian: 'hy', assamese: 'as', asturian: 'at', azerbaijani: 'az',
+  basque: 'eu', belarusian: 'be', bengali: 'bn', bosnian: 'bs', breton: 'br',
+  bulgarian: 'bg', burmese: 'my', catalan: 'ca', chinese: 'zh', croatian: 'hr',
+  czech: 'cs', danish: 'da', dari: 'pr', dutch: 'nl', english: 'en',
+  esperanto: 'eo', estonian: 'et', extremaduran: 'ex', finnish: 'fi', french: 'fr',
+  gaelic: 'gd', galician: 'gl', georgian: 'ka', german: 'de', greek: 'el',
+  hebrew: 'he', hindi: 'hi', hungarian: 'hu', icelandic: 'is', igbo: 'ig',
+  indonesian: 'id', interlingua: 'ia', irish: 'ga', italian: 'it', japanese: 'ja',
+  kannada: 'kn', kazakh: 'kk', khmer: 'km', korean: 'ko', kurdish: 'ku',
+  latvian: 'lv', lithuanian: 'lt', luxembourgish: 'lb', macedonian: 'mk', malay: 'ms',
+  malayalam: 'ml', manipuri: 'ma', marathi: 'mr', mongolian: 'mn', montenegrin: 'me',
+  navajo: 'nv', nepali: 'ne', norwegian: 'no', occitan: 'oc', odia: 'or',
+  persian: 'fa', polish: 'pl', portuguese: 'pt', pushto: 'ps', romanian: 'ro',
+  russian: 'ru', santali: 'sx', serbian: 'sr', sindhi: 'sd', sinhalese: 'si',
+  slovak: 'sk', slovenian: 'sl', somali: 'so', spanish: 'es', swahili: 'sw',
+  swedish: 'sv', syriac: 'sy', tagalog: 'tl', tamil: 'ta', tatar: 'tt',
+  telugu: 'te', thai: 'th', turkish: 'tr', turkmen: 'tk', ukrainian: 'uk',
+  urdu: 'ur', uzbek: 'uz', vietnamese: 'vi', welsh: 'cy',
+};
+
 function normalizeLang(raw) {
   if (!raw) return null;
-  const s = String(raw).trim().toLowerCase();
+  let s = String(raw).trim().toLowerCase();
+  // Regional variants collapse to their base language: zh-cn → zh, pt-br → pt.
+  if (s.includes('-')) s = s.split('-')[0];
+  // Names may carry a qualifier: "chinese (simplified)".
+  const bare = s.replace(/\s*\(.*$/, '').trim();
   // Direct match
   if (LANG_MAP[s]) return s;
+  // Provider language names
+  if (LANG_NAME_TO_CODE[bare]) return LANG_NAME_TO_CODE[bare];
   // ISO 639-2 match
   const by639_2 = Object.entries(LANG_MAP_3).find(([, v]) => v === s);
   if (by639_2) return by639_2[0];
   // Full name match
-  const byName = Object.entries(LANG_NAMES).find(([, v]) => v.toLowerCase() === s);
+  const byName = Object.entries(LANG_NAMES).find(([, v]) => v.toLowerCase() === bare);
   if (byName) return byName[0];
   // Partial matches
   if (s.startsWith('ind') || s.includes('indonesi')) return 'id';
