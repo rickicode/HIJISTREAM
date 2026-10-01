@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from './src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, tmdbFetch, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from './src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -226,10 +226,7 @@ async function handleSubtitles(env, url) {
     try {
       const tmdbKey = process.env.TMDB_API_KEY;
       if (tmdbKey) {
-        const endpoint = type === 'tv'
-          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
-          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
-        const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        const tmdbRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
         if (tmdbRes.ok) {
           const tmdbData = await tmdbRes.json();
           options.title = tmdbData.title || tmdbData.name || null;
@@ -456,10 +453,7 @@ export default async function middleware(request) {
         const tmdbKey = process.env.TMDB_API_KEY;
         if (!opts.imdbId && tmdbKey) {
           try {
-            const ep = type === 'tv'
-              ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
-              : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
-            const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+            const tRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
             if (!tRes.ok) console.error(`[Subtitle] TMDB lookup for imdb_id failed: HTTP ${tRes.status} for ${type}/${tmdbId}`);
             else {
               const meta = await tRes.json();

@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from '../../src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, tmdbFetch, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from '../../src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -92,10 +92,7 @@ async function handleSubtitles(env, url) {
       if (tmdbKey) {
         // external_ids must be appended or the response carries no imdb_id at
         // all, which left the YIFY/OS.org lookups keyless on this path.
-        const endpoint = type === 'tv'
-          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
-          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
-        const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        const tmdbRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
         if (tmdbRes.ok) {
           const tmdbData = await tmdbRes.json();
           options.title = tmdbData.title || tmdbData.name || null;

@@ -17,6 +17,12 @@ function stubFetch() {
     const u = String(url);
     calls.push(u);
     if (u.includes('themoviedb.org')) {
+      // The deployment carries a v3 key, which TMDB only honours through
+      // api_key=. Answering 401 to the Bearer-only form is what production
+      // does, and is the regression this exercises.
+      if (!u.includes('api_key=')) {
+        return new Response(JSON.stringify({ status_code: 7, status_message: 'Invalid API key' }), { status: 401 });
+      }
       return new Response(JSON.stringify({
         title: 'Inception',
         external_ids: { imdb_id: 'tt1375666' },

@@ -119,6 +119,21 @@ export async function signS3(method, path, headers, body, accessKeyId, secretAcc
   };
 }
 
+// ─── TMDB helper ──────────────────────────────────────────────────────────────
+//
+// TMDB accepts two credential kinds: a v4 read access token through the
+// `Authorization: Bearer` header, and a v3 API key through the `api_key` query
+// parameter. The deployment carries a v3 key, so the Bearer-only lookups all
+// answered 401 and silently degraded — the TV season list, SubtitleCat's title
+// fallback, the download-path metadata, and YIFY's imdb_id. Sending the key both
+// ways satisfies either kind; TMDB ignores the one that does not apply.
+export function tmdbFetch(apiKey, path, queryParams = {}) {
+  const params = new URLSearchParams({ api_key: apiKey, language: 'en-US', ...queryParams });
+  return fetch(`https://api.themoviedb.org/3${path}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, 'User-Agent': 'HIJISTREAM/1.0' },
+  });
+}
+
 // ─── R2 helpers ───────────────────────────────────────────────────────────────
 
 export function getR2PublicUrl(env, key) {
@@ -920,9 +935,7 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
   try {
     const tmdbKey = env.TMDB_API_KEY;
     if (!tmdbKey) throw new Error('TMDB_API_KEY tidak dikonfigurasi di environment');
-    const tvRes = await fetch(`https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`, {
-      headers: { Authorization: `Bearer ${tmdbKey}` },
-    });
+    const tvRes = await tmdbFetch(tmdbKey, `/tv/${tmdbId}`);
     if (!tvRes.ok) {
       let detail = '';
       try { const errBody = await tvRes.json(); detail = errBody.status_message || JSON.stringify(errBody); } catch { detail = await tvRes.text().catch(() => ''); }
@@ -1313,8 +1326,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     let catTitleSource = catTitle ? 'klien' : null;
     try {
       if (!catTitle && tmdbKey) {
-        const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
-        const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+        const tRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`);
         // One read: res.json() consumes the body, a second call throws. The
         // HTTP status is reported verbatim because an invalid/absent TMDB key
         // (401) is the actual reason this fallback contributes nothing.
@@ -1835,12 +1847,7 @@ export async function backfillTitles(env) {
     try {
       const tmdbKey = env.TMDB_API_KEY;
       if (!tmdbKey) { errors++; continue; }
-      const endpoint = type === 'tv'
-        ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
-        : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
-      const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${tmdbKey}` },
-      });
+      const res = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
       if (!res.ok) { errors++; continue; }
       const data = await res.json();
       const title = data.title || data.name || null;
