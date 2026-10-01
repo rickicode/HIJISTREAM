@@ -10,6 +10,7 @@
  * Subtitles cached in R2 as WebVTT files.
  */
 
+import { unzipSync, strFromU8 } from 'fflate';
 import { translateSrtToIndonesian } from './ai-translate.js';
 
 // ─── Language maps ────────────────────────────────────────────────────────────
@@ -637,71 +638,33 @@ async function fetchFromSubtitleCat(tmdbId, type, lang, season, episode, title) 
 }
 
 /**
- * Extract first subtitle file from a ZIP archive.
- * Minimal ZIP parser — finds local file headers and extracts deflate-compressed entries.
+ * Extract subtitle files from a ZIP archive (pure-JS inflate via fflate).
+ * DecompressionStream is absent in the Vercel Edge runtime, so hand-rolled
+ * "deflate-raw" decoding silently failed there. Returns {filename, content}[].
  */
-export async function extractSubtitleFromZip(buffer) {
+export function extractSubtitlesFromZip(buffer) {
   const MAX_SIZE = 4 * 1024 * 1024;
-  const bytes = new Uint8Array(buffer);
-  const decoder = new TextDecoder('utf-8');
-  let offset = 0;
-
-  while (offset < bytes.length - 4) {
-    // Local file header signature: 0x04034b50
-    if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
-      const compression = bytes[offset+8] | (bytes[offset+9] << 8);
-      const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
-      const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
-      const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
-      const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
-      const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
-      const dataStart = offset + 30 + fnLen + extraLen;
-      const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
-
-      if (compressedSize > MAX_SIZE || uncompressedSize > MAX_SIZE) {
-        offset = dataStart + compressedSize;
-        continue;
-      }
-
-      if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
-        let text = null;
-        if (compression === 0) {
-          text = decoder.decode(compressedData);
-        } else if (compression === 8) {
-          try {
-            const ds = new DecompressionStream('deflate-raw');
-            const writer = ds.writable.getWriter();
-            const reader = ds.readable.getReader();
-            writer.write(compressedData);
-            writer.close();
-            const chunks = [];
-            let done = false;
-            let totalLen = 0;
-            while (!done) {
-              const { value, done: d } = await reader.read();
-              if (value) {
-                totalLen += value.length;
-                if (totalLen > MAX_SIZE) break;
-                chunks.push(value);
-              }
-              done = d;
-            }
-            if (totalLen <= MAX_SIZE) {
-              const result = new Uint8Array(totalLen);
-              let pos = 0;
-              for (const c of chunks) { result.set(c, pos); pos += c.length; }
-              text = decoder.decode(result);
-            }
-          } catch { text = null; }
-        }
-        if (text && text.includes('-->')) return text;
-      }
-      offset = dataStart + compressedSize;
-    } else {
-      offset++;
-    }
+  let archive;
+  try {
+    archive = unzipSync(new Uint8Array(buffer));
+  } catch {
+    return [];
   }
-  return null;
+
+  const entries = [];
+  for (const [filename, data] of Object.entries(archive)) {
+    if (!/\.(srt|vtt|ass|ssa)$/i.test(filename)) continue;
+    if (data.length > MAX_SIZE) continue;
+    const content = strFromU8(data);
+    if (content.includes('-->')) entries.push({ filename, content });
+  }
+  return entries;
+}
+
+/** Extract the first subtitle file from a ZIP archive, or null. */
+export function extractSubtitleFromZip(buffer) {
+  const entries = extractSubtitlesFromZip(buffer);
+  return entries.length > 0 ? entries[0].content : null;
 }
 
 /**
@@ -709,67 +672,7 @@ export async function extractSubtitleFromZip(buffer) {
  * Returns array of { filename, content } for each .srt/.vtt/.ass/.ssa file found.
  */
 async function extractAllSubtitlesFromZip(buffer) {
-  const MAX_SIZE = 4 * 1024 * 1024;
-  const bytes = new Uint8Array(buffer);
-  const decoder = new TextDecoder('utf-8');
-  let offset = 0;
-  const entries = [];
-
-  while (offset < bytes.length - 4) {
-    if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
-      const compression = bytes[offset+8] | (bytes[offset+9] << 8);
-      const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
-      const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
-      const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
-      const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
-      const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
-      const dataStart = offset + 30 + fnLen + extraLen;
-      const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
-
-      if (compressedSize > MAX_SIZE || uncompressedSize > MAX_SIZE) {
-        offset = dataStart + compressedSize;
-        continue;
-      }
-
-      if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
-        let text = null;
-        if (compression === 0) {
-          text = decoder.decode(compressedData);
-        } else if (compression === 8) {
-          try {
-            const ds = new DecompressionStream('deflate-raw');
-            const writer = ds.writable.getWriter();
-            const reader = ds.readable.getReader();
-            writer.write(compressedData);
-            writer.close();
-            const chunks = [];
-            let done = false;
-            let totalLen = 0;
-            while (!done) {
-              const { value, done: d } = await reader.read();
-              if (value) {
-                totalLen += value.length;
-                if (totalLen > MAX_SIZE) break;
-                chunks.push(value);
-              }
-              done = d;
-            }
-            if (totalLen <= MAX_SIZE) {
-              const result = new Uint8Array(totalLen);
-              let pos = 0;
-              for (const c of chunks) { result.set(c, pos); pos += c.length; }
-              text = decoder.decode(result);
-            }
-          } catch { text = null; }
-        }
-        if (text && text.includes('-->')) entries.push({ filename, content: text });
-      }
-      offset = dataStart + compressedSize;
-    } else {
-      offset++;
-    }
-  }
-  return entries;
+  return extractSubtitlesFromZip(buffer);
 }
 
 /**

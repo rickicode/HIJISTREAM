@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay, extractSubtitleFromZip } from './src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay, extractSubtitleFromZip, resolveProviderCredentials } from './src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -519,6 +519,43 @@ export default async function middleware(request) {
         }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
       } catch (err) {
         return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+    // TEMP DIAGNOSTIC (remove): stage-by-stage OpenSubtitles.com probe (no secrets echoed).
+    else if (pathname === '/debug/oscom') {
+      const fileId = url.searchParams.get('file_id');
+      const out = { stages: [] };
+      try {
+        const c = (await resolveProviderCredentials(process.env)).opensubtitles_com;
+        out.hasCreds = { apiKey: !!c.apiKey, username: !!c.username, password: !!c.password };
+        const loginRes = await fetch('https://api.opensubtitles.com/api/v1/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Api-Key': c.apiKey, 'User-Agent': 'HIJISTREAM/1.0' },
+          body: JSON.stringify({ username: c.username, password: c.password }),
+        });
+        const loginText = await loginRes.text();
+        let token = null;
+        try { token = JSON.parse(loginText).token; } catch { /* non-json */ }
+        out.stages.push({ step: 'login', status: loginRes.status, hasToken: !!token, sample: loginText.slice(0, 150) });
+        if (token && fileId) {
+          const dlRes = await fetch('https://api.opensubtitles.com/api/v1/download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Api-Key': c.apiKey, Authorization: `Bearer ${token}`, 'User-Agent': 'HIJISTREAM/1.0' },
+            body: JSON.stringify({ file_id: fileId }),
+          });
+          const dlText = await dlRes.text();
+          let link = null;
+          try { link = JSON.parse(dlText).link; } catch { /* non-json */ }
+          out.stages.push({ step: 'download', status: dlRes.status, hasLink: !!link, sample: dlText.slice(0, 200) });
+          if (link) {
+            const fileRes = await fetch(link, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+            const bytes = await fileRes.arrayBuffer();
+            out.stages.push({ step: 'fetchFile', status: fileRes.status, bytes: bytes.byteLength });
+          }
+        }
+        return new Response(JSON.stringify(out), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      } catch (err) {
+        return new Response(JSON.stringify({ ...out, error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
       }
     }
     else if (pathname === '/subtitles/download' && request.method === 'POST') {
