@@ -91,7 +91,7 @@ async function handleSubtitles(env, url) {
       const tmdbKey = env.TMDB_API_KEY;
       if (tmdbKey) {
         // external_ids must be appended or the response carries no imdb_id at
-        // all, which left the YIFY/OS.org lookups keyless on this path.
+        // all, which left the OpenSubtitles.com IMDB fallback keyless here.
         const tmdbRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
         if (tmdbRes.ok) {
           const tmdbData = await tmdbRes.json();
@@ -234,21 +234,10 @@ async function handleAdmin(pathname, method, env, request) {
         const d = await r.json().catch(() => ({}));
         return jsonRes({ success: r.ok, message: r.ok ? `Login OK! Sisa download: ${d.user?.allowed_downloads ?? '?'}` : (d.message || `Gagal (${r.status})`) });
       }
-      if (provider === 'opensubtitles_org') {
-        if (!username || !password) return jsonRes({ success: false, message: 'username & password required' });
-        const xml = `<?xml version="1.0"?><methodCall><methodName>LogIn</methodName><params><param><value><string>${username}</string></value></param><param><value><string>${password}</string></value></param><param><value><string>en</string></value></param><param><value><string>HIJISTREAM v1.0</string></value></param></params></methodCall>`;
-        const r = await fetch('https://api.opensubtitles.org/xml-rpc', { method: 'POST', headers: { 'Content-Type': 'text/xml', 'User-Agent': 'HIJISTREAM v1.0' }, body: xml });
-        const text = await r.text();
-        const ok = r.ok && text.includes('200 OK');
-        return jsonRes({ success: ok, message: ok ? 'Login OS.org berhasil!' : 'Login gagal (cek username/password)' });
-      }
       if (provider === 'subdl') {
         if (!apiKey) return jsonRes({ success: false, message: 'apiKey required' });
         const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
         return jsonRes({ success: r.ok, message: r.ok ? 'API Key Subdl valid!' : `Tidak valid (${r.status})` });
-      }
-      if (provider === 'yify') {
-        return jsonRes({ success: true, message: 'YIFY aktif! (Free, tanpa API key)' });
       }
       if (provider === 'subtitlecat') {
         return jsonRes({ success: true, message: 'SubtitleCat aktif! (Free, tanpa API key)' });

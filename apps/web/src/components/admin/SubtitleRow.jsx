@@ -79,13 +79,11 @@ export default function SubtitleRow({ entry, onDelete, onRefresh, onEdit, onConf
             entry.source === 'manual' ? 'text-cyan-400 bg-cyan-400/10'
             : entry.source === 'subdl' ? 'text-purple-400 bg-purple-400/10'
             : entry.source === 'opensubtitles_com' ? 'text-yellow-400 bg-yellow-400/10'
-            : entry.source === 'opensubtitles_org' ? 'text-blue-400 bg-blue-400/10'
             : 'text-orange-400 bg-orange-400/10'
           }`}>
             {entry.source === 'manual' ? 'MANUAL'
             : entry.source === 'subdl' ? 'SubDL'
             : entry.source === 'opensubtitles_com' ? 'OS.com'
-            : entry.source === 'opensubtitles_org' ? 'OS.org'
             : entry.source?.replace('opensubtitles_', 'OS.').toUpperCase() || 'Unknown'}
           </span>
         </div>

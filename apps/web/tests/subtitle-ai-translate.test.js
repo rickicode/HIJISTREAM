@@ -1,4 +1,4 @@
-import { gzipSync } from 'fflate';
+import { zipSync, strToU8 } from 'fflate';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   searchSubtitlesFromProviders,
@@ -10,9 +10,6 @@ import {
 
 const EN_VTT = 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nHello world\n';
 const LLM_SRT = '1\n00:00:01,000 --> 00:00:04,000\nHalo dunia\n';
-// OS.org serves the file body gzipped with no Content-Encoding header, so the
-// fetcher reads raw bytes and inflates them itself.
-const gzBytes = (text) => gzipSync(new TextEncoder().encode(text));
 
 const AI_ENV = {
   AXONROUTER_BASE_URL: 'https://llm.test',
@@ -145,8 +142,8 @@ describe('downloadSubtitleByProvider ai_translate branch', () => {
       if (u.includes('llm.test/chat/completions')) {
         return { ok: true, json: async () => ({ choices: [{ message: { content: LLM_SRT } }] }), text: async () => '' };
       }
-      if (u.includes('dl.opensubtitles.org')) {
-        const bytes = gzBytes(EN_VTT);
+      if (u.includes('dl.subdl.com')) {
+        const bytes = zipSync({ 'movie.en.srt': strToU8(EN_VTT) });
         return { ok: true, json: async () => ({}), text: async () => EN_VTT, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
       }
       return EMPTY_RESPONSE;
@@ -154,7 +151,7 @@ describe('downloadSubtitleByProvider ai_translate branch', () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  const srcFileId = encodeAiFileId('opensubtitles_org', 'https://dl.opensubtitles.org/download/abc');
+  const srcFileId = encodeAiFileId('subdl', 'https://dl.subdl.com/dl/1.zip');
 
   it('translates the encoded EN source and stores Indonesian VTT in R2', async () => {
     const res = await downloadSubtitleByProvider(
@@ -178,7 +175,7 @@ describe('downloadSubtitleByProvider ai_translate branch', () => {
     // Metadata records which provider actually produced the track.
     const metaPut = puts.find(p => p.path.includes('subtitles/metadata.json'));
     expect(metaPut).toBeTruthy();
-    expect(metaPut.body).toContain('ai-translate:opensubtitles_org');
+    expect(metaPut.body).toContain('ai-translate:subdl');
     expect(metaPut.body).toContain('"lang": "id"');
   });
 

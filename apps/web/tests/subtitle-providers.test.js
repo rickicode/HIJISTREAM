@@ -99,14 +99,13 @@ describe('ProviderRegistry', () => {
   it('has all providers registered', () => {
     expect(providerRegistry.get('opensubtitles_com')).toBeDefined();
     expect(providerRegistry.get('subdl')).toBeDefined();
-    expect(providerRegistry.get('yify')).toBeDefined();
     expect(providerRegistry.get('subtitlecat')).toBeDefined();
     expect(providerRegistry.get('ai_translate')).toBeDefined();
   });
 
   it('returns all providers', () => {
     const all = providerRegistry.getAll();
-    expect(all.length).toBe(5);
+    expect(all.length).toBe(4);
   });
 });
 
@@ -212,10 +211,9 @@ describe('API subtitle methods', () => {
       }
       expect(diagnostics.find(d => d.provider === 'opensubtitles_com')?.status).toBe('skipped');
       expect(diagnostics.find(d => d.provider === 'subdl')?.status).toBe('skipped');
-      // YIFY is movie-capable but has no imdb_id here — it must say so rather
-      // than vanish.
-      expect(diagnostics.find(d => d.provider === 'yify')?.status).toBe('skipped');
-      expect(diagnostics.find(d => d.provider === 'yify')?.message).toBe('butuh imdb_id');
+      // SubtitleCat is keyed on a title, which neither the caller nor a
+      // keyless TMDB can supply here — it must say so rather than vanish.
+      expect(diagnostics.find(d => d.provider === 'subtitlecat')?.status).toBe('skipped');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -285,26 +283,6 @@ describe('API subtitle methods', () => {
     } finally {
       vi.unstubAllGlobals();
     }
-  });
-});
-
-describe('YifyProvider', () => {
-  it('has correct identity', () => {
-    const provider = providerRegistry.get('yify');
-    expect(provider.name).toBe('yify');
-    expect(provider.displayName).toBe('YIFY Subtitles');
-  });
-
-  it('rejects tv shows', async () => {
-    const provider = providerRegistry.get('yify');
-    const res = await provider.search({ type: 'tv', id: 1399, imdbId: 'tt0944947' }, ['en']);
-    expect(res).toEqual([]);
-  });
-
-  it('rejects missing imdbId', async () => {
-    const provider = providerRegistry.get('yify');
-    const res = await provider.search({ type: 'movie', id: 27205 }, ['en']);
-    expect(res).toEqual([]);
   });
 });
 

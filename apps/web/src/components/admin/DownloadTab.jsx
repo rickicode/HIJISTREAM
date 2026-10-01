@@ -5,8 +5,8 @@ import api from '../../utils/api';
 const LANGS = ['id', 'en', 'ja', 'ko', 'es', 'pt', 'hi'];
 const LANG_LABELS = { id: 'ID', en: 'EN', ja: 'JA', ko: 'KO', es: 'ES', pt: 'PT', hi: 'HI' };
 const LANG_FULL = { id: 'Indonesian', en: 'English', ja: 'Japanese', ko: 'Korean', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi' };
-const PROVIDER_LABELS = { opensubtitles_com: 'OS.com', opensubtitles_org: 'OS.org', subdl: 'Subdl' };
-const PROVIDER_COLORS = { opensubtitles_com: 'text-yellow-400 bg-yellow-400/10', opensubtitles_org: 'text-blue-400 bg-blue-400/10', subdl: 'text-purple-400 bg-purple-400/10' };
+const PROVIDER_LABELS = { opensubtitles_com: 'OS.com', subdl: 'Subdl', subtitlecat: 'SubtitleCat', ai_translate: 'AI Translate' };
+const PROVIDER_COLORS = { opensubtitles_com: 'text-yellow-400 bg-yellow-400/10', subdl: 'text-purple-400 bg-purple-400/10', subtitlecat: 'text-cyan-400 bg-cyan-400/10', ai_translate: 'text-violet-400 bg-violet-400/10' };
 
 export default function DownloadTab() {
   // ── TMDB Search ──

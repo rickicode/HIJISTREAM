@@ -750,20 +750,10 @@ export default async function middleware(request) {
               const r = await fetch('https://api.opensubtitles.com/api/v1/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Api-Key': apiKey, 'User-Agent': 'HIJISTREAM/1.0' }, body: JSON.stringify({ username, password }) });
               const d = await r.json().catch(() => ({}));
               success = r.ok; message = r.ok ? `Login OK! Sisa download: ${d.user?.allowed_downloads ?? '?'}` : (d.message || `Login failed (${r.status})`);
-            } else if (provider === 'opensubtitles_org') {
-              if (!username || !password) return new Response(JSON.stringify({ success: false, message: 'username & password required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
-              const xml = `<?xml version="1.0"?><methodCall><methodName>LogIn</methodName><params><param><value><string>${username}</string></value></param><param><value><string>${password}</string></value></param><param><value><string>en</string></value></param><param><value><string>HIJISTREAM v1.0</string></value></param></params></methodCall>`;
-              const r = await fetch('https://api.opensubtitles.org/xml-rpc', { method: 'POST', headers: { 'Content-Type': 'text/xml', 'User-Agent': 'HIJISTREAM v1.0' }, body: xml });
-              const text = await r.text();
-              success = r.ok && text.includes('200 OK');
-              message = success ? 'Login ke OpenSubtitles.org berhasil!' : 'Login gagal (cek username/password)';
             } else if (provider === 'subdl') {
               if (!apiKey) return new Response(JSON.stringify({ success: false, message: 'apiKey required' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
               const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
               success = r.ok; message = r.ok ? 'API Key Subdl valid!' : `API Key tidak valid (${r.status})`;
-            } else if (provider === 'yify') {
-              success = true;
-              message = 'YIFY aktif! (Free, tanpa API key diperlukan)';
             } else if (provider === 'subtitlecat') {
               success = true;
               message = 'SubtitleCat aktif! (Free, tanpa API key diperlukan)';

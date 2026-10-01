@@ -54,19 +54,6 @@ export const PROVIDER_INFO = {
       { key: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
     ],
   },
-  opensubtitles_org: {
-    name: 'OpenSubtitles.org',
-    shortName: 'OS.org',
-    description: 'XML-RPC Legacy — Username + Password',
-    icon: '📺',
-    color: 'text-blue-400',
-    bgColor: 'bg-blue-400/10',
-    borderColor: 'border-blue-400/20',
-    fields: [
-      { key: 'username', label: 'Username', type: 'text', placeholder: 'Username opensubtitles.org' },
-      { key: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
-    ],
-  },
   subdl: {
     name: 'Subdl',
     shortName: 'Subdl',
@@ -78,16 +65,6 @@ export const PROVIDER_INFO = {
     fields: [
       { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'Dari subdl.com/api' },
     ],
-  },
-  yify: {
-    name: 'YIFY Subtitles',
-    shortName: 'YIFY',
-    description: 'Free — Movie subtitles from YTS/YIFY (no auth)',
-    icon: '🎞️',
-    color: 'text-emerald-400',
-    bgColor: 'bg-emerald-400/10',
-    borderColor: 'border-emerald-400/20',
-    fields: [],
   },
   subtitlecat: {
     name: 'SubtitleCat',
@@ -117,18 +94,14 @@ export const PROVIDER_INFO = {
 
 export const PROVIDER_LABELS = {
   opensubtitles_com: 'OS.com',
-  opensubtitles_org: 'OS.org',
   subdl: 'Subdl',
-  yify: 'YIFY',
   subtitlecat: 'SubtitleCat',
   ai_translate: 'AI Translate',
 };
 
 export const PROVIDER_COLORS = {
   opensubtitles_com: 'text-yellow-400 bg-yellow-400/10',
-  opensubtitles_org: 'text-blue-400 bg-blue-400/10',
   subdl: 'text-purple-400 bg-purple-400/10',
-  yify: 'text-emerald-400 bg-emerald-400/10',
   subtitlecat: 'text-cyan-400 bg-cyan-400/10',
   ai_translate: 'text-violet-400 bg-violet-400/10',
 };

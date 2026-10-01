@@ -10,7 +10,9 @@ const R2_VARS = {
 };
 
 // /api/subtitles/search on production is served by middleware.js, not by the
-// Pages Function — both must resolve imdb_id, or YIFY stays keyless.
+// Pages Function. Both hand the search to searchSubtitlesFromProviders, which
+// resolves the title/imdb_id a caller omitted from a single TMDB call; the
+// title is what SubtitleCat is keyed on.
 function stubFetch() {
   const calls = [];
   globalThis.fetch = vi.fn(async (url) => {
@@ -38,7 +40,7 @@ function search(params) {
   return middleware(new Request(`https://app.test/api/subtitles/search?${params}`));
 }
 
-describe('middleware /subtitles/search imdb resolution', () => {
+describe('middleware /subtitles/search metadata resolution', () => {
   const savedEnv = {};
 
   beforeEach(() => {
@@ -56,16 +58,19 @@ describe('middleware /subtitles/search imdb resolution', () => {
     vi.restoreAllMocks();
   });
 
-  it('resolves imdb_id when the caller omits it, so YIFY is queried', async () => {
+  it('resolves the title when the caller omits it, and queries SubtitleCat with it', async () => {
     const calls = stubFetch();
-    const res = await search('type=movie&tmdb_id=27205&lang=id&title=Inception');
+    const res = await search('type=movie&tmdb_id=27205&lang=id');
     expect(res.status).toBe(200);
 
     const detail = calls.filter((u) => u.includes('append_to_response=external_ids'));
     expect(detail).toHaveLength(1);
     // Without external_ids the payload carries no imdb_id at all.
     expect(detail[0]).toContain('append_to_response=external_ids');
-    expect(calls.some((u) => u.includes('yifysubtitles') && u.includes('tt1375666'))).toBe(true);
+    // The resolved title reached the provider that is keyed on it.
+    const cat = calls.filter((u) => u.includes('subtitlecat.com'));
+    expect(cat).toHaveLength(1);
+    expect(decodeURIComponent(cat[0])).toContain('Inception');
   });
 
   it('does not spend a TMDB call when the client sent both title and imdb_id', async () => {
@@ -73,7 +78,7 @@ describe('middleware /subtitles/search imdb resolution', () => {
     const res = await search('type=movie&tmdb_id=27205&lang=id&imdb_id=tt1375666&title=Inception');
     expect(res.status).toBe(200);
     expect(calls.filter((u) => u.includes('append_to_response=external_ids'))).toHaveLength(0);
-    expect(calls.some((u) => u.includes('yifysubtitles') && u.includes('tt1375666'))).toBe(true);
+    expect(calls.filter((u) => u.includes('subtitlecat.com'))).toHaveLength(1);
   });
 
   it('keeps a client-supplied title when TMDB is unreachable', async () => {

@@ -3,14 +3,15 @@
  *
  * Providers (tried in order until one succeeds):
  *   1. opensubtitles_com  — REST API v1, needs apiKey + username + password
- *   2. opensubtitles_org  — XML-RPC legacy, needs username + password only
- *   3. subdl              — REST API, needs apiKey only
+ *   2. subdl              — REST API, needs apiKey only
+ *   3. subtitlecat        — scraped, keyed on the title
+ *   4. ai_translate       — machine translation into Indonesian
  *
  * Credentials stored in R2: settings/subtitle-providers.json
  * Subtitles cached in R2 as WebVTT files.
  */
 
-import { unzipSync, strFromU8, gunzipSync } from 'fflate';
+import { unzipSync, strFromU8 } from 'fflate';
 import { translateSrtToIndonesian } from './ai-translate.js';
 // subtitle-providers.js is a leaf (no imports) — pulling rankSubtitles here
 // creates no cycle and keeps scoring in one place.
@@ -20,7 +21,7 @@ import { rankSubtitles } from './subtitle-providers.js';
 
 // app locale → ISO 639-1 (OS.com / Subdl)
 const LANG_MAP = { id: 'id', en: 'en', es: 'es', pt: 'pt', hi: 'hi', ja: 'ja', ko: 'ko' };
-// app locale → ISO 639-2 (OS.org XML-RPC)
+// app locale → ISO 639-2 (Subdl / legacy provider codes)
 const LANG_MAP_3 = { id: 'ind', en: 'eng', es: 'spa', pt: 'por', hi: 'hin', ja: 'jpn', ko: 'kor' };
 const LANG_NAMES = { id: 'Indonesian', en: 'English', es: 'Spanish', pt: 'Portuguese', hi: 'Hindi', ja: 'Japanese', ko: 'Korean' };
 
@@ -125,7 +126,7 @@ export async function signS3(method, path, headers, body, accessKeyId, secretAcc
 // `Authorization: Bearer` header, and a v3 API key through the `api_key` query
 // parameter. The deployment carries a v3 key, so the Bearer-only lookups all
 // answered 401 and silently degraded — the TV season list, SubtitleCat's title
-// fallback, the download-path metadata, and YIFY's imdb_id. Sending the key both
+// fallback, the download-path metadata, and the imdb_id lookup. Sending the key both
 // ways satisfies either kind; TMDB ignores the one that does not apply.
 export function tmdbFetch(apiKey, path, queryParams = {}) {
   const params = new URLSearchParams({ api_key: apiKey, language: 'en-US', ...queryParams });
@@ -275,14 +276,9 @@ export async function resolveProviderCredentials(env) {
       username: env.OPENSUBTITLES_USERNAME || stored.opensubtitles_com?.username || '',
       password: env.OPENSUBTITLES_PASSWORD || stored.opensubtitles_com?.password || '',
     },
-    opensubtitles_org: {
-      username: env.OPENSUBTITLES_ORG_USERNAME || stored.opensubtitles_org?.username || '',
-      password: env.OPENSUBTITLES_ORG_PASSWORD || stored.opensubtitles_org?.password || '',
-    },
     subdl: {
       apiKey: env.SUBDL_API_KEY || stored.subdl?.apiKey || '',
     },
-    yify: {},
     subtitlecat: {},
     ai_translate: {
       baseUrl: env.AXONROUTER_BASE_URL || env.AI_TRANSLATE_BASE_URL || stored.ai_translate?.baseUrl || '',
@@ -378,284 +374,6 @@ async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId
   return content ? { content, source: 'opensubtitles_com' } : null;
 }
 
-// ─── XML-RPC — pure JS (Edge/Node have no DOMParser) ─────────────────────────
-
-const OS_ORG_ENDPOINT = 'https://api.opensubtitles.org/xml-rpc';
-const OS_ORG_UA = 'HIJISTREAM v1.0'; // must be registered; fallback to temp app name
-
-function valueToXml(v) {
-  if (typeof v === 'string') return `<value><string>${v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</string></value>`;
-  if (typeof v === 'number') return `<value><int>${v}</int></value>`;
-  if (typeof v === 'boolean') return `<value><boolean>${v ? 1 : 0}</boolean></value>`;
-  if (Array.isArray(v)) return `<value><array><data>${v.map(valueToXml).join('')}</data></array></value>`;
-  if (v && typeof v === 'object') {
-    const members = Object.entries(v).map(([k, val]) => `<member><name>${k}</name>${valueToXml(val)}</member>`).join('');
-    return `<value><struct>${members}</struct></value>`;
-  }
-  return `<value><string></string></value>`;
-}
-
-function xmlRpcCall(methodName, params) {
-  const paramsXml = params.map(p => `<param>${valueToXml(p)}</param>`).join('');
-  return `<?xml version="1.0"?><methodCall><methodName>${methodName}</methodName><params>${paramsXml}</params></methodCall>`;
-}
-
-const decodeXmlEntities = (t) => String(t)
-  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-  .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-
-function makeXmlRpcParser(src) {
-  let i = 0;
-  let steps = 0;
-  const LIMIT = 2_000_000;
-  const skipWs = () => { while (i < src.length && src.charCodeAt(i) <= 32) i++; };
-  const tagAt = (j) => {
-    const m = /^<(\/?)([A-Za-z0-9._:]+)(\/?)>/.exec(src.slice(j, j + 64));
-    return m ? { tag: m[2], selfClose: m[3] === '/', len: m[0].length } : null;
-  };
-
-  function parseValue() {
-    if (steps++ > LIMIT) throw new Error('xml-rpc parse limit exceeded');
-    if (src.startsWith('<value/>', i)) { i += 8; return null; }
-    if (!src.startsWith('<value>', i)) return undefined;
-    i += 7;
-    skipWs();
-
-    const t = tagAt(i);
-    let val;
-    if (!t) {
-      // Bare text inside <value> (non-standard, seen in the wild).
-      const end = src.indexOf('</value>', i);
-      val = decodeXmlEntities(src.slice(i, end < 0 ? src.length : end));
-      i = end < 0 ? src.length : end + 8;
-      return val;
-    }
-    if (t.selfClose) {
-      i += t.len;
-      val = t.tag === 'array' ? [] : t.tag === 'struct' ? {} : '';
-    } else if (t.tag === 'array') {
-      i += t.len;
-      val = [];
-      skipWs();
-      if (src.startsWith('<data/>', i)) i += 7;
-      else if (src.startsWith('<data>', i)) {
-        i += 6;
-        for (;;) {
-          skipWs();
-          if (src.startsWith('</data>', i)) { i += 7; break; }
-          const before = i;
-          const v = parseValue();
-          if (v !== undefined) val.push(v);
-          if (i <= before) break; // malformed body: never loop without progress
-        }
-      }
-    } else if (t.tag === 'struct') {
-      i += t.len;
-      val = {};
-      for (;;) {
-        skipWs();
-        if (src.startsWith('</struct>', i)) { i += 9; break; }
-        if (!src.startsWith('<member>', i)) break;
-        i += 8;
-        skipWs();
-        if (!src.startsWith('<name>', i)) break;
-        const ne = src.indexOf('</name>', i);
-        if (ne < 0) break;
-        const name = decodeXmlEntities(src.slice(i + 6, ne));
-        i = ne + 7;
-        const before = i;
-        const v = parseValue();
-        if (v !== undefined) val[name] = v;
-        if (i <= before) break;
-        skipWs();
-        if (src.startsWith('</member>', i)) i += 9;
-      }
-    } else {
-      i += t.len;
-      const end = src.indexOf(`</${t.tag}>`, i);
-      if (end < 0) { i = src.length; return t.tag === 'boolean' ? false : ''; }
-      const raw = src.slice(i, end);
-      i = end + t.tag.length + 3;
-      if (t.tag === 'int' || t.tag === 'i4') val = parseInt(raw, 10);
-      else if (t.tag === 'boolean') val = raw.trim() === '1';
-      else if (t.tag === 'double') val = parseFloat(raw);
-      else val = decodeXmlEntities(raw);
-    }
-    skipWs();
-    if (src.startsWith('</value>', i)) i += 8;
-    return val;
-  }
-
-  return () => {
-    const paramsOpen = src.indexOf('<params>');
-    if (paramsOpen < 0) return null;
-    const next = src.indexOf('<value>', paramsOpen);
-    if (next < 0) return null;
-    i = next;
-    return parseValue();
-  };
-}
-
-/**
- * Parse an XML-RPC methodResponse body. Returns the first param's value
- * (struct → object, array → array, scalars → primitives), `{ fault }` for a
- * fault response, or null when the body carries no parseable value.
- *
- * Hand-written: DOMParser is absent in some of this app's runtimes (Vercel
- * Edge / Node), and the old DOMParser path fell back to a token-only regex
- * that could not parse SearchSubtitles results at all.
- */
-export function parseXmlRpcResponse(text) {
-  if (!text) return null;
-  if (/<fault>/i.test(text)) {
-    const f = /<name>faultString<\/name>\s*<value>\s*<string>([^<]*)/.exec(text);
-    return { fault: f ? decodeXmlEntities(f[1]) : 'unknown fault' };
-  }
-  try {
-    return makeXmlRpcParser(text)();
-  } catch (err) {
-    console.error(`[Subtitle] OS.org XML-RPC parse error: ${err.message}`);
-    return null;
-  }
-}
-
-/**
- * POST an XML-RPC call. Never throws; returns
- * `{ ok: true, value }` or `{ ok: false, error }` with the reason logged —
- * an HTTP status or a parse failure must be distinguishable, not a silent null.
- */
-async function xmlRpcRequest(body) {
-  let res;
-  try {
-    res = await fetch(OS_ORG_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/xml', 'User-Agent': OS_ORG_UA },
-      body,
-    });
-  } catch (err) {
-    console.error(`[Subtitle] OS.org XML-RPC network error: ${err.message}`);
-    return { ok: false, error: `jaringan: ${err.message}` };
-  }
-  const text = await res.text();
-  if (!res.ok) {
-    console.error(`[Subtitle] OS.org XML-RPC HTTP ${res.status}: ${text.slice(0, 200)}`);
-    return { ok: false, error: `HTTP ${res.status}` };
-  }
-  const parsed = parseXmlRpcResponse(text);
-  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.fault) {
-    console.error(`[Subtitle] OS.org XML-RPC fault: ${parsed.fault}`);
-    return { ok: false, error: parsed.fault };
-  }
-  if (parsed === null || parsed === undefined) {
-    console.error(`[Subtitle] OS.org XML-RPC unparsable body: ${text.slice(0, 200)}`);
-    return { ok: false, error: 'respons tidak ter-parse' };
-  }
-  return { ok: true, value: parsed };
-}
-
-/**
- * LogIn with anonymous fallback. The endpoint issues a working token for an
- * empty user/pass, so rejected credentials (the production symptom: bogus
- * stored pair → status "401 Unauthorized" over HTTP 200) degrade to an
- * anonymous session instead of killing the provider outright.
- * Returns `{ token, fellBack, authStatus }` or `{ error }`.
- */
-async function osOrgLogin(creds) {
-  const user = creds?.username || '';
-  const pass = creds?.password || '';
-  const first = await xmlRpcRequest(xmlRpcCall('LogIn', [user, pass, 'en', OS_ORG_UA]));
-  const firstStatus = first.ok ? String(first.value?.status ?? '') : first.error;
-  if (first.ok && first.value?.token && firstStatus.startsWith('200')) {
-    return { token: first.value.token, fellBack: false, authStatus: firstStatus };
-  }
-  if (user || pass) {
-    const anon = await xmlRpcRequest(xmlRpcCall('LogIn', ['', '', 'en', OS_ORG_UA]));
-    const anonStatus = anon.ok ? String(anon.value?.status ?? '') : anon.error;
-    if (anon.ok && anon.value?.token && anonStatus.startsWith('200')) {
-      console.warn(`[Subtitle] OS.org: kredensial ditolak (${firstStatus}), memakai sesi anonim`);
-      return { token: anon.value.token, fellBack: true, authStatus: firstStatus };
-    }
-    return { error: `${firstStatus || 'login gagal'}; anonim juga gagal (${anonStatus})` };
-  }
-  return { error: firstStatus || 'login gagal' };
-}
-
-/**
- * Search. `query=tmdb:NNN` returns zero rows (verified live 2026-10-01), so the
- * lookup keys are: imdbid when known, else the human title (+ movieyear /
- * season+episode to scope). Returns { rows, error? }.
- */
-async function osOrgSearch(token, { type, lang, season, episode, imdbId, title, year }) {
-  const query = { sublanguageid: LANG_MAP_3[lang] || 'eng' };
-  if (imdbId) query.imdbid = String(imdbId).replace(/^tt/, '');
-  else if (title) query.query = title;
-  if (type === 'tv') {
-    if (season !== undefined && season !== null) query.season = String(season);
-    if (episode !== undefined && episode !== null) query.episode = String(episode);
-  } else if (year) {
-    query.movieyear = String(year);
-  }
-
-  const r = await xmlRpcRequest(xmlRpcCall('SearchSubtitles', [token, [query], { limit: 20 }]));
-  if (!r.ok) return { rows: [], error: r.error };
-  return { rows: Array.isArray(r.value?.data) ? r.value.data : [] };
-}
-
-/**
- * SubDownloadLink points at `/download/src-api/vrf-…/sid-…/`, a route that
- * serves a 104-byte "Become VIP" advertisement to free sessions (verified live
- * 2026-10-01: 8/8 files stubbed; the real track is only on the plain route).
- * Strip it back. The `/subformat-vtt/` infix answers HTTP 500 here, so the raw
- * SRT/VTT body comes back and is converted downstream.
- */
-function osOrgDownloadUrl(link) {
-  return String(link).replace(/\/download\/src-api\/vrf-[^/]+\/sid-[^/]+\//, '/download/');
-}
-
-/**
- * Fetch one subtitle file for a SubDownloadLink. The response body is gzipped
- * WITHOUT a Content-Encoding header (the runtime will not inflate it for us).
- * Throws with a reason on failure so callers can report it.
- */
-async function osOrgFetchFile(link) {
-  const res = await fetch(osOrgDownloadUrl(link), { headers: { 'User-Agent': OS_ORG_UA } });
-  if (!res.ok) throw new Error(`OS.org unduhan gagal: HTTP ${res.status}`);
-  const buf = new Uint8Array(await res.arrayBuffer());
-  const isGz = buf.length > 1 && buf[0] === 0x1f && buf[1] === 0x8b;
-  const text = isGz ? strFromU8(gunzipSync(buf)) : strFromU8(buf);
-  if (/VIP member/i.test(text) || !text.includes('-->')) {
-    throw new Error('OS.org mengembalikan iklan VIP, bukan subtitle (unduhan butuh keanggotaan VIP)');
-  }
-  // The plain route serves the original file, normally SRT. Report the real
-  // format: claiming VTT would skip the SRT→VTT conversion downstream.
-  return { content: text, alreadyVtt: text.trimStart().startsWith('WEBVTT') };
-}
-
-async function fetchFromOsOrg(creds, tmdbId, type, lang, season, episode, imdbId, title, year) {
-  const login = await osOrgLogin(creds);
-  if (login.error) {
-    console.error(`[Subtitle] fetchFromOsOrg login gagal: ${login.error}`);
-    return null;
-  }
-  const { rows, error } = await osOrgSearch(login.token, { type, lang, season, episode, imdbId, title, year });
-  if (error) {
-    console.error(`[Subtitle] fetchFromOsOrg search gagal: ${error}`);
-    return null;
-  }
-  if (!rows.length) {
-    xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
-    return null;
-  }
-  const best = rows.sort((a, b) => Number(b.SubDownloadsCnt || 0) - Number(a.SubDownloadsCnt || 0))[0];
-  if (!best?.SubDownloadLink) return null;
-  try {
-    const { content, alreadyVtt } = await osOrgFetchFile(best.SubDownloadLink);
-    return { content, source: 'opensubtitles_org', alreadyVtt };
-  } finally {
-    xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
-  }
-}
-
 // ─── Provider: Subdl ─────────────────────────────────────────────────────────
 
 const SUBDL_BASE = 'https://api.subdl.com/api/v1';
@@ -685,45 +403,6 @@ async function fetchFromSubdl(creds, tmdbId, type, lang, season, episode) {
   const blob = await dlRes.arrayBuffer();
   const content = await extractSubtitleFromZip(blob);
   return content ? { content, source: 'subdl' } : null;
-}
-
-// ─── Provider: YIFY (Free, Movie only, by IMDB ID) ─────────────────────────
-const YIFY_BASE = 'https://yifysubtitles.ch';
-const YIFY_LANG_SLUGS = {
-  id: 'indonesian', en: 'english', es: 'spanish', pt: 'portuguese',
-  hi: 'hindi', ja: 'japanese', ko: 'korean', fr: 'french',
-  de: 'german', it: 'italian', ru: 'russian', ar: 'arabic',
-};
-
-// Throws a descriptive error when the search page or the ZIP cannot be used.
-// The search branch reports those reasons; returning a bare null used to make
-// "blocked by egress", "no row for this language" and "markup changed" all
-// read as an indistinguishable 'empty'.
-async function fetchFromYify(tmdbId, type, lang, imdbId) {
-  if (type === 'tv' || !imdbId) return null;
-  const slug = YIFY_LANG_SLUGS[lang.toLowerCase()] || lang.toLowerCase();
-  const idStr = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-  const res = await fetch(`${YIFY_BASE}/movie-imdb/${idStr}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    },
-  });
-  if (!res.ok) throw new Error(`situs menolak: HTTP ${res.status}`);
-  const html = await res.text();
-  const re = new RegExp(`href="(/subtitles/[^"]*?-${slug}-yify-\\d+)"`);
-  const match = html.match(re);
-  if (!match) throw new Error(`tidak ada baris ${slug} (${html.length} byte halaman)`);
-  const slugID = match[1].split('/').pop();
-  const dlRes = await fetch(`${YIFY_BASE}/subtitle/${slugID}.zip`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    },
-  });
-  if (!dlRes.ok) throw new Error(`unduhan menolak: HTTP ${dlRes.status}`);
-  const blob = await dlRes.arrayBuffer();
-  const content = await extractSubtitleFromZip(blob);
-  if (!content) throw new Error(`arsip ${blob.byteLength} byte tanpa berkas subtitle`);
-  return { content, source: 'yify' };
 }
 
 // ─── Provider: SubtitleCat (Free, Movie & TV, direct .srt) ─────────────────
@@ -1059,10 +738,8 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
   try {
     const creds = await resolveProviderCredentials(env);
     providerStatus.opensubtitles_com = !!(creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password);
-    // OS.org serves a working anonymous token, so it is available even with no
-    // stored pair — gating bulk download on credentials would drop a live provider.
-    providerStatus.opensubtitles_org = true;
     providerStatus.subdl = !!creds.subdl.apiKey;
+    providerStatus.subtitlecat = true;
   } catch {}
   const activeProviders = Object.entries(providerStatus).filter(([, v]) => v).map(([k]) => k);
   if (activeProviders.length === 0) {
@@ -1089,7 +766,6 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
         // Provide specific reason for failure
         const reasons = [];
         if (!providerStatus.opensubtitles_com) reasons.push('OS.com tidak aktif');
-        if (!providerStatus.opensubtitles_org) reasons.push('OS.org tidak aktif');
         if (!providerStatus.subdl) reasons.push('Subdl tidak aktif');
         const reasonStr = reasons.length > 0 ? ` (${reasons.join(', ')})` : '';
         results.push({ season: job.season, episode: job.episode, lang: job.lang, success: false, message: `Subtitle tidak ditemukan di semua provider${reasonStr}` });
@@ -1151,11 +827,10 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     else console.log(`[Subtitle] ${provider} search: ${status} (${count || 0} hasil)${message ? ` — ${message}` : ''}`);
   };
 
-  // Providers are keyed differently: OpenSubtitles.org and YIFY need an IMDB id,
-  // SubtitleCat needs a title. Callers routinely have one and not the other, so
-  // fill in whichever is missing with a single TMDB call here rather than in
-  // every request handler. `append_to_response=external_ids` is what carries
-  // imdb_id — without it the response has none at all.
+  // SubtitleCat is keyed on a title and OpenSubtitles.com falls back to an IMDB
+  // id, so fill in whichever the caller omitted with a single TMDB call here
+  // rather than in every request handler. `append_to_response=external_ids` is
+  // what carries imdb_id — without it the response has none at all.
   const hadClientTitle = Boolean(String(clientTitle || '').trim());
   let title = String(clientTitle || '').trim();
   let imdbId = clientImdbId || null;
@@ -1244,50 +919,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     record('opensubtitles_com', 'skipped', 0, 'belum dikonfigurasi');
   }
 
-  // 2. OpenSubtitles.org — one lookup per language (API keys on sublanguageid).
-  // Credentials are optional: the endpoint issues working anonymous tokens, so
-  // an empty or rejected stored pair must not silently drop the provider.
-  {
-    const login = await osOrgLogin(creds.opensubtitles_org);
-    if (login.error) {
-      record('opensubtitles_org', 'error', 0, `login gagal: ${login.error}`);
-    } else {
-      let count = 0;
-      const searchLangs = lang ? [lang] : ['id', 'en', 'ja'];
-      const failures = [];
-      for (const l of searchLangs) {
-        const { rows, error } = await osOrgSearch(login.token, { type, lang: l, season, episode, imdbId, title, year });
-        if (error) { failures.push(`${l}: ${error}`); continue; }
-        for (const s of rows.slice(0, 10)) {
-          results.push({
-            provider: 'opensubtitles_org',
-            lang: l,
-            langName: LANG_NAMES[l] || l,
-            title: s.SubFileName || s.SubDownloadLink?.split('/').pop() || '',
-            downloadCount: Number(s.SubDownloadsCnt || 0),
-            rating: Number(s.SubRating || 0),
-            format: s.SubFormat || 'srt',
-            size: Number(s.SubSize || 0),
-            fileId: s.SubDownloadLink || null,
-            fps: s.FPS || null,
-            hearingImpaired: s.HearingImpaired === '1',
-          });
-          count++;
-        }
-      }
-      xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
-      if (count > 0) {
-        record('opensubtitles_org', 'ok', count, login.fellBack ? `sesi anonim (${login.authStatus})` : null);
-      } else if (failures.length) {
-        record('opensubtitles_org', 'error', 0, failures.join('; '));
-      } else {
-        const key = imdbId ? `imdbid ${imdbId}` : title ? `judul "${title}"` : 'tanpa kunci pencarian';
-        record('opensubtitles_org', 'empty', 0, `0 baris untuk ${key}${searchLangs.length > 1 ? ` (${searchLangs.join('/')})` : ''}`);
-      }
-    }
-  }
-
-  // 3. Subdl — search without language filter (returns all langs)
+  // 2. Subdl — search without language filter (returns all langs)
   if (creds.subdl.apiKey) {
     let count = 0;
     try {
@@ -1327,37 +959,7 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     record('subdl', 'skipped', 0, 'belum dikonfigurasi');
   }
 
-  // 4. YIFY (free, movie-only, IMDB keyed)
-  if (type !== 'movie' || !imdbId) {
-    record('yify', 'skipped', 0, type !== 'movie' ? 'hanya untuk movie' : 'butuh imdb_id');
-  } else {
-    try {
-      const yifySubs = await fetchFromYify(tmdbId, type, lang || 'en', imdbId);
-      if (yifySubs) {
-        results.push({
-          provider: 'yify',
-          lang: lang || 'en',
-          langName: LANG_NAMES[lang || 'en'] || (lang || 'en'),
-          title: `${title || tmdbId} (YIFY)`,
-          downloadCount: 0,
-          rating: 0,
-          format: 'srt',
-          size: 0,
-          fileId: imdbId,
-          fps: null,
-          hearingImpaired: false,
-        });
-        record('yify', 'ok', 1);
-      } else {
-        record('yify', 'empty', 0);
-      }
-    } catch (err) {
-      record('yify', 'error', 0, err.message);
-      console.error(`[Subtitle] yify search error:`, err.message);
-    }
-  }
-
-  // 5. SubtitleCat (free, movie & TV) — keyed on the title resolved above.
+  // 3. SubtitleCat (free, movie & TV) — keyed on the title resolved above.
   if (!title) {
     record('subtitlecat', 'skipped', 0, metadataNote || 'judul tidak tersedia');
   } else {
@@ -1455,7 +1057,7 @@ function decodeAiFileId(fileId) {
  * Returns { content, source, alreadyVtt? } or null. No storage side effects.
  */
 export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmdbId, lang, options = {}) {
-  const { season, episode, imdbId, title } = options;
+  const { season, episode, title } = options;
   const creds = await resolveProviderCredentials(env);
   let result = null;
 
@@ -1464,11 +1066,6 @@ export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmd
     if (!login) throw new Error('Login OpenSubtitles.com gagal (cek API key / username / password)');
     const content = await osComDownload(creds.opensubtitles_com, login.token, fileId);
     if (content) result = { content, source: 'opensubtitles_com' };
-  } else if (provider === 'opensubtitles_org' && fileId) {
-    // osOrgFetchFile rewrites the VIP-gated src-api route, inflates the raw
-    // gzip body (no Content-Encoding header), and rejects the VIP-ad stub.
-    const { content, alreadyVtt } = await osOrgFetchFile(fileId);
-    result = { content, source: 'opensubtitles_org', alreadyVtt };
   } else if (provider === 'subdl' && fileId) {
     const dlUrl = fileId.startsWith('http') ? fileId : `https://dl.subdl.com${fileId}`;
     const dlRes = await fetch(dlUrl, { headers: { 'User-Agent': 'HIJISTREAM/1.0' }, redirect: 'follow' });
@@ -1478,9 +1075,6 @@ export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmd
     const content = await extractSubtitleFromZip(blob);
     if (!content) throw new Error('Subdl: arsip tidak berisi berkas subtitle');
     result = { content, source: 'subdl' };
-  } else if (provider === 'yify') {
-    const yifyRes = await fetchFromYify(tmdbId, type, lang, fileId || imdbId);
-    if (yifyRes) result = yifyRes;
   } else if (provider === 'subtitlecat') {
     const catRes = await fetchFromSubtitleCat(tmdbId, type, lang, season, episode, title);
     if (catRes) result = catRes;
@@ -1566,10 +1160,10 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
 
 /**
  * Get subtitle from R2 cache, or download from providers.
- * Tries providers in order: opensubtitles_com → opensubtitles_org → subdl
+ * Tries providers in order: opensubtitles_com → subdl → subtitlecat
  */
 export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) {
-  const { season, episode, imdbId, title, year, force } = options;
+  const { season, episode, imdbId, title, force } = options;
   const key = getSubtitleKey(type, tmdbId, lang, season, episode);
   const publicUrl = getR2PublicUrl(env, key);
 
@@ -1591,9 +1185,7 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
   // 3. Search ALL providers simultaneously, pick best result
   const providerCalls = [
     { name: 'opensubtitles_com', fn: () => fetchFromOsCom(creds.opensubtitles_com, tmdbId, type, lang, season, episode, imdbId) },
-    { name: 'opensubtitles_org', fn: () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId, title, year) },
     { name: 'subdl', fn: () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode) },
-    { name: 'yify', fn: () => fetchFromYify(tmdbId, type, lang, imdbId) },
     { name: 'subtitlecat', fn: () => fetchFromSubtitleCat(tmdbId, type, lang, season, episode, options.title) },
   ];
 
@@ -1617,8 +1209,7 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
   let result = null;
   let usedSource = null;
   if (successful.length > 0) {
-    // Prefer OS.com > OS.org > Subdl
-    const sourcePriority = { opensubtitles_com: 1, opensubtitles_org: 2, subdl: 3, yify: 4, subtitlecat: 5 };
+    const sourcePriority = { opensubtitles_com: 1, subdl: 2, subtitlecat: 3 };
     successful.sort((a, b) => (sourcePriority[a.source] || 9) - (sourcePriority[b.source] || 9));
     result = successful[0];
     usedSource = result.source;
