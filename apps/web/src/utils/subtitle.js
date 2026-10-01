@@ -528,6 +528,20 @@ async function fetchFromPodnapisi(tmdbId, type, lang, season, episode, imdbId) {
   } catch { return null; }
 }
 
+// Download one specific Podnapisi subtitle by its pid (the fileId from search).
+async function fetchPodnapisiByPid(pid) {
+  if (!pid) return null;
+  try {
+    const dlRes = await fetch(`${PODNAPISI_BASE}/${pid}/download?container=zip`, {
+      headers: { 'User-Agent': 'HIJISTREAM/1.0' },
+    });
+    if (!dlRes.ok) return null;
+    const blob = await dlRes.arrayBuffer();
+    const content = await extractSubtitleFromZip(blob);
+    return content ? { content, source: 'podnapisi' } : null;
+  } catch { return null; }
+}
+
 // ─── Provider: YIFY (Free, Movie only, by IMDB ID) ─────────────────────────
 const YIFY_BASE = 'https://yifysubtitles.ch';
 const YIFY_LANG_SLUGS = {
@@ -1308,6 +1322,9 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
         }
       }
     } catch (e) { console.error('[Subtitle] Subdl error:', e.message); }
+  } else if (provider === 'podnapisi' && fileId) {
+    const podRes = await fetchPodnapisiByPid(fileId);
+    if (podRes) result = podRes;
   } else if (provider === 'yify') {
     const yifyRes = await fetchFromYify(tmdbId, type, lang, fileId || imdbId);
     if (yifyRes) result = yifyRes;

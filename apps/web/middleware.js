@@ -507,13 +507,14 @@ export default async function middleware(request) {
             status: 503, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
           });
         }
-        // Use getOrFetchSubtitle which handles all providers correctly
-        const sub = await getOrFetchSubtitle(process.env, type, String(tmdb_id), lang, {
+        // Download the exact provider + file the user picked. Must mirror
+        // functions/api/[[path]].js: getOrFetchSubtitle would ignore both and
+        // silently auto-search for a different subtitle.
+        const sub = await downloadSubtitleByProvider(process.env, provider, file_id, type, String(tmdb_id), lang, {
           season: season ? Number(season) : undefined,
           episode: episode ? Number(episode) : undefined,
           imdbId: imdb_id || undefined,
           title: title || undefined,
-          force: true,
         });
         if (!sub) {
           return new Response(JSON.stringify({ error: 'Download failed' }), {
