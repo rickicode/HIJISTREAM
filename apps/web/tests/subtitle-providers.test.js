@@ -274,7 +274,8 @@ describe('API subtitle methods', () => {
       // A second json() read throws "body already read", which the old code
       // reported as `error` — the reason TV SubtitleCat looked broken.
       expect(cat.status).toBe('empty');
-      expect(cat.message).toBeNull();
+      // The message now names the title source; `null` was the pre-fix shape.
+      expect(cat.message).toBe('judul dari TMDB');
       // The resolved title reached the SubtitleCat search (query built from it).
       const catSearches = fetchMock.mock.calls.filter(([u]) => String(u).includes('subtitlecat.com'));
       expect(catSearches.length).toBeGreaterThan(0);

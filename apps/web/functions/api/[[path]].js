@@ -404,6 +404,27 @@ export async function onRequest(context) {
       if (lang) opts.lang = lang;
       if (title) opts.title = title;
       if (year) opts.year = Number(year);
+      // YIFY is keyed on IMDB. The detail endpoint already carries imdb_id, but
+      // callers that skip it (old clients, deep links) would silently lose the
+      // provider, so resolve it from TMDB when absent. A client-supplied title
+      // does not help YIFY, hence the imdbId-only guard. Failures only cost that
+      // provider's row, not the search.
+      if (!opts.imdbId && env.TMDB_API_KEY) {
+        try {
+          // TV details omit imdb_id unless external_ids is appended; movie
+          // details carry it inline. Request both for one round trip.
+          const ep = type === 'tv'
+            ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
+            : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
+          const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${env.TMDB_API_KEY}` } });
+          if (!tRes.ok) console.error(`[Subtitle] TMDB lookup for imdb_id failed: HTTP ${tRes.status} for ${type}/${tmdbId}`);
+          else {
+            const meta = await tRes.json();
+            opts.title = meta.title || meta.name || null;
+            opts.imdbId = meta.external_ids?.imdb_id || meta.imdb_id || null;
+          }
+        } catch (err) { console.error(`[Subtitle] TMDB lookup for imdb_id error: ${err.message}`); }
+      }
       const { results, diagnostics } = await searchSubtitlesFromProviders(env, type, tmdbId, opts);
       return jsonRes({ results, total: results.length, diagnostics });
     }

@@ -10,7 +10,7 @@
  * Subtitles cached in R2 as WebVTT files.
  */
 
-import { unzipSync, strFromU8 } from 'fflate';
+import { unzipSync, strFromU8, gunzipSync } from 'fflate';
 import { translateSrtToIndonesian } from './ai-translate.js';
 // subtitle-providers.js is a leaf (no imports) — pulling rankSubtitles here
 // creates no cycle and keeps scoring in one place.
@@ -363,15 +363,10 @@ async function fetchFromOsCom(creds, tmdbId, type, lang, season, episode, imdbId
   return content ? { content, source: 'opensubtitles_com' } : null;
 }
 
-// ─── Provider: OpenSubtitles.org (XML-RPC) ───────────────────────────────────
+// ─── XML-RPC — pure JS (Edge/Node have no DOMParser) ─────────────────────────
 
 const OS_ORG_ENDPOINT = 'https://api.opensubtitles.org/xml-rpc';
 const OS_ORG_UA = 'HIJISTREAM v1.0'; // must be registered; fallback to temp app name
-
-function xmlRpcCall(methodName, params) {
-  const paramsXml = params.map(p => `<param>${valueToXml(p)}</param>`).join('');
-  return `<?xml version="1.0"?><methodCall><methodName>${methodName}</methodName><params>${paramsXml}</params></methodCall>`;
-}
 
 function valueToXml(v) {
   if (typeof v === 'string') return `<value><string>${v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</string></value>`;
@@ -385,98 +380,265 @@ function valueToXml(v) {
   return `<value><string></string></value>`;
 }
 
-function parseXmlValue(node) {
-  if (!node) return null;
-  const child = node.firstElementChild;
-  if (!child) return node.textContent?.trim() || '';
-  const tag = child.tagName;
-  if (tag === 'string' || tag === 'base64') return child.textContent || '';
-  if (tag === 'int' || tag === 'i4') return parseInt(child.textContent, 10);
-  if (tag === 'boolean') return child.textContent === '1';
-  if (tag === 'double') return parseFloat(child.textContent);
-  if (tag === 'array') {
-    const data = child.querySelector('data');
-    return data ? [...data.children].map(v => parseXmlValue(v)) : [];
-  }
-  if (tag === 'struct') {
-    const obj = {};
-    for (const member of child.querySelectorAll(':scope > member')) {
-      const name = member.querySelector(':scope > name')?.textContent;
-      const val = member.querySelector(':scope > value');
-      if (name) obj[name] = parseXmlValue(val);
-    }
-    return obj;
-  }
-  return child.textContent || '';
+function xmlRpcCall(methodName, params) {
+  const paramsXml = params.map(p => `<param>${valueToXml(p)}</param>`).join('');
+  return `<?xml version="1.0"?><methodCall><methodName>${methodName}</methodName><params>${paramsXml}</params></methodCall>`;
 }
 
-async function xmlRpcRequest(body) {
-  const res = await fetch(OS_ORG_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/xml', 'User-Agent': OS_ORG_UA },
-    body,
-  });
-  if (!res.ok) return null;
-  const text = await res.text();
-  // Parse XML response using DOMParser (available in CF Workers / Vercel Edge)
+const decodeXmlEntities = (t) => String(t)
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+
+function makeXmlRpcParser(src) {
+  let i = 0;
+  let steps = 0;
+  const LIMIT = 2_000_000;
+  const skipWs = () => { while (i < src.length && src.charCodeAt(i) <= 32) i++; };
+  const tagAt = (j) => {
+    const m = /^<(\/?)([A-Za-z0-9._:]+)(\/?)>/.exec(src.slice(j, j + 64));
+    return m ? { tag: m[2], selfClose: m[3] === '/', len: m[0].length } : null;
+  };
+
+  function parseValue() {
+    if (steps++ > LIMIT) throw new Error('xml-rpc parse limit exceeded');
+    if (src.startsWith('<value/>', i)) { i += 8; return null; }
+    if (!src.startsWith('<value>', i)) return undefined;
+    i += 7;
+    skipWs();
+
+    const t = tagAt(i);
+    let val;
+    if (!t) {
+      // Bare text inside <value> (non-standard, seen in the wild).
+      const end = src.indexOf('</value>', i);
+      val = decodeXmlEntities(src.slice(i, end < 0 ? src.length : end));
+      i = end < 0 ? src.length : end + 8;
+      return val;
+    }
+    if (t.selfClose) {
+      i += t.len;
+      val = t.tag === 'array' ? [] : t.tag === 'struct' ? {} : '';
+    } else if (t.tag === 'array') {
+      i += t.len;
+      val = [];
+      skipWs();
+      if (src.startsWith('<data/>', i)) i += 7;
+      else if (src.startsWith('<data>', i)) {
+        i += 6;
+        for (;;) {
+          skipWs();
+          if (src.startsWith('</data>', i)) { i += 7; break; }
+          const before = i;
+          const v = parseValue();
+          if (v !== undefined) val.push(v);
+          if (i <= before) break; // malformed body: never loop without progress
+        }
+      }
+    } else if (t.tag === 'struct') {
+      i += t.len;
+      val = {};
+      for (;;) {
+        skipWs();
+        if (src.startsWith('</struct>', i)) { i += 9; break; }
+        if (!src.startsWith('<member>', i)) break;
+        i += 8;
+        skipWs();
+        if (!src.startsWith('<name>', i)) break;
+        const ne = src.indexOf('</name>', i);
+        if (ne < 0) break;
+        const name = decodeXmlEntities(src.slice(i + 6, ne));
+        i = ne + 7;
+        const before = i;
+        const v = parseValue();
+        if (v !== undefined) val[name] = v;
+        if (i <= before) break;
+        skipWs();
+        if (src.startsWith('</member>', i)) i += 9;
+      }
+    } else {
+      i += t.len;
+      const end = src.indexOf(`</${t.tag}>`, i);
+      if (end < 0) { i = src.length; return t.tag === 'boolean' ? false : ''; }
+      const raw = src.slice(i, end);
+      i = end + t.tag.length + 3;
+      if (t.tag === 'int' || t.tag === 'i4') val = parseInt(raw, 10);
+      else if (t.tag === 'boolean') val = raw.trim() === '1';
+      else if (t.tag === 'double') val = parseFloat(raw);
+      else val = decodeXmlEntities(raw);
+    }
+    skipWs();
+    if (src.startsWith('</value>', i)) i += 8;
+    return val;
+  }
+
+  return () => {
+    const paramsOpen = src.indexOf('<params>');
+    if (paramsOpen < 0) return null;
+    const next = src.indexOf('<value>', paramsOpen);
+    if (next < 0) return null;
+    i = next;
+    return parseValue();
+  };
+}
+
+/**
+ * Parse an XML-RPC methodResponse body. Returns the first param's value
+ * (struct → object, array → array, scalars → primitives), `{ fault }` for a
+ * fault response, or null when the body carries no parseable value.
+ *
+ * Hand-written: DOMParser is absent in some of this app's runtimes (Vercel
+ * Edge / Node), and the old DOMParser path fell back to a token-only regex
+ * that could not parse SearchSubtitles results at all.
+ */
+export function parseXmlRpcResponse(text) {
+  if (!text) return null;
+  if (/<fault>/i.test(text)) {
+    const f = /<name>faultString<\/name>\s*<value>\s*<string>([^<]*)/.exec(text);
+    return { fault: f ? decodeXmlEntities(f[1]) : 'unknown fault' };
+  }
   try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/xml');
-    const valueNode = doc.querySelector('methodResponse > params > param > value');
-    return parseXmlValue(valueNode);
-  } catch {
-    // DOMParser not available in all runtimes — fallback regex parse for token
-    const tokenMatch = text.match(/<member><name>token<\/name><value><string>([^<]+)<\/string><\/value>/);
-    const statusMatch = text.match(/<member><name>status<\/name><value><string>([^<]+)<\/string><\/value>/);
-    if (tokenMatch) return { token: tokenMatch[1], status: statusMatch?.[1] || '200 OK' };
+    return makeXmlRpcParser(text)();
+  } catch (err) {
+    console.error(`[Subtitle] OS.org XML-RPC parse error: ${err.message}`);
     return null;
   }
 }
 
-async function osOrgLogin(creds) {
-  const result = await xmlRpcRequest(xmlRpcCall('LogIn', [creds.username, creds.password, 'en', OS_ORG_UA]));
-  if (!result?.token || !result.status?.startsWith('200')) return null;
-  return result.token;
+/**
+ * POST an XML-RPC call. Never throws; returns
+ * `{ ok: true, value }` or `{ ok: false, error }` with the reason logged —
+ * an HTTP status or a parse failure must be distinguishable, not a silent null.
+ */
+async function xmlRpcRequest(body) {
+  let res;
+  try {
+    res = await fetch(OS_ORG_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml', 'User-Agent': OS_ORG_UA },
+      body,
+    });
+  } catch (err) {
+    console.error(`[Subtitle] OS.org XML-RPC network error: ${err.message}`);
+    return { ok: false, error: `jaringan: ${err.message}` };
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    console.error(`[Subtitle] OS.org XML-RPC HTTP ${res.status}: ${text.slice(0, 200)}`);
+    return { ok: false, error: `HTTP ${res.status}` };
+  }
+  const parsed = parseXmlRpcResponse(text);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.fault) {
+    console.error(`[Subtitle] OS.org XML-RPC fault: ${parsed.fault}`);
+    return { ok: false, error: parsed.fault };
+  }
+  if (parsed === null || parsed === undefined) {
+    console.error(`[Subtitle] OS.org XML-RPC unparsable body: ${text.slice(0, 200)}`);
+    return { ok: false, error: 'respons tidak ter-parse' };
+  }
+  return { ok: true, value: parsed };
 }
 
-async function osOrgSearch(token, tmdbId, type, lang, season, episode, imdbId) {
+/**
+ * LogIn with anonymous fallback. The endpoint issues a working token for an
+ * empty user/pass, so rejected credentials (the production symptom: bogus
+ * stored pair → status "401 Unauthorized" over HTTP 200) degrade to an
+ * anonymous session instead of killing the provider outright.
+ * Returns `{ token, fellBack, authStatus }` or `{ error }`.
+ */
+async function osOrgLogin(creds) {
+  const user = creds?.username || '';
+  const pass = creds?.password || '';
+  const first = await xmlRpcRequest(xmlRpcCall('LogIn', [user, pass, 'en', OS_ORG_UA]));
+  const firstStatus = first.ok ? String(first.value?.status ?? '') : first.error;
+  if (first.ok && first.value?.token && firstStatus.startsWith('200')) {
+    return { token: first.value.token, fellBack: false, authStatus: firstStatus };
+  }
+  if (user || pass) {
+    const anon = await xmlRpcRequest(xmlRpcCall('LogIn', ['', '', 'en', OS_ORG_UA]));
+    const anonStatus = anon.ok ? String(anon.value?.status ?? '') : anon.error;
+    if (anon.ok && anon.value?.token && anonStatus.startsWith('200')) {
+      console.warn(`[Subtitle] OS.org: kredensial ditolak (${firstStatus}), memakai sesi anonim`);
+      return { token: anon.value.token, fellBack: true, authStatus: firstStatus };
+    }
+    return { error: `${firstStatus || 'login gagal'}; anonim juga gagal (${anonStatus})` };
+  }
+  return { error: firstStatus || 'login gagal' };
+}
+
+/**
+ * Search. `query=tmdb:NNN` returns zero rows (verified live 2026-10-01), so the
+ * lookup keys are: imdbid when known, else the human title (+ movieyear /
+ * season+episode to scope). Returns { rows, error? }.
+ */
+async function osOrgSearch(token, { type, lang, season, episode, imdbId, title, year }) {
   const query = { sublanguageid: LANG_MAP_3[lang] || 'eng' };
-  if (imdbId) query.imdbid = imdbId.replace(/^tt/, '').replace(/^0+/, '');
+  if (imdbId) query.imdbid = String(imdbId).replace(/^tt/, '');
+  else if (title) query.query = title;
   if (type === 'tv') {
-    if (season !== undefined) query.season = String(season);
-    if (episode !== undefined) query.episode = String(episode);
-    if (!imdbId) query.query = `tmdb:${tmdbId}`;
-  } else {
-    if (!imdbId) query.query = `tmdb:${tmdbId}`;
+    if (season !== undefined && season !== null) query.season = String(season);
+    if (episode !== undefined && episode !== null) query.episode = String(episode);
+  } else if (year) {
+    query.movieyear = String(year);
   }
 
-  const result = await xmlRpcRequest(xmlRpcCall('SearchSubtitles', [token, [query], { limit: 20 }]));
-  return Array.isArray(result?.data) ? result.data : [];
+  const r = await xmlRpcRequest(xmlRpcCall('SearchSubtitles', [token, [query], { limit: 20 }]));
+  if (!r.ok) return { rows: [], error: r.error };
+  return { rows: Array.isArray(r.value?.data) ? r.value.data : [] };
 }
 
-async function fetchFromOsOrg(creds, tmdbId, type, lang, season, episode, imdbId) {
-  if (!creds.username || !creds.password) return null;
-  const token = await osOrgLogin(creds);
-  if (!token) return null;
+/**
+ * SubDownloadLink points at `/download/src-api/vrf-…/sid-…/`, a route that
+ * serves a 104-byte "Become VIP" advertisement to free sessions (verified live
+ * 2026-10-01: 8/8 files stubbed; the real track is only on the plain route).
+ * Strip it back. The `/subformat-vtt/` infix answers HTTP 500 here, so the raw
+ * SRT/VTT body comes back and is converted downstream.
+ */
+function osOrgDownloadUrl(link) {
+  return String(link).replace(/\/download\/src-api\/vrf-[^/]+\/sid-[^/]+\//, '/download/');
+}
 
-  const subs = await osOrgSearch(token, tmdbId, type, lang, season, episode, imdbId);
-  if (!subs.length) return null;
+/**
+ * Fetch one subtitle file for a SubDownloadLink. The response body is gzipped
+ * WITHOUT a Content-Encoding header (the runtime will not inflate it for us).
+ * Throws with a reason on failure so callers can report it.
+ */
+async function osOrgFetchFile(link) {
+  const res = await fetch(osOrgDownloadUrl(link), { headers: { 'User-Agent': OS_ORG_UA } });
+  if (!res.ok) throw new Error(`OS.org unduhan gagal: HTTP ${res.status}`);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const isGz = buf.length > 1 && buf[0] === 0x1f && buf[1] === 0x8b;
+  const text = isGz ? strFromU8(gunzipSync(buf)) : strFromU8(buf);
+  if (/VIP member/i.test(text) || !text.includes('-->')) {
+    throw new Error('OS.org mengembalikan iklan VIP, bukan subtitle (unduhan butuh keanggotaan VIP)');
+  }
+  // The plain route serves the original file, normally SRT. Report the real
+  // format: claiming VTT would skip the SRT→VTT conversion downstream.
+  return { content: text, alreadyVtt: text.trimStart().startsWith('WEBVTT') };
+}
 
-  // Sort by download count
-  const best = subs.sort((a, b) => Number(b.SubDownloadsCnt || 0) - Number(a.SubDownloadsCnt || 0))[0];
-  const downloadLink = best?.SubDownloadLink;
-  if (!downloadLink) return null;
-
-  // SubDownloadLink is gzip-compressed — request with /subformat-vtt/ for direct VTT
-  const vttLink = downloadLink.replace('/download/', '/download/subformat-vtt/subencoding-utf8/');
-  const res = await fetch(vttLink, { headers: { 'User-Agent': OS_ORG_UA } });
-  if (!res.ok) return null;
-
-  // Response may be gzip; fetch API auto-decompresses in most runtimes
-  const content = await res.text();
-  // Log out
-  xmlRpcRequest(xmlRpcCall('LogOut', [token])).catch(() => {});
-  return content ? { content, source: 'opensubtitles_org', alreadyVtt: true } : null;
+async function fetchFromOsOrg(creds, tmdbId, type, lang, season, episode, imdbId, title, year) {
+  const login = await osOrgLogin(creds);
+  if (login.error) {
+    console.error(`[Subtitle] fetchFromOsOrg login gagal: ${login.error}`);
+    return null;
+  }
+  const { rows, error } = await osOrgSearch(login.token, { type, lang, season, episode, imdbId, title, year });
+  if (error) {
+    console.error(`[Subtitle] fetchFromOsOrg search gagal: ${error}`);
+    return null;
+  }
+  if (!rows.length) {
+    xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
+    return null;
+  }
+  const best = rows.sort((a, b) => Number(b.SubDownloadsCnt || 0) - Number(a.SubDownloadsCnt || 0))[0];
+  if (!best?.SubDownloadLink) return null;
+  try {
+    const { content, alreadyVtt } = await osOrgFetchFile(best.SubDownloadLink);
+    return { content, source: 'opensubtitles_org', alreadyVtt };
+  } finally {
+    xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
+  }
 }
 
 // ─── Provider: Subdl ─────────────────────────────────────────────────────────
@@ -713,11 +875,12 @@ async function downloadAndExtractZip(url, lang) {
  * @param {number} [options.seasons] - specific seasons to download (TV only)
  * @param {string} [options.imdbId]
  * @param {string} [options.title]
+ * @param {number|string} [options.year] - release year, used for OS.org movie lookups
  * @param {ProgressFn} [options.onProgress]
  * @returns {Promise<{ total, success, fail, skipped, results }>
  */
 export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
-  const { languages = ['id', 'en'], imdbId, title, onProgress } = options;
+  const { languages = ['id', 'en'], imdbId, title, year, onProgress } = options;
   let seasonFilter = options.seasonFilter; // array of season numbers, or null = all
   const report = (phase, current, total, message) => {
     if (onProgress) onProgress({ phase, current, total, message });
@@ -880,7 +1043,9 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
   try {
     const creds = await resolveProviderCredentials(env);
     providerStatus.opensubtitles_com = !!(creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password);
-    providerStatus.opensubtitles_org = !!(creds.opensubtitles_org.username && creds.opensubtitles_org.password);
+    // OS.org serves a working anonymous token, so it is available even with no
+    // stored pair — gating bulk download on credentials would drop a live provider.
+    providerStatus.opensubtitles_org = true;
     providerStatus.subdl = !!creds.subdl.apiKey;
   } catch {}
   const activeProviders = Object.entries(providerStatus).filter(([, v]) => v).map(([k]) => k);
@@ -899,7 +1064,7 @@ export async function bulkDownloadSubtitles(env, type, tmdbId, options = {}) {
     report('downloading', i, total, `S${job.season}:E${job.episode} · ${LANG_NAMES[job.lang] || job.lang}`);
     try {
       const existing = await getOrFetchSubtitle(env, 'tv', tmdbId, job.lang, {
-        season: job.season, episode: job.episode, imdbId, title,
+        season: job.season, episode: job.episode, imdbId, title, year,
       });
       if (existing) {
         results.push({ season: job.season, episode: job.episode, lang: job.lang, success: true, url: existing.url, cached: existing.cached });
@@ -1026,42 +1191,47 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     record('opensubtitles_com', 'skipped', 0, 'belum dikonfigurasi');
   }
 
-  // 2. OpenSubtitles.org — search top 3 languages (API requires sublanguageid)
-  if (creds.opensubtitles_org.username && creds.opensubtitles_org.password) {
-    let count = 0;
-    try {
-      const token = await osOrgLogin(creds.opensubtitles_org);
-      if (!token) {
-        record('opensubtitles_org', 'error', 0, 'login XML-RPC gagal (status bukan 200)');
-      } else {
-        const searchLangs = lang ? [lang] : ['id', 'en', 'ja'];
-        for (const l of searchLangs) {
-          try {
-            const subs = await osOrgSearch(token, tmdbId, type, l, season, episode, imdbId);
-            for (const s of subs.slice(0, 10)) {
-              results.push({
-                provider: 'opensubtitles_org',
-                lang: l,
-                langName: LANG_NAMES[l] || l,
-                title: s.SubFileName || s.SubDownloadLink?.split('/').pop() || '',
-                downloadCount: Number(s.SubDownloadsCnt || 0),
-                rating: Number(s.SubRating || 0),
-                format: s.SubFormat || 'srt',
-                size: Number(s.SubSize || 0),
-                fileId: s.SubDownloadLink || null,
-                fps: s.FPS || null,
-                hearingImpaired: s.HearingImpaired === '1',
-              });
-              count++;
-            }
-          } catch (err) { record('opensubtitles_org', 'error', count, `${l}: ${err.message}`); }
+  // 2. OpenSubtitles.org — one lookup per language (API keys on sublanguageid).
+  // Credentials are optional: the endpoint issues working anonymous tokens, so
+  // an empty or rejected stored pair must not silently drop the provider.
+  {
+    const login = await osOrgLogin(creds.opensubtitles_org);
+    if (login.error) {
+      record('opensubtitles_org', 'error', 0, `login gagal: ${login.error}`);
+    } else {
+      let count = 0;
+      const searchLangs = lang ? [lang] : ['id', 'en', 'ja'];
+      const failures = [];
+      for (const l of searchLangs) {
+        const { rows, error } = await osOrgSearch(login.token, { type, lang: l, season, episode, imdbId, title, year });
+        if (error) { failures.push(`${l}: ${error}`); continue; }
+        for (const s of rows.slice(0, 10)) {
+          results.push({
+            provider: 'opensubtitles_org',
+            lang: l,
+            langName: LANG_NAMES[l] || l,
+            title: s.SubFileName || s.SubDownloadLink?.split('/').pop() || '',
+            downloadCount: Number(s.SubDownloadsCnt || 0),
+            rating: Number(s.SubRating || 0),
+            format: s.SubFormat || 'srt',
+            size: Number(s.SubSize || 0),
+            fileId: s.SubDownloadLink || null,
+            fps: s.FPS || null,
+            hearingImpaired: s.HearingImpaired === '1',
+          });
+          count++;
         }
-        record('opensubtitles_org', count > 0 ? 'ok' : 'empty', count, count > 0 ? null : 'XML-RPC mengembalikan 0 baris');
-        xmlRpcRequest(xmlRpcCall('LogOut', [token])).catch(() => {});
       }
-    } catch (err) { record('opensubtitles_org', 'error', count, err.message); }
-  } else {
-    record('opensubtitles_org', 'skipped', 0, 'belum dikonfigurasi');
+      xmlRpcRequest(xmlRpcCall('LogOut', [login.token])).catch(() => {});
+      if (count > 0) {
+        record('opensubtitles_org', 'ok', count, login.fellBack ? `sesi anonim (${login.authStatus})` : null);
+      } else if (failures.length) {
+        record('opensubtitles_org', 'error', 0, failures.join('; '));
+      } else {
+        const key = imdbId ? `imdbid ${imdbId}` : title ? `judul "${title}"` : 'tanpa kunci pencarian';
+        record('opensubtitles_org', 'empty', 0, `0 baris untuk ${key}${searchLangs.length > 1 ? ` (${searchLangs.join('/')})` : ''}`);
+      }
+    }
   }
 
   // 3. Subdl — search without language filter (returns all langs)
@@ -1134,45 +1304,49 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     }
   }
 
-  // 5. SubtitleCat (free, movie & TV, needs a TMDB title lookup)
+  // 5. SubtitleCat (free, movie & TV) — title comes from the client, which
+  // already knows it; the TMDB lookup is only a fallback for callers that did
+  // not send one (an unset TMDB_API_KEY used to disable this provider entirely).
   {
     const tmdbKey = env.TMDB_API_KEY;
-    if (!tmdbKey) {
-      record('subtitlecat', 'skipped', 0, 'TMDB_API_KEY belum diisi');
-    } else {
-      try {
+    let catTitle = String(title || '').trim();
+    let catTitleSource = catTitle ? 'klien' : null;
+    try {
+      if (!catTitle && tmdbKey) {
         const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
         const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
         // One read: res.json() consumes the body, a second call throws. The
         // HTTP status is reported verbatim because an invalid/absent TMDB key
-        // (401) is the actual reason SubtitleCat contributes nothing in prod.
+        // (401) is the actual reason this fallback contributes nothing.
         const meta = tRes.ok ? await tRes.json() : null;
-        const catTitle = meta?.title || meta?.name || '';
-        if (!catTitle) {
-          record('subtitlecat', 'error', 0, tRes.ok ? 'TMDB tidak mengembalikan judul' : `TMDB menolak lookup (HTTP ${tRes.status})`);
+        catTitle = String(meta?.title || meta?.name || '').trim();
+        if (catTitle) catTitleSource = 'TMDB';
+        else record('subtitlecat', 'error', 0, tRes.ok ? 'TMDB tidak mengembalikan judul' : `TMDB menolak lookup (HTTP ${tRes.status})`);
+      } else if (!catTitle) {
+        record('subtitlecat', 'skipped', 0, 'judul tidak dikirim klien dan TMDB_API_KEY belum diisi');
+      }
+      if (catTitle) {
+        const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
+        if (catSub) {
+          results.push({
+            provider: 'subtitlecat',
+            lang: lang || 'id',
+            langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
+            title: `${catTitle} (SubtitleCat)`,
+            downloadCount: 0,
+            rating: 0,
+            format: 'srt',
+            size: 0,
+            fileId: 'direct',
+            fps: null,
+            hearingImpaired: false,
+          });
+          record('subtitlecat', 'ok', 1, `judul dari ${catTitleSource}`);
         } else {
-          const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
-          if (catSub) {
-            results.push({
-              provider: 'subtitlecat',
-              lang: lang || 'id',
-              langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
-              title: `${catTitle} (SubtitleCat)`,
-              downloadCount: 0,
-              rating: 0,
-              format: 'srt',
-              size: 0,
-              fileId: 'direct',
-              fps: null,
-              hearingImpaired: false,
-            });
-            record('subtitlecat', 'ok', 1);
-          } else {
-            record('subtitlecat', 'empty', 0);
-          }
+          record('subtitlecat', 'empty', 0, `judul dari ${catTitleSource}`);
         }
-      } catch (err) { record('subtitlecat', 'error', 0, err.message); }
-    }
+      }
+    } catch (err) { record('subtitlecat', 'error', 0, err.message); }
   }
 
   // Rank what the providers returned: weighted score (title, year, language,
@@ -1256,12 +1430,10 @@ export async function fetchSubtitleFromProvider(env, provider, fileId, type, tmd
     const content = await osComDownload(creds.opensubtitles_com, login.token, fileId);
     if (content) result = { content, source: 'opensubtitles_com' };
   } else if (provider === 'opensubtitles_org' && fileId) {
-    const vttLink = fileId.replace('/download/', '/download/subformat-vtt/subencoding-utf8/');
-    const res = await fetch(vttLink, { headers: { 'User-Agent': OS_ORG_UA } });
-    if (res.ok) {
-      const content = await res.text();
-      if (content) result = { content, source: 'opensubtitles_org', alreadyVtt: true };
-    }
+    // osOrgFetchFile rewrites the VIP-gated src-api route, inflates the raw
+    // gzip body (no Content-Encoding header), and rejects the VIP-ad stub.
+    const { content, alreadyVtt } = await osOrgFetchFile(fileId);
+    result = { content, source: 'opensubtitles_org', alreadyVtt };
   } else if (provider === 'subdl' && fileId) {
     const dlUrl = fileId.startsWith('http') ? fileId : `https://dl.subdl.com${fileId}`;
     const dlRes = await fetch(dlUrl, { headers: { 'User-Agent': 'HIJISTREAM/1.0' }, redirect: 'follow' });
@@ -1362,7 +1534,7 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
  * Tries providers in order: opensubtitles_com → opensubtitles_org → subdl
  */
 export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) {
-  const { season, episode, imdbId, title, force } = options;
+  const { season, episode, imdbId, title, year, force } = options;
   const key = getSubtitleKey(type, tmdbId, lang, season, episode);
   const publicUrl = getR2PublicUrl(env, key);
 
@@ -1384,7 +1556,7 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
   // 3. Search ALL providers simultaneously, pick best result
   const providerCalls = [
     { name: 'opensubtitles_com', fn: () => fetchFromOsCom(creds.opensubtitles_com, tmdbId, type, lang, season, episode, imdbId) },
-    { name: 'opensubtitles_org', fn: () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId) },
+    { name: 'opensubtitles_org', fn: () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId, title, year) },
     { name: 'subdl', fn: () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode) },
     { name: 'yify', fn: () => fetchFromYify(tmdbId, type, lang, imdbId) },
     { name: 'subtitlecat', fn: () => fetchFromSubtitleCat(tmdbId, type, lang, season, episode, options.title) },

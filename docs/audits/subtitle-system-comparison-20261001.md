@@ -202,6 +202,65 @@ Yang pasti: ketiga provider gagal **tanpa jejak** karena setiap cabang dibungkus
 kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan sudah melakukannya
 (`subtitle.js:1286`), supaya provider mati terlihat dan bukan sekadar "hasil kosong".
 
+#### Akar masalah dikonfirmasi (2026-10-01, sesi ketiga)
+
+Diagnostics dari produksi (`hijistream-web.vercel.app`, commit `3c6c43d`) mempersempit §3.2:
+
+```
+opensubtitles_com ok  n=15 — kuota unduhan tersisa 20
+opensubtitles_org error n=0 — login XML-RPC gagal (status bukan 200)   <-- BUKAN DOMParser
+subdl             ok  n=10
+yify              skipped n=0 — butuh imdb_id
+subtitlecat       error n=0 — TMDB menolak lookup (HTTP 401)
+```
+
+Hipotesis #1 (DOMParser absen) **terbantah**: `xmlRpcRequest` sudah dirombak jadi parser XML-RPC
+murni-JS (`makeXmlRpcParser`, `subtitle.js:392`) dan berhasil memparse live. Yang gagal justru
+`osOrgLogin` versi ter-deploy (`3c6c43d:437`):
+
+```js
+const result = await xmlRpcRequest(xmlRpcCall('LogIn', [creds.username, creds.password, 'en', OS_ORG_UA]));
+if (!result?.token || !result.status?.startsWith('200')) return null;
+```
+
+Tiga cacat berlapis:
+
+1. **Tidak ada jalur anonim.** Endpoint OS.org menerbitkan token anonim yang berfungsi
+   (`LogIn ['','','en',UA]` → `200 OK`, token valid; diverifikasi live). Kode lama hanya memakai
+   kredensial tersimpan, dan produksi tidak punya pasangan yang valid → `error` untuk selamanya.
+   Cabang pemanggil juga digerbangi `if (creds...username && ...password)` (`3c6c43d:1030`), jadi
+   tanpa kredensial provider **di-skip tanpa pernah mencoba**.
+2. **Rute unduhan `src-api` mengembalikan iklan, bukan berkas.** `SubDownloadLink` menunjuk
+   `/download/src-api/vrf-…/sid-…/`, yang menjawab 104 byte berisi
+   `"Become OpenSubtitles.org VIP member"` untuk sesi gratis — diuji live pada 8/8 berkas
+   (termasuk hasil yang diurutkan teratas), semua stub. Rute polos `/download/` mengembalikan
+   berkas sebenarnya (34 KB gzip, 1192 cue, SRT).
+3. **`subformat-vtt` bukan penyelamat.** Menyisipkan `/download/subformat-vtt/subencoding-utf8/`
+   ke rute polos menjawab **HTTP 500** (diuji 2×), jadi transcode VTT tidak bisa diandalkan;
+   rute polos mengembalikan SRT asli sehingga konversi SRT→VTT harus tetap berjalan di hilir.
+
+Dua sisanya:
+
+- **YIFY** di-skip karena `imdb_id` tidak dikirim. `/api/movie/:id` dan `/api/tv/:id` **memang**
+  membawa `imdb_id` (`/api/movie/27205` → `"imdb_id":"tt1375666"`), tetapi `/subtitles/search`
+  tidak pernah melakukan lookup sendiri, dan pemanggil yang melewatkan `imdb_id` kehilangan
+  provider itu tanpa pesan. Catatan: `transformTVDetail` memakai `external_ids?.imdb_id`, jadi
+  lookup TV perlu `append_to_response=external_ids` agar `imdb_id` ikut.
+- **SubtitleCat** mewajibkan `TMDB_API_KEY` yang valid padahal judulnya **sudah** dikirim klien
+  (`SubtitleSearchModal.jsx:44` mengirim `title`). Dengan kunci TMDB yang tidak valid (401),
+  provider mati meski judul tersedia cuma-cuma di request.
+
+**Perbaikan sesi ini:**
+
+| # | Perbaikan | Bukti |
+|---|---|---|
+| F1 | Parser XML-RPC murni-JS (`makeXmlRpcParser`) menggantikan `DOMParser`, plus entitas & `<data/>` self-closing | 5 tes unit mem-parse payload live; gagal di `3c6c43d` |
+| F2 | `osOrgLogin` selalu mencoba sesi anonim dan melaporkan bahwa kredensial ditolak; gerbang kredensial dihapus | Tes "tanpa kredensial" → `ok`, 1 login anonim; di `3c6c43d` → `skipped` |
+| F3 | `osOrgDownloadUrl` membuang segmen `src-api` (rute polos); `osOrgFetchFile` mengembalikan `{content, alreadyVtt}` agar SRT asli tetap dikonversi | 8/8 berkas live dapat diunduh (34 KB/1192 cue); tes unduh gagal di `3c6c43d` |
+| F4 | `providerStatus.opensubtitles_org = true` (bulk tidak lagi mensyaratkan kredensial) | — |
+| F5 | Pencarian memakai `options.title` dari klien lebih dulu; lookup TMDB jadi fallback saja | Tes "judul dari klien"; produksi: `subtitlecat ok n=1 — judul dari klien` |
+| F6 | `/subtitles/search` me-resolve `imdb_id` via TMDB (`append_to_response=external_ids`) bila klien tidak mengirimnya | Harness route: `yify` berubah dari `skipped — butuh imdb_id` menjadi ikut dicari |
+
 ---
 
 ## 4. Rekomendasi
@@ -225,7 +284,7 @@ kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan s
 | Pantau kuota OS.com | **Sebagian** — `osComLogin` sudah membaca `user.allowed_downloads`, angka kuota muncul di diagnostics search (`kuota unduhan tersisa N`), dan penolakan unduhan (406/429) dicatat ke error log admin (`type: 'quota'`). Rotasi akun / `apiKey` berbayar tetap **belum**. |
 | Skor berbobot ala hijitv | **Selesai** — `searchSubtitlesFromProviders` kini mengurutkan lewat `rankSubtitles`/`computeScore` (title + year + language match + provider pilihan + downloadCount), menggantikan sort downloadCount mentah. `title`/`year` dikirim detail page → `api.searchSubtitles` → handler (`middleware.js` + `functions/api/[[path]].js`). |
 | Preferensi sumber per judul | **Selesai** — `preferredProviderFor` membaca `subtitles/metadata.json` (sumber terakhir untuk judul+musim+episode+bahasa yang sama) dan memberi boost `preferred_source` (+25). Setara `active_*.txt` hijitv; tidak ada state klien. |
-| Provider yang selalu 0 hasil (§3.2) | **Selesai** — tiap provider menyatakan dirinya di `diagnostics` (`ok`/`empty`/`skipped`/`error` + pesan), di-log saat search, dikirim di response API, dan dirender di modal sebagai strip "Provider bermasalah". Bukti live: OS.org `error — login XML-RPC gagal (status bukan 200)`, YIFY `skipped (butuh imdb_id)`, SubtitleCat `error` dengan penyebab sebenarnya (bukan lagi diam). |
+| Provider yang selalu 0 hasil (§3.2) | **Selesai** — akar masalah dikonfirmasi dan diperbaiki (lihat §3.2 "Akar masalah dikonfirmasi"): OS.org memakai sesi anonim + rute unduhan polos, YIFY mendapat `imdb_id` hasil resolve TMDB, SubtitleCat memakai judul dari klien. Ketiganya kini berkontribusi di produksi. |
 
 
 ---
@@ -310,3 +369,30 @@ Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `Deco
   2 gagal) dan lulus setelah perbaikan.
 - Setelah perbaikan: **102/102 test lulus**, `vite build` sukses, eslint **71
   masalah** (baseline 72, tidak ada temuan baru), `tsc` 42 = baseline.
+### Sesi 2026-10-01 (ketiga): OS.org, YIFY, SubtitleCat diperbaiki
+
+- **Diagnosa live (curl dari mesin ini, UA identik kode):**
+  - `LogIn` dengan kredensial salah → `401 Unauthorized`, **token tetap terbit**.
+  - `LogIn ['','','en']` (anonim) → `200 OK` + token.
+  - `SearchSubtitles` kunci `query=Inception` + `movieyear=2010` → 3 baris.
+  - `SubDownloadLink` apa adanya (rute `src-api`) → 104 byte iklan VIP; rute polos
+    → 200, gzip 34.468 byte, 1192 cue, `alreadyVtt=false`.
+  - Rute polos + `/subformat-vtt/` → **HTTP 500** (2 percobaan).
+- **Smoke E2E lewat modul asli** (`searchSubtitlesFromProviders` + rute unduhan):
+  `opensubtitles_org ok (10 hasil)`, unduhan 200 → 34 KB gzip → 1192 cue, format
+  dideteksi SRT (bukan VTT).
+- **Smoke handler route asli** (fetch di-stub, `functions/api/[[path]].js`):
+  `/?type=movie&tmdb_id=27205&lang=id` (tanpa `imdb_id`) → lookup TMDB
+  `append_to_response=external_ids` sekali, OS.org mencari `imdbid tt1375666`,
+  `yify` **tidak lagi** `skipped`, `subtitlecat ok — judul dari klien`.
+  Dengan `imdb_id` dari klien → **0** lookup TMDB (tanpa biaya tambahan).
+- **Tes regresi baru** `tests/subtitle-osorg.test.js` (8 tes): parser XML-RPC,
+  fallback anonim saat kredensial ditolak, jalur tanpa kredensial, rute unduhan
+  polos + inflate. Semuanya **gagal di `3c6c43d`** (8/8) dengan gejala produksi
+  persis (`error`→`ok`, `skipped`→`ok`, `null`→objek hasil), lulus setelah
+  perbaikan. Tes berkas polos memakai fixture SRT sehingga konversi SRT→VTT ikut
+  terbukti; stub memodelkan 500 pada `subformat-vtt`.
+- **Gate:** **110/110 tes lulus** (10 berkas), `vite build` sukses, eslint
+  **72 masalah = baseline** (tidak ada temuan baru), `tsc` **42 = baseline**.
+  Tiga temuan eslint `no-undef`/`unused` yang sempat muncul dari `Buffer` di tes
+  dihilangkan dengan beralih ke `gzipSync` + `TextEncoder`.

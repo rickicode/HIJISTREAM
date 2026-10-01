@@ -1,3 +1,4 @@
+import { gzipSync } from 'fflate';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   searchSubtitlesFromProviders,
@@ -9,6 +10,9 @@ import {
 
 const EN_VTT = 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:04.000\nHello world\n';
 const LLM_SRT = '1\n00:00:01,000 --> 00:00:04,000\nHalo dunia\n';
+// OS.org serves the file body gzipped with no Content-Encoding header, so the
+// fetcher reads raw bytes and inflates them itself.
+const gzBytes = (text) => gzipSync(new TextEncoder().encode(text));
 
 const AI_ENV = {
   AXONROUTER_BASE_URL: 'https://llm.test',
@@ -142,7 +146,8 @@ describe('downloadSubtitleByProvider ai_translate branch', () => {
         return { ok: true, json: async () => ({ choices: [{ message: { content: LLM_SRT } }] }), text: async () => '' };
       }
       if (u.includes('dl.opensubtitles.org')) {
-        return { ok: true, json: async () => ({}), text: async () => EN_VTT };
+        const bytes = gzBytes(EN_VTT);
+        return { ok: true, json: async () => ({}), text: async () => EN_VTT, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) };
       }
       return EMPTY_RESPONSE;
     }));
