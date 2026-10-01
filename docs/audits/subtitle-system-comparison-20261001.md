@@ -259,7 +259,47 @@ Dua sisanya:
 | F3 | `osOrgDownloadUrl` membuang segmen `src-api` (rute polos); `osOrgFetchFile` mengembalikan `{content, alreadyVtt}` agar SRT asli tetap dikonversi | 8/8 berkas live dapat diunduh (34 KB/1192 cue); tes unduh gagal di `3c6c43d` |
 | F4 | `providerStatus.opensubtitles_org = true` (bulk tidak lagi mensyaratkan kredensial) | — |
 | F5 | Pencarian memakai `options.title` dari klien lebih dulu; lookup TMDB jadi fallback saja | Tes "judul dari klien"; produksi: `subtitlecat ok n=1 — judul dari klien` |
-| F6 | `/subtitles/search` me-resolve `imdb_id` via TMDB (`append_to_response=external_ids`) bila klien tidak mengirimnya | Harness route: `yify` berubah dari `skipped — butuh imdb_id` menjadi ikut dicari |
+| F6 | `/subtitles/search` me-resolve `imdb_id` via TMDB (`append_to_response=external_ids`) bila klien tidak mengirimnya — **di `functions/api/[[path]].js` dan di `middleware.js`** (produksi dilayani middleware; lihat di bawah) | Tes middleware: `yify` dicari dengan `tt1375666`, 0 panggilan TMDB bila klien mengirim `imdb_id` |
+
+#### OS.org: API resmi dimatikan, bukan bug kode (koreksi)
+
+Percobaan lanjutan setelah deploy menunjukkan 403 bertahan di produksi padahal kode berhasil
+dari mesin ini. Bukti:
+
+- `LogIn` anonim dari mesin ini: **HTTP 200 + token** (curl, undici/Node, dan semua varian
+  User-Agent termasuk yang identik dengan kode).
+- Dari produksi: **HTTP 403** untuk percobaan ber-kredensial **dan** anonim.
+- Proxy pusat data pihak ketiga (codetabs, allorigins) ke `api.opensubtitles.org`: **HTTP 522**
+  — Cloudflare gagal menjangkau origin. Proxy lain (corsproxy.io) → **403**.
+- Kebijakan OS.org sendiri: forum resmi, **"OpenSubtitles.org API - Final Shutdown Notice"**
+  (29 Jan 2026) menyatakan API XML-RPC lama **dimatikan sepenuhnya** untuk semua aplikasi
+  pihak ketiga, VIP maupun bukan; penggantinya REST `api.opensubtitles.com`.
+  <https://forum.opensubtitles.org/viewtopic.php?t=19471>
+
+**Kesimpulan:** OS.org hanya hidup dari IP residensial, tidak dapat diandalkan dari edge
+Vercel, dan akan mati total. Perbaikan F1–F4 tetap benar (parser, fallback anonim, rute unduhan
+polos, semuanya terbukti dari vantage yang diizinkan) tetapi **tidak** mengembalikan provider di
+produksi — itu keputusan operator (tier berbayar `api.opensubtitles.com`, atau andalkan
+subdl/subtitlecat/yify). Yang penting: kegagalan kini **jujur** (`error — login gagal: HTTP 403;
+anonim juga gagal (HTTP 403)`), bukan `ok` palsu.
+
+#### Dua bug yang membuat perbaikan tidak sampai ke produksi
+
+1. **Jalur pencarian produksi adalah `middleware.js`, bukan `functions/api/[[path]].js`.**
+   Kedua berkas melayani tabel rute yang identik (33 rute), tetapi middleware Edge-lah yang
+   menangani `/api/*` (§2.1 sudah membuktikan runtime middleware yang dipakai). Perbaikan F6
+   pertama hanya masuk ke fungsi dan **tidak berpengaruh**; kini keduanya diperbaiki.
+2. **`append_to_response=external_ids` tidak pernah diminta pada jalur unduhan.**
+   `middleware.js:229` dan `functions/api/[[path]].js:93` membaca `tmdbData.external_ids?.imdb_id`,
+   padahal tanpa `append_to_response` TMDB tidak mengembalikan `external_ids` sama sekali —
+   jadi pembacaan itu **dead code** dan `options.imdbId` tetap kosong pada jalur unduhan.
+   Keduanya kini meminta `external_ids`.
+
+**Bukti YIFY dari vantage residensial:** `movie-imdb/tt1375666` → HTTP 200, 980 KB, tautan
+`/subtitles/inception-2010-*-yify-*` cocok pola kode (sebelumnya §3.2 hanya berspekulasi).
+SubtitleCat: `index.php?search=Inception` → HTTP 200, 67 KB, `subs/1655/Inception.2010...html`
+cocok. Ketiganya sehat dari IP residensial; yang menghambat YIFY/SubtitleCat di produksi murni
+kunci pencarian yang hilang (imdb_id/title), bukan markup.
 
 ---
 
@@ -284,7 +324,7 @@ Dua sisanya:
 | Pantau kuota OS.com | **Sebagian** — `osComLogin` sudah membaca `user.allowed_downloads`, angka kuota muncul di diagnostics search (`kuota unduhan tersisa N`), dan penolakan unduhan (406/429) dicatat ke error log admin (`type: 'quota'`). Rotasi akun / `apiKey` berbayar tetap **belum**. |
 | Skor berbobot ala hijitv | **Selesai** — `searchSubtitlesFromProviders` kini mengurutkan lewat `rankSubtitles`/`computeScore` (title + year + language match + provider pilihan + downloadCount), menggantikan sort downloadCount mentah. `title`/`year` dikirim detail page → `api.searchSubtitles` → handler (`middleware.js` + `functions/api/[[path]].js`). |
 | Preferensi sumber per judul | **Selesai** — `preferredProviderFor` membaca `subtitles/metadata.json` (sumber terakhir untuk judul+musim+episode+bahasa yang sama) dan memberi boost `preferred_source` (+25). Setara `active_*.txt` hijitv; tidak ada state klien. |
-| Provider yang selalu 0 hasil (§3.2) | **Selesai** — akar masalah dikonfirmasi dan diperbaiki (lihat §3.2 "Akar masalah dikonfirmasi"): OS.org memakai sesi anonim + rute unduhan polos, YIFY mendapat `imdb_id` hasil resolve TMDB, SubtitleCat memakai judul dari klien. Ketiganya kini berkontribusi di produksi. |
+| Provider yang selalu 0 hasil (§3.2) | **Sebagian, dengan koreksi** — SubtitleCat **selesai** (live: `ok n=1 — judul dari klien`); YIFY **selesai secara kode** (`imdb_id` kini di-resolve di jalur produksi `middleware.js` + `functions/api/[[path]].js`, plus `append_to_response=external_ids` yang selama ini hilang); OS.org **bukan bug yang bisa ditambal** — API XML-RPC-nya resmi dimatikan dan diblokir dari edge Vercel (lihat §3.2 "OS.org: API resmi dimatikan"); kegagalannya kini dilaporkan jujur. Sisa keputusan operator: pindah ke `api.opensubtitles.com` berbayar atau andalkan provider lain. |
 
 
 ---
@@ -396,3 +436,30 @@ Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `Deco
   **72 masalah = baseline** (tidak ada temuan baru), `tsc` **42 = baseline**.
   Tiga temuan eslint `no-undef`/`unused` yang sempat muncul dari `Buffer` di tes
   dihilangkan dengan beralih ke `gzipSync` + `TextEncoder`.
+
+### Sesi 2026-10-01 (keempat): middleware, external_ids, dan status OS.org
+
+- **Verifikasi live pasca-deploy sesi ketiga** (`5705e39`):
+  `opensubtitles_com ok n=15`, `opensubtitles_org error — login gagal: HTTP 403; anonim juga
+  gagal (HTTP 403)`, `subdl ok n=10`, `yify skipped — butuh imdb_id`, `subtitlecat ok n=1 —
+  judul dari klien`, `total: 26` (naik dari 25). **SubtitleCat pulih di produksi.** OS.org
+  tidak, dan bukan karena kode.
+- **Diagnosa OS.org:** anonim `LogIn` → 200 + token dari mesin ini (curl, undici, semua UA),
+  tetapi 403 dari produksi; proxy pusat data ke origin → 522/403. Forum resmi:
+  `OpenSubtitles.org API - Final Shutdown Notice` (29 Jan 2026) — API XML-RPC dimatikan untuk
+  semua aplikasi pihak ketiga. Kesimpulan: hanya hidup dari IP residensial, akan mati total;
+  perbaikan parser/anon/unduhan tetap benar tetapi bukan jalur pemulihan produksi.
+- **Dua bug yang menghalangi perbaikan sampai ke produksi:**
+  `middleware.js` adalah jalur `/api/*` yang sebenarnya (kedua berkas punya 33 rute identik;
+  §2.1 membuktikan runtime middleware) sehingga edit F6 di fungsi saja tidak berpengaruh; dan
+  `tmdbData.external_ids?.imdb_id` dibaca **tanpa** pernah meminta `append_to_response`
+  (middleware `:229`, fungsi `:93`) sehingga selalu `undefined` — dead code.
+- **Perbaikan:** F6 diterapkan di kedua berkas; `append_to_response=external_ids` ditambahkan
+  pada jalur unduhan kedua berkas; `opts.title` tidak lagi menimpa judul dari klien.
+- **Tes baru** `tests/middleware-subtitle.test.js` (3 tes) mengimpor middleware asli dan
+  membuktikan: resolve `imdb_id` → YIFY dicari dengan `tt1375666`; 0 panggilan TMDB bila klien
+  mengirim `imdb_id`; judul dari klien bertahan saat TMDB mati. Satu tes **gagal di middleware
+  pra-perbaikan** (`HEAD`), lulus setelahnya.
+- **Bukti vantage residensial:** YIFY `movie-imdb/tt1375666` → 200 / 980 KB / tautan
+  `inception-2010-*-yify-*` cocok; SubtitleCat `?search=Inception` → 200 / 67 KB /
+  `subs/1655/Inception.2010...html` cocok.

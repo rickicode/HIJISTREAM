@@ -90,9 +90,11 @@ async function handleSubtitles(env, url) {
     try {
       const tmdbKey = env.TMDB_API_KEY;
       if (tmdbKey) {
+        // external_ids must be appended or the response carries no imdb_id at
+        // all, which left the YIFY/OS.org lookups keyless on this path.
         const endpoint = type === 'tv'
-          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
-          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
+          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
         const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
         if (tmdbRes.ok) {
           const tmdbData = await tmdbRes.json();
@@ -420,7 +422,7 @@ export async function onRequest(context) {
           if (!tRes.ok) console.error(`[Subtitle] TMDB lookup for imdb_id failed: HTTP ${tRes.status} for ${type}/${tmdbId}`);
           else {
             const meta = await tRes.json();
-            opts.title = meta.title || meta.name || null;
+            opts.title = opts.title || meta.title || meta.name || null;
             opts.imdbId = meta.external_ids?.imdb_id || meta.imdb_id || null;
           }
         } catch (err) { console.error(`[Subtitle] TMDB lookup for imdb_id error: ${err.message}`); }

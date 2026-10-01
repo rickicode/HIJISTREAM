@@ -227,8 +227,8 @@ async function handleSubtitles(env, url) {
       const tmdbKey = process.env.TMDB_API_KEY;
       if (tmdbKey) {
         const endpoint = type === 'tv'
-          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US`
-          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+          ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
+          : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
         const tmdbRes = await fetch(endpoint, { headers: { Authorization: `Bearer ${tmdbKey}` } });
         if (tmdbRes.ok) {
           const tmdbData = await tmdbRes.json();
@@ -448,6 +448,26 @@ export default async function middleware(request) {
         if (lang) opts.lang = lang;
         if (title) opts.title = title;
         if (year) opts.year = Number(year);
+        // YIFY is keyed on IMDB. The detail endpoint usually carries imdb_id,
+        // but callers that omit it (old clients, deep links) would silently
+        // lose the provider, so resolve it from TMDB when absent. Guarded on
+        // imdbId so the common path stays one request. Failures only cost that
+        // provider's row, not the search.
+        const tmdbKey = process.env.TMDB_API_KEY;
+        if (!opts.imdbId && tmdbKey) {
+          try {
+            const ep = type === 'tv'
+              ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US&append_to_response=external_ids`
+              : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US&append_to_response=external_ids`;
+            const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+            if (!tRes.ok) console.error(`[Subtitle] TMDB lookup for imdb_id failed: HTTP ${tRes.status} for ${type}/${tmdbId}`);
+            else {
+              const meta = await tRes.json();
+              opts.title = opts.title || meta.title || meta.name || null;
+              opts.imdbId = meta.external_ids?.imdb_id || meta.imdb_id || null;
+            }
+          } catch (err) { console.error(`[Subtitle] TMDB lookup for imdb_id error: ${err.message}`); }
+        }
         const { results, diagnostics } = await searchSubtitlesFromProviders(process.env, type, tmdbId, opts);
         return new Response(JSON.stringify({ results, total: results.length, diagnostics }), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
