@@ -241,7 +241,9 @@ describe('API subtitle methods', () => {
         { ...EMPTY_ENV, TMDB_API_KEY: 'invalid' }, 'movie', 27205, {},
       );
       const cat = diagnostics.find(d => d.provider === 'subtitlecat');
-      expect(cat.status).toBe('error');
+      // SubtitleCat never ran — the title it is keyed on could not be resolved —
+      // so the honest status is `skipped`, but the HTTP reason must still show.
+      expect(cat.status).toBe('skipped');
       expect(cat.message).toBe('TMDB menolak lookup (HTTP 401)');
       // One lookup call — a double res.json() would have consumed the body.
       expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('api.themoviedb.org'))).toHaveLength(1);

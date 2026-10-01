@@ -445,23 +445,9 @@ export default async function middleware(request) {
         if (lang) opts.lang = lang;
         if (title) opts.title = title;
         if (year) opts.year = Number(year);
-        // YIFY is keyed on IMDB. The detail endpoint usually carries imdb_id,
-        // but callers that omit it (old clients, deep links) would silently
-        // lose the provider, so resolve it from TMDB when absent. Guarded on
-        // imdbId so the common path stays one request. Failures only cost that
-        // provider's row, not the search.
-        const tmdbKey = process.env.TMDB_API_KEY;
-        if (!opts.imdbId && tmdbKey) {
-          try {
-            const tRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`, { append_to_response: 'external_ids' });
-            if (!tRes.ok) console.error(`[Subtitle] TMDB lookup for imdb_id failed: HTTP ${tRes.status} for ${type}/${tmdbId}`);
-            else {
-              const meta = await tRes.json();
-              opts.title = opts.title || meta.title || meta.name || null;
-              opts.imdbId = meta.external_ids?.imdb_id || meta.imdb_id || null;
-            }
-          } catch (err) { console.error(`[Subtitle] TMDB lookup for imdb_id error: ${err.message}`); }
-        }
+        // Title and imdb_id are resolved inside searchSubtitlesFromProviders,
+        // which is also the only place that knows whether a value came from the
+        // client or from TMDB.
         const { results, diagnostics } = await searchSubtitlesFromProviders(process.env, type, tmdbId, opts);
         return new Response(JSON.stringify({ results, total: results.length, diagnostics }), {
           status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },

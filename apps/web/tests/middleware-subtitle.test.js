@@ -68,9 +68,9 @@ describe('middleware /subtitles/search imdb resolution', () => {
     expect(calls.some((u) => u.includes('yifysubtitles') && u.includes('tt1375666'))).toBe(true);
   });
 
-  it('does not spend a TMDB call when the client already sent imdb_id', async () => {
+  it('does not spend a TMDB call when the client sent both title and imdb_id', async () => {
     const calls = stubFetch();
-    const res = await search('type=movie&tmdb_id=27205&lang=id&imdb_id=tt1375666');
+    const res = await search('type=movie&tmdb_id=27205&lang=id&imdb_id=tt1375666&title=Inception');
     expect(res.status).toBe(200);
     expect(calls.filter((u) => u.includes('append_to_response=external_ids'))).toHaveLength(0);
     expect(calls.some((u) => u.includes('yifysubtitles') && u.includes('tt1375666'))).toBe(true);

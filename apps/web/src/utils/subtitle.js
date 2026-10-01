@@ -1140,7 +1140,7 @@ async function preferredProviderFor(env, { type, tmdbId, season, episode, lang }
  * failure was why a bare "0 results" used to be unexplainable in the UI.
  */
 export async function searchSubtitlesFromProviders(env, type, tmdbId, options = {}) {
-  const { season, episode, imdbId, lang, title, year } = options;
+  const { season, episode, imdbId: clientImdbId, lang, title: clientTitle, year } = options;
   const creds = await resolveProviderCredentials(env);
   const results = [];
   const diagnostics = [];
@@ -1150,6 +1150,43 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     if (status === 'error') console.error(`[Subtitle] ${provider} search failed: ${message}`);
     else console.log(`[Subtitle] ${provider} search: ${status} (${count || 0} hasil)${message ? ` — ${message}` : ''}`);
   };
+
+  // Providers are keyed differently: OpenSubtitles.org and YIFY need an IMDB id,
+  // SubtitleCat needs a title. Callers routinely have one and not the other, so
+  // fill in whichever is missing with a single TMDB call here rather than in
+  // every request handler. `append_to_response=external_ids` is what carries
+  // imdb_id — without it the response has none at all.
+  const hadClientTitle = Boolean(String(clientTitle || '').trim());
+  let title = String(clientTitle || '').trim();
+  let imdbId = clientImdbId || null;
+  // Why the lookup contributed nothing, carried into each provider row that
+  // needed it: a bare "no title" hid the real cause (an invalid key answers
+  // 401), which made this indistinguishable from a missing row.
+  let metadataNote = null;
+  if ((!title || !imdbId) && env.TMDB_API_KEY) {
+    try {
+      const res = await tmdbFetch(
+        env.TMDB_API_KEY,
+        type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`,
+        { append_to_response: 'external_ids' },
+      );
+      if (res.ok) {
+        const meta = await res.json();
+        if (!imdbId) imdbId = meta.external_ids?.imdb_id || meta.imdb_id || null;
+        if (!title) title = String(meta.title || meta.name || '').trim();
+        if (!title) metadataNote = 'TMDB tidak mengembalikan judul';
+      } else {
+        metadataNote = `TMDB menolak lookup (HTTP ${res.status})`;
+      }
+    } catch (err) {
+      metadataNote = `TMDB tidak dapat dihubungi: ${err.message}`;
+    }
+  } else if (!title) {
+    metadataNote = 'TMDB_API_KEY belum diisi';
+  }
+  // Named for whoever supplied the title, so a label never claims the client
+  // when the value actually came from TMDB.
+  const titleSource = hadClientTitle ? 'klien' : 'TMDB';
 
   // 1. OpenSubtitles.com — search without language filter (returns all langs)
   if (creds.opensubtitles_com.apiKey && creds.opensubtitles_com.username && creds.opensubtitles_com.password) {
@@ -1320,46 +1357,29 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     }
   }
 
-  // 5. SubtitleCat (free, movie & TV) — title comes from the client, which
-  // already knows it; the TMDB lookup is only a fallback for callers that did
-  // not send one (an unset TMDB_API_KEY used to disable this provider entirely).
-  {
-    const tmdbKey = env.TMDB_API_KEY;
-    let catTitle = String(title || '').trim();
-    let catTitleSource = catTitle ? 'klien' : null;
+  // 5. SubtitleCat (free, movie & TV) — keyed on the title resolved above.
+  if (!title) {
+    record('subtitlecat', 'skipped', 0, metadataNote || 'judul tidak tersedia');
+  } else {
     try {
-      if (!catTitle && tmdbKey) {
-        const tRes = await tmdbFetch(tmdbKey, type === 'tv' ? `/tv/${tmdbId}` : `/movie/${tmdbId}`);
-        // One read: res.json() consumes the body, a second call throws. The
-        // HTTP status is reported verbatim because an invalid/absent TMDB key
-        // (401) is the actual reason this fallback contributes nothing.
-        const meta = tRes.ok ? await tRes.json() : null;
-        catTitle = String(meta?.title || meta?.name || '').trim();
-        if (catTitle) catTitleSource = 'TMDB';
-        else record('subtitlecat', 'error', 0, tRes.ok ? 'TMDB tidak mengembalikan judul' : `TMDB menolak lookup (HTTP ${tRes.status})`);
-      } else if (!catTitle) {
-        record('subtitlecat', 'skipped', 0, 'judul tidak dikirim klien dan TMDB_API_KEY belum diisi');
-      }
-      if (catTitle) {
-        const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
-        if (catSub) {
-          results.push({
-            provider: 'subtitlecat',
-            lang: lang || 'id',
-            langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
-            title: `${catTitle} (SubtitleCat)`,
-            downloadCount: 0,
-            rating: 0,
-            format: 'srt',
-            size: 0,
-            fileId: 'direct',
-            fps: null,
-            hearingImpaired: false,
-          });
-          record('subtitlecat', 'ok', 1, `judul dari ${catTitleSource}`);
-        } else {
-          record('subtitlecat', 'empty', 0, `judul dari ${catTitleSource}`);
-        }
+      const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, title);
+      if (catSub) {
+        results.push({
+          provider: 'subtitlecat',
+          lang: lang || 'id',
+          langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
+          title: `${title} (SubtitleCat)`,
+          downloadCount: 0,
+          rating: 0,
+          format: 'srt',
+          size: 0,
+          fileId: 'direct',
+          fps: null,
+          hearingImpaired: false,
+        });
+        record('subtitlecat', 'ok', 1, `judul dari ${titleSource}`);
+      } else {
+        record('subtitlecat', 'empty', 0, `judul dari ${titleSource}`);
       }
     } catch (err) { record('subtitlecat', 'error', 0, err.message); }
   }
