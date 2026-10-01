@@ -6,11 +6,11 @@ A streaming platform for movies and TV shows built with React, Vite, and Tailwin
 
 HIJISTREAM uses a two-API architecture:
 
-- **TMDB API** - Provides all catalog data: movie/TV listings, details, search, credits, seasons/episodes, poster images, and ratings. The TMDB API key is kept server-side only (backend server, Vercel Edge Function, or Cloudflare Function).
+- **TMDB API** - Provides all catalog data: movie/TV listings, details, search, credits, seasons/episodes, poster images, and ratings. The TMDB API key is kept server-side only (backend server, Vercel Edge Middleware, or Cloudflare Function).
 - **VidAPI (vaplayer.ru)** - Provides video player embed URLs only. Embed URLs are constructed from TMDB IDs in the format `https://vaplayer.ru/embed/movie/{tmdb_id}` for movies and `https://vaplayer.ru/embed/tv/{tmdb_id}/{season}/{episode}` for TV episodes.
 
 The frontend never directly calls TMDB. All requests go through `/api/*` which is handled by:
-- **Vercel**: Edge Function at `apps/web/api/[...path].js`
+- **Vercel**: Edge Middleware at `apps/web/middleware.js` (matcher `/api/:path*`)
 - **Cloudflare Pages**: Function at `apps/web/functions/api/[[path]].js`
 - **Self-hosted**: Bun server at `apps/server/src/index.js`
 
