@@ -103,7 +103,11 @@ export default function ProviderManagementTab() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {hasRequiredFields ? (
+                {info.fields.length === 0 ? (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded-full">
+                    <Globe size={10} /> Free Provider
+                  </span>
+                ) : hasRequiredFields ? (
                   <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
                     <Unlock size={10} /> Configured
                   </span>
@@ -114,7 +118,6 @@ export default function ProviderManagementTab() {
                 )}
               </div>
             </div>
-
             {/* Fields */}
             <div className="p-4 space-y-3">
               {info.fields.map(field => (
@@ -132,24 +135,25 @@ export default function ProviderManagementTab() {
 
               {/* Action buttons */}
               <div className="flex items-center gap-2 pt-2">
-                <button
-                  onClick={() => handleSave(key)}
-                  disabled={isSaving}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#E50914] text-white rounded hover:bg-[#f6121d] disabled:opacity-50 transition-colors"
-                >
-                  {isSaving ? <Loader size={12} className="animate-spin" /> : <Settings size={12} />}
-                  Simpan
-                </button>
+                {info.fields.length > 0 && (
+                  <button
+                    onClick={() => handleSave(key)}
+                    disabled={isSaving}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#E50914] text-white rounded hover:bg-[#f6121d] disabled:opacity-50 transition-colors"
+                  >
+                    {isSaving ? <Loader size={12} className="animate-spin" /> : <Settings size={12} />}
+                    Simpan
+                  </button>
+                )}
                 <button
                   onClick={() => handleCheck(key)}
-                  disabled={isChecking || !hasRequiredFields}
+                  disabled={isChecking || (info.fields.length > 0 && !hasRequiredFields)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-[#444] text-[#ccc] rounded hover:border-[#666] disabled:opacity-50 transition-colors"
                 >
                   {isChecking ? <Loader size={12} className="animate-spin" /> : <CheckCircle size={12} />}
                   Test Koneksi
                 </button>
               </div>
-
               {/* Save message */}
               {saveMsg && (
                 <div className={`flex items-center gap-1.5 text-xs ${saveMsg.ok ? 'text-green-400' : 'text-red-400'}`}>

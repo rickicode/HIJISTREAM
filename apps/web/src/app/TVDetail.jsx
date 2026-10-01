@@ -145,6 +145,22 @@ export default function TVDetail() {
     }
   }, [autoplay, captureEmbedUrl]);
 
+  // Record one play per play-session, keyed off the currently selected
+  // episode so switching episodes counts as a new play. Resets when closed.
+  const playRecordedKey = useRef(null);
+  useEffect(() => {
+    if (!isPlaying) {
+      playRecordedKey.current = null;
+      return;
+    }
+    if (!show) return;
+    const key = `${show.id}:${currentSeason}:${currentEpisode}`;
+    if (playRecordedKey.current === key) return;
+    playRecordedKey.current = key;
+    const epLabel = currentEpisode ? ` S${currentSeason}E${currentEpisode}` : '';
+    api.recordPlay({ id: show.id, type: 'tv', title: `${show.title}${epLabel}`, poster_url: show.poster_url });
+  }, [isPlaying, show, currentSeason, currentEpisode]);
+
   useEffect(() => {
     if (isPlaying) {
       window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -89,6 +89,40 @@ export const PROVIDER_INFO = {
     borderColor: 'border-green-400/20',
     fields: [],
   },
+  yify: {
+    name: 'YIFY Subtitles',
+    shortName: 'YIFY',
+    description: 'Free — Movie subtitles from YTS/YIFY (no auth)',
+    icon: '🎞️',
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-400/10',
+    borderColor: 'border-emerald-400/20',
+    fields: [],
+  },
+  subtitlecat: {
+    name: 'SubtitleCat',
+    shortName: 'SubtitleCat',
+    description: 'Free — Movies & TV episodes with direct .srt links',
+    icon: '🐱',
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-400/10',
+    borderColor: 'border-cyan-400/20',
+    fields: [],
+  },
+  ai_translate: {
+    name: 'AI Translation',
+    shortName: 'AI Translate',
+    description: 'OpenAI-compatible / AxonRouter LLM Subtitle Translator (EN → ID Fallback)',
+    icon: '🤖',
+    color: 'text-violet-400',
+    bgColor: 'bg-violet-400/10',
+    borderColor: 'border-violet-400/20',
+    fields: [
+      { key: 'baseUrl', label: 'Base URL', type: 'text', placeholder: 'https://api.openai.com/v1 atau http://.../v1' },
+      { key: 'apiKey', label: 'API Key', type: 'password', placeholder: 'sk-... atau API Key LLM' },
+      { key: 'model', label: 'Model Name', type: 'text', placeholder: 'auto/writing atau gpt-4o-mini' },
+    ],
+  },
 };
 
 export const PROVIDER_LABELS = {
@@ -96,6 +130,9 @@ export const PROVIDER_LABELS = {
   opensubtitles_org: 'OS.org',
   subdl: 'Subdl',
   podnapisi: 'Podnapisi',
+  yify: 'YIFY',
+  subtitlecat: 'SubtitleCat',
+  ai_translate: 'AI Translate',
 };
 
 export const PROVIDER_COLORS = {
@@ -103,6 +140,9 @@ export const PROVIDER_COLORS = {
   opensubtitles_org: 'text-blue-400 bg-blue-400/10',
   subdl: 'text-purple-400 bg-purple-400/10',
   podnapisi: 'text-green-400 bg-green-400/10',
+  yify: 'text-emerald-400 bg-emerald-400/10',
+  subtitlecat: 'text-cyan-400 bg-cyan-400/10',
+  ai_translate: 'text-violet-400 bg-violet-400/10',
 };
 
 // ─── Helper Functions ─────────────────────────────────────────────────────────

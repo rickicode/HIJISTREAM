@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles } from '../../src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from '../../src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -226,7 +226,8 @@ async function handleAdmin(pathname, method, env, request) {
   }
 
   if (pathname === '/admin/settings/check' && method === 'POST') {
-    const { provider, apiKey, username, password } = await request.json().catch(() => ({}));
+    const body = await request.json().catch(() => ({}));
+    const { provider, apiKey, username, password, baseUrl, model } = body;
     try {
       if (provider === 'opensubtitles_com') {
         if (!apiKey || !username || !password) return jsonRes({ success: false, message: 'apiKey, username, password required' });
@@ -246,6 +247,40 @@ async function handleAdmin(pathname, method, env, request) {
         if (!apiKey) return jsonRes({ success: false, message: 'apiKey required' });
         const r = await fetch(`https://api.subdl.com/api/v1/subtitles?api_key=${apiKey}&tmdb_id=27205&type=movie&languages=EN`, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
         return jsonRes({ success: r.ok, message: r.ok ? 'API Key Subdl valid!' : `Tidak valid (${r.status})` });
+      }
+      if (provider === 'podnapisi') {
+        return jsonRes({ success: true, message: 'Podnapisi aktif! (Free, tanpa API key)' });
+      }
+      if (provider === 'yify') {
+        return jsonRes({ success: true, message: 'YIFY aktif! (Free, tanpa API key)' });
+      }
+      if (provider === 'subtitlecat') {
+        return jsonRes({ success: true, message: 'SubtitleCat aktif! (Free, tanpa API key)' });
+      }
+      if (provider === 'ai_translate') {
+        if (!baseUrl || !apiKey) {
+          return jsonRes({ success: false, message: 'Base URL dan API Key diperlukan untuk AI Translate' });
+        }
+        const testEp = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+        const r = await fetch(testEp, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            'User-Agent': 'HIJISTREAM/1.0',
+          },
+          body: JSON.stringify({
+            model: model || 'auto/writing',
+            messages: [{ role: 'user', content: 'Say "OK"' }],
+            max_tokens: 5,
+          }),
+        });
+        if (r.ok) {
+          return jsonRes({ success: true, message: 'Koneksi AI Translate (LLM) berhasil!' });
+        } else {
+          const errBody = await r.text().catch(() => '');
+          return jsonRes({ success: false, message: `AI test gagal (${r.status}): ${errBody.slice(0, 100)}` });
+        }
       }
       return jsonRes({ success: false, message: 'Provider tidak dikenal' });
     } catch (err) {
@@ -369,6 +404,26 @@ export async function onRequest(context) {
       if (lang) opts.lang = lang;
       const results = await searchSubtitlesFromProviders(env, type, tmdbId, opts);
       return jsonRes({ results, total: results.length });
+    }
+    else if (pathname === '/metrics/visit' && method === 'POST') {
+      const body = await context.request.json().catch(() => ({}));
+      const userAgent = context.request.headers.get('user-agent') || '';
+      let deviceType = 'desktop';
+      if (/tv|smarttv|googletv|appletv|android tv/i.test(userAgent)) deviceType = 'tv';
+      else if (/mobile|iphone|android|ipad/i.test(userAgent)) deviceType = 'mobile';
+      const res = await recordVisit(env, {
+        visitorId: body.visitorId,
+        path: body.path || '/',
+        deviceType: body.deviceType || deviceType,
+      });
+      return jsonRes(res);
+    }
+    else if (pathname === '/metrics/play' && method === 'POST') {
+      const body = await context.request.json().catch(() => ({}));
+      const { id, type, title, poster_url } = body;
+      if (!id) return jsonRes({ error: 'id required' }, 400);
+      const res = await recordPlay(env, { id, type: type || 'movie', title, poster_url });
+      return jsonRes(res);
     }
     else if (pathname === '/subtitles/download' && method === 'POST') {
       const body = await context.request.json().catch(() => ({}));

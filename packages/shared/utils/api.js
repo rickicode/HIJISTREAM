@@ -165,6 +165,35 @@ const api = {
       return { subtitles: [] };
     }
   },
+  /**
+   * Record pageview or app open for visitor analytics.
+   */
+  recordVisit({ visitorId, path, deviceType } = {}) {
+    try {
+      return fetch(`${BASE_URL}/metrics/visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId, path, deviceType }),
+      }).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  },
+
+  /**
+   * Record playback event for Top Played statistics.
+   */
+  recordPlay({ id, type, title, poster_url } = {}) {
+    try {
+      return fetch(`${BASE_URL}/metrics/play`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, type, title, poster_url }),
+      }).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  },
 };
 
 export default api;

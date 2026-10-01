@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { getMovieEmbedUrl, getTVEmbedUrl, loadWatchProgress } from '@hijistream/shared/utils/player';
 import { useTranslation } from '@hijistream/shared/i18n';
+import api from '@hijistream/shared/utils/api';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function PlayerScreen() {
@@ -52,6 +53,16 @@ export default function PlayerScreen() {
       alive = false;
     };
   }, [type, id, season, episode, contentId, locale]);
+
+  // Visitors metrics: one play per play-session, tagged as mobile.
+  useEffect(() => {
+    api.recordPlay({
+      id,
+      type: type || 'movie',
+      title: title || `${type} #${id}`,
+      poster_url: poster_url || '',
+    });
+  }, [id, type, title, poster_url]);
 
   if (!embedUrl) {
     return (

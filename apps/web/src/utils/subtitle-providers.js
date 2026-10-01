@@ -345,6 +345,8 @@ export class PodnapisiProvider extends SubtitleProvider {
   }
 
   async _extractFromZip(buffer) {
+    // Hardened ZIP extraction: size limit (4MB), marker check (-->)
+    const MAX_UNCOMPRESSED = 4 * 1024 * 1024;
     const bytes = new Uint8Array(buffer);
     const decoder = new TextDecoder('utf-8');
     let offset = 0;
@@ -353,14 +355,20 @@ export class PodnapisiProvider extends SubtitleProvider {
       if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
         const compression = bytes[offset+8] | (bytes[offset+9] << 8);
         const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+        const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
         const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
         const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
         const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
         const dataStart = offset + 30 + fnLen + extraLen;
         const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
 
+        if (uncompressedSize > MAX_UNCOMPRESSED || compressedSize > MAX_UNCOMPRESSED) {
+          offset = dataStart + compressedSize;
+          continue;
+        }
+
         if (/\.(srt|vtt)$/i.test(filename)) {
-          let text;
+          let text = null;
           if (compression === 0) {
             text = decoder.decode(compressedData);
           } else if (compression === 8) {
@@ -372,23 +380,279 @@ export class PodnapisiProvider extends SubtitleProvider {
               writer.close();
               const chunks = [];
               let done = false;
+              let totalLen = 0;
               while (!done) {
                 const { value, done: d } = await reader.read();
-                if (value) chunks.push(value);
+                if (value) {
+                  totalLen += value.length;
+                  if (totalLen > MAX_UNCOMPRESSED) break;
+                  chunks.push(value);
+                }
                 done = d;
               }
-              const total = chunks.reduce((a, c) => a + c.length, 0);
-              const result = new Uint8Array(total);
-              let pos = 0;
-              for (const c of chunks) { result.set(c, pos); pos += c.length; }
-              text = decoder.decode(result);
+              if (totalLen <= MAX_UNCOMPRESSED) {
+                const result = new Uint8Array(totalLen);
+                let pos = 0;
+                for (const c of chunks) { result.set(c, pos); pos += c.length; }
+                text = decoder.decode(result);
+              }
             } catch { text = null; }
           }
-          if (text) return text;
+          if (text && text.includes('-->')) return text;
         }
         offset = dataStart + compressedSize;
       } else { offset++; }
     }
+    return null;
+  }
+}
+
+// ─── YIFY Subtitles Provider (Free, Movie only, by IMDB ID) ─────────────────
+
+const YIFY_LANG_SLUGS = {
+  id: 'indonesian', en: 'english', es: 'spanish', pt: 'portuguese',
+  hi: 'hindi', ja: 'japanese', ko: 'korean', fr: 'french',
+  de: 'german', it: 'italian', ru: 'russian', ar: 'arabic',
+};
+
+export class YifyProvider extends SubtitleProvider {
+  constructor() {
+    super('yify', 'YIFY Subtitles');
+    this.baseUrl = 'https://yifysubtitles.ch';
+  }
+
+  async search(video, languages) {
+    // Movies only — YIFY does not host TV episodes
+    if (video.type === 'tv' || !video.imdbId) return [];
+
+    try {
+      const imdbId = video.imdbId.startsWith('tt') ? video.imdbId : `tt${video.imdbId}`;
+      const res = await fetch(`${this.baseUrl}/movie-imdb/${imdbId}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        },
+      });
+      if (!res.ok) return [];
+      const html = await res.text();
+
+      const results = [];
+      for (const lang of languages) {
+        const slug = YIFY_LANG_SLUGS[lang.toLowerCase()] || lang.toLowerCase();
+        const re = new RegExp(`href="(/subtitles/[^"]*?-${slug}-yify-\\d+)"`, 'g');
+        let m;
+        const seen = new Set();
+        while ((m = re.exec(html)) !== null) {
+          const path = m[1];
+          if (seen.has(path)) continue;
+          seen.add(path);
+          const slugID = path.split('/').pop();
+          results.push({
+            provider: this.name,
+            id: slugID,
+            lang,
+            langName: LANG_NAMES[lang] || lang,
+            title: slugID,
+            downloadCount: 0,
+            rating: 0,
+            format: 'srt',
+            size: 0,
+            fileId: slugID,
+            hearingImpaired: false,
+          });
+          if (results.length >= 10) break;
+        }
+      }
+      return results;
+    } catch { return []; }
+  }
+
+  async download(subtitle) {
+    if (!subtitle.fileId) return null;
+    try {
+      const url = `${this.baseUrl}/subtitle/${subtitle.fileId}.zip`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        },
+      });
+      if (!res.ok) return null;
+      const blob = await res.arrayBuffer();
+      return await this._extractFromZip(blob);
+    } catch { return null; }
+  }
+
+  async _extractFromZip(buffer) {
+    const MAX_UNCOMPRESSED = 4 * 1024 * 1024;
+    const bytes = new Uint8Array(buffer);
+    const decoder = new TextDecoder('utf-8');
+    let offset = 0;
+
+    while (offset < bytes.length - 4) {
+      if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
+        const compression = bytes[offset+8] | (bytes[offset+9] << 8);
+        const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+        const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
+        const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
+        const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
+        const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
+        const dataStart = offset + 30 + fnLen + extraLen;
+        const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
+
+        if (uncompressedSize > MAX_UNCOMPRESSED || compressedSize > MAX_UNCOMPRESSED) {
+          offset = dataStart + compressedSize;
+          continue;
+        }
+
+        if (/\.(srt|vtt)$/i.test(filename)) {
+          let text = null;
+          if (compression === 0) {
+            text = decoder.decode(compressedData);
+          } else if (compression === 8) {
+            try {
+              const ds = new DecompressionStream('deflate-raw');
+              const writer = ds.writable.getWriter();
+              const reader = ds.readable.getReader();
+              writer.write(compressedData);
+              writer.close();
+              const chunks = [];
+              let done = false;
+              let totalLen = 0;
+              while (!done) {
+                const { value, done: d } = await reader.read();
+                if (value) {
+                  totalLen += value.length;
+                  if (totalLen > MAX_UNCOMPRESSED) break;
+                  chunks.push(value);
+                }
+                done = d;
+              }
+              if (totalLen <= MAX_UNCOMPRESSED) {
+                const result = new Uint8Array(totalLen);
+                let pos = 0;
+                for (const c of chunks) { result.set(c, pos); pos += c.length; }
+                text = decoder.decode(result);
+              }
+            } catch { text = null; }
+          }
+          if (text && text.includes('-->')) return text;
+        }
+        offset = dataStart + compressedSize;
+      } else { offset++; }
+    }
+    return null;
+  }
+}
+
+// ─── SubtitleCat Provider (Free, Movie & TV, direct .srt) ───────────────────
+
+export class SubtitleCatProvider extends SubtitleProvider {
+  constructor() {
+    super('subtitlecat', 'SubtitleCat');
+    this.baseUrl = 'https://www.subtitlecat.com';
+  }
+
+  async search(video, languages) {
+    const title = video.title || '';
+    if (!title) return [];
+
+    try {
+      let query = title;
+      if (video.type === 'tv') {
+        const s = String(video.season || 1).padStart(2, '0');
+        const e = String(video.episode || 1).padStart(2, '0');
+        query = `${title} S${s}E${e}`;
+      }
+
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeout = controller ? setTimeout(() => controller.abort(), 18000) : null;
+
+      const res = await fetch(`${this.baseUrl}/index.php?search=${encodeURIComponent(query)}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        },
+        signal: controller?.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) return [];
+      const html = await res.text();
+
+      const detailMatches = Array.from(html.matchAll(/href="(subs\/\d+\/[^"]+\.html)"/g)).map(m => m[1]);
+      if (detailMatches.length === 0) return [];
+
+      const results = [];
+      const seen = new Set();
+      const targetLangs = new Set(languages.map(l => (l.toLowerCase() === 'in' ? 'id' : l.toLowerCase())));
+
+      for (const detailPath of detailMatches.slice(0, 6)) {
+        try {
+          const detailRes = await fetch(`${this.baseUrl}/${detailPath}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            },
+          });
+          if (!detailRes.ok) continue;
+          const detailHtml = await detailRes.text();
+          const fileMatches = Array.from(detailHtml.matchAll(/href="(\/subs\/\d+\/[^"]+-([a-zA-Z]{2}|[a-zA-Z]{2}-[a-zA-Z]{2})\.srt)"/g));
+
+          for (const fm of fileMatches) {
+            const srtPath = fm[1];
+            let srtLang = fm[2].toLowerCase();
+            if (srtLang === 'in') srtLang = 'id';
+            if (targetLangs.size > 0 && !targetLangs.has(srtLang)) continue;
+            if (seen.has(srtPath)) continue;
+            seen.add(srtPath);
+
+            const filename = srtPath.split('/').pop();
+            results.push({
+              provider: this.name,
+              id: filename,
+              lang: srtLang,
+              langName: LANG_NAMES[srtLang] || srtLang,
+              title: filename,
+              downloadCount: 0,
+              rating: 0,
+              format: 'srt',
+              size: 0,
+              fileId: srtPath,
+              hearingImpaired: false,
+            });
+          }
+          if (results.length >= 10) break;
+        } catch { /* continue next detail */ }
+      }
+      return results;
+    } catch { return []; }
+  }
+
+  async download(subtitle) {
+    if (!subtitle.fileId) return null;
+    try {
+      const url = subtitle.fileId.startsWith('http') ? subtitle.fileId : `${this.baseUrl}${subtitle.fileId}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        },
+      });
+      if (!res.ok) return null;
+      const text = await res.text();
+      return text && text.includes('-->') ? text : null;
+    } catch { return null; }
+  }
+}
+
+// ─── AI Translation Provider (AxonRouter / OpenAI LLM) ──────────────────────
+
+export class AiTranslateProvider extends SubtitleProvider {
+  constructor() {
+    super('ai_translate', 'AI Translation');
+  }
+
+  async search() {
+    // Translation is a synthesis step, not an upstream candidate repository
+    return [];
+  }
+
+  async download() {
     return null;
   }
 }
@@ -427,6 +691,9 @@ export const providerRegistry = new ProviderRegistryClass();
 providerRegistry.register(new OpenSubtitlesComProvider());
 providerRegistry.register(new SubdlProvider());
 providerRegistry.register(new PodnapisiProvider());
+providerRegistry.register(new YifyProvider());
+providerRegistry.register(new SubtitleCatProvider());
+providerRegistry.register(new AiTranslateProvider());
 
 // ─── Subtitle Scoring (Bazarr-inspired) ──────────────────────────────────────
 

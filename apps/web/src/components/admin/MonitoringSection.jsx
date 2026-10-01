@@ -1,24 +1,25 @@
 import { useState } from 'react';
-import { Clock, AlertTriangle, Globe, RefreshCw, CheckCircle } from 'lucide-react';
+import { Clock, AlertTriangle, Globe, RefreshCw, CheckCircle, Users, PlayCircle, Monitor, Smartphone, Tv } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 import { formatDate, LANG_LABELS, CustomTooltip } from './shared';
 
 const MONITORING_TABS = [
+  { id: 'visitors', label: 'Pengunjung', icon: Users },
+  { id: 'top_played', label: 'Paling Banyak Diputar', icon: PlayCircle },
   { id: 'history', label: 'Refresh History', icon: Clock },
   { id: 'errors', label: 'Error Log', icon: AlertTriangle },
   { id: 'langs', label: 'Language Stats', icon: Globe },
 ];
-
 export default function MonitoringSection({ data, onRefresh }) {
-  const [activeTab, setActiveTab] = useState('history');
-  const { summary, langStats, refreshActivity, recentErrors } = data;
+  const [activeTab, setActiveTab] = useState('visitors');
+  const { summary, langStats, refreshActivity, recentErrors, visitors, topPlayed = [] } = data;
   if (!data) return null;
 
   const summaryCards = [
+    { label: 'Total Pengunjung', value: summary.totalVisits ?? visitors?.total ?? 0, color: 'text-cyan-400' },
+    { label: 'Total Pemutaran', value: summary.totalPlays ?? 0, color: 'text-amber-400' },
     { label: 'Total Subtitles', value: summary.totalSubtitles, color: 'text-white' },
-    { label: 'OpenSubtitles', value: summary.totalOS, color: 'text-orange-400' },
-    { label: 'Manual Upload', value: summary.totalManual, color: 'text-cyan-400' },
-    { label: 'Refreshed', value: summary.totalRefreshed, color: 'text-green-400' },
+    { label: 'Kunjungan Hari Ini', value: summary.todayVisits ?? visitors?.todayVisits ?? 0, color: 'text-green-400' },
     { label: 'Errors', value: summary.totalErrors, color: 'text-red-400' },
   ];
 
@@ -34,6 +35,151 @@ export default function MonitoringSection({ data, onRefresh }) {
         <button onClick={onRefresh} className="ml-auto p-1.5 text-[#808080] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors" title="Refresh monitoring data"><RefreshCw size={15} /></button>
       </div>
 
+      {activeTab === 'visitors' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+              <div className="text-[10px] font-medium text-[#808080] uppercase tracking-wider mb-0.5">Total Pageviews</div>
+              <div className="text-xl font-bold text-white">{visitors?.total || 0}</div>
+            </div>
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+              <div className="text-[10px] font-medium text-[#808080] uppercase tracking-wider mb-0.5">Pengunjung Unik</div>
+              <div className="text-xl font-bold text-cyan-400">{visitors?.uniqueCount || 0}</div>
+            </div>
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+              <div className="text-[10px] font-medium text-[#808080] uppercase tracking-wider mb-0.5">Kunjungan Hari Ini</div>
+              <div className="text-xl font-bold text-green-400">{visitors?.todayVisits || 0}</div>
+            </div>
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+              <div className="text-[10px] font-medium text-[#808080] uppercase tracking-wider mb-0.5">Unik Hari Ini</div>
+              <div className="text-xl font-bold text-emerald-400">{visitors?.todayUniques || 0}</div>
+            </div>
+          </div>
+
+          {/* Visitor activity chart */}
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-white">Tren Kunjungan — 14 Hari Terakhir</h4>
+              <span className="text-xs text-[#808080]">Kunjungan harian</span>
+            </div>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={visitors?.activity || []} barCategoryGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                  <XAxis dataKey="date" tick={{ fill: '#808080', fontSize: 10 }} tickFormatter={(v) => { const d = new Date(v + 'T00:00:00'); return d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' }); }} axisLine={{ stroke: '#2a2a2a' }} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fill: '#808080', fontSize: 10 }} axisLine={false} tickLine={false} width={24} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="visits" name="Kunjungan" fill="#06b6d4" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="uniques" name="Unik" fill="#10b981" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Top Pages */}
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-white mb-3">Halaman Paling Sering Dikunjungi</h4>
+              {(!visitors?.pages || visitors.pages.length === 0) ? (
+                <p className="text-xs text-[#666]">Belum ada data kunjungan halaman.</p>
+              ) : (
+                <div className="space-y-2">
+                  {visitors.pages.slice(0, 8).map((p) => (
+                    <div key={p.path} className="flex items-center justify-between text-xs py-1 border-b border-[#222]">
+                      <span className="text-white font-mono truncate max-w-[200px]" title={p.path}>{p.path}</span>
+                      <span className="text-cyan-400 font-medium">{p.count} views</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Devices */}
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-white mb-3">Distribusi Perangkat</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-[#141414] p-3 rounded text-center">
+                  <Monitor size={18} className="mx-auto text-blue-400 mb-1" />
+                  <div className="text-[10px] text-[#808080]">Desktop</div>
+                  <div className="text-base font-bold text-white">{visitors?.devices?.desktop || 0}</div>
+                </div>
+                <div className="bg-[#141414] p-3 rounded text-center">
+                  <Smartphone size={18} className="mx-auto text-green-400 mb-1" />
+                  <div className="text-[10px] text-[#808080]">Mobile</div>
+                  <div className="text-base font-bold text-white">{visitors?.devices?.mobile || 0}</div>
+                </div>
+                <div className="bg-[#141414] p-3 rounded text-center">
+                  <Tv size={18} className="mx-auto text-purple-400 mb-1" />
+                  <div className="text-[10px] text-[#808080]">TV / Kiosk</div>
+                  <div className="text-base font-bold text-white">{visitors?.devices?.tv || 0}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'top_played' && (
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+          {(!topPlayed || topPlayed.length === 0) ? (
+            <div className="flex flex-col items-center justify-center py-12 text-[#808080]">
+              <PlayCircle size={48} className="mb-4 text-amber-400 opacity-30" />
+              <p className="text-white font-medium mb-1">Belum Ada Riwayat Pemutaran</p>
+              <p className="text-sm">Data film & serial terpopuler akan otomatis muncul saat diputar pengguna.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#2a2a2a] text-xs font-medium text-[#808080] uppercase tracking-wider">
+                    <th className="text-center py-3 px-3 w-12">#</th>
+                    <th className="text-left py-3 px-4">Konten</th>
+                    <th className="text-center py-3 px-4">Tipe</th>
+                    <th className="text-center py-3 px-4">Total Putar</th>
+                    <th className="text-right py-3 px-4">Terakhir Diputar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topPlayed.map((item, idx) => (
+                    <tr key={`${item.type}-${item.id}`} className="border-b border-[#2a2a2a] hover:bg-[#1f1f1f] transition-colors">
+                      <td className="py-2.5 px-3 text-center text-xs font-bold text-[#808080]">
+                        {idx + 1 === 1 ? '🥇' : idx + 1 === 2 ? '🥈' : idx + 1 === 3 ? '🥉' : idx + 1}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <div className="flex items-center gap-3">
+                          {item.poster_url ? (
+                            <img src={item.poster_url} alt="" className="w-8 h-12 object-cover rounded bg-[#111]" />
+                          ) : (
+                            <div className="w-8 h-12 bg-[#222] rounded flex items-center justify-center text-[#555] text-[10px]">No Pic</div>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-white">{item.title}</div>
+                            <div className="text-[10px] text-[#666]">ID: {item.id}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${item.type === 'tv' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                          {item.type}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-center text-amber-400 font-bold text-sm">
+                        {item.count} <span className="text-[10px] font-normal text-[#808080]">x</span>
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-xs text-[#808080]">
+                        {formatDate(item.lastPlayed)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-4 py-2.5 border-t border-[#2a2a2a] text-xs text-[#808080]">
+                Menampilkan {topPlayed.length} konten paling banyak diputar
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {activeTab === 'history' && (
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
           <div className="flex items-center justify-between mb-3"><h4 className="text-sm font-semibold text-white">Activity — Last 14 Days</h4><span className="text-xs text-[#808080]">Total: <span className="text-white font-medium">{refreshActivity.reduce((s, d) => s + d.count, 0)}</span> actions</span></div>

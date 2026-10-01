@@ -116,6 +116,21 @@ export default function MovieDetail() {
     }
   }, [autoplay, captureEmbedUrl]);
 
+  // Record a play once per play-session, as soon as the player is active and
+  // the title is known. Autoplay can flip `isPlaying` before the query
+  // resolves, so keying off `isPlaying`+`movie` is the only reliable point.
+  const playRecorded = useRef(false);
+  useEffect(() => {
+    if (!isPlaying) {
+      playRecorded.current = false;
+      return;
+    }
+    if (movie && !playRecorded.current) {
+      playRecorded.current = true;
+      api.recordPlay({ id: movie.id, type: 'movie', title: movie.title, poster_url: movie.poster_url });
+    }
+  }, [isPlaying, movie]);
+
   const handlePlay = useCallback(() => {
     captureEmbedUrl(selectedSubtitle);
     setIsPlaying(true);

@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles } from './src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from './src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -453,6 +453,43 @@ export default async function middleware(request) {
         });
       }
     }
+    // Route: /metrics/visit — record visitor pageview
+    else if (pathname === '/metrics/visit' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const userAgent = request.headers.get('user-agent') || '';
+        let deviceType = 'desktop';
+        if (/tv|smarttv|googletv|appletv|android tv/i.test(userAgent)) deviceType = 'tv';
+        else if (/mobile|iphone|android|ipad/i.test(userAgent)) deviceType = 'mobile';
+
+        const res = await recordVisit(process.env, {
+          visitorId: body.visitorId,
+          path: body.path || '/',
+          deviceType: body.deviceType || deviceType,
+        });
+        return new Response(JSON.stringify(res), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
+    // Route: /metrics/play — record content playback
+    else if (pathname === '/metrics/play' && request.method === 'POST') {
+      try {
+        const body = await request.json().catch(() => ({}));
+        const { id, type, title, poster_url } = body;
+        if (!id) {
+          return new Response(JSON.stringify({ error: 'id required' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+        const res = await recordPlay(process.env, { id, type: type || 'movie', title, poster_url });
+        return new Response(JSON.stringify(res), {
+          status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    }
     // Route: /subtitles/download — download a specific subtitle from provider
     else if (pathname === '/subtitles/download' && request.method === 'POST') {
       try {
@@ -722,6 +759,39 @@ export default async function middleware(request) {
               // Podnapisi is free, no auth needed - just confirm it's configured
               success = true;
               message = 'Podnapisi aktif! (Free, tanpa API key diperlukan)';
+            } else if (provider === 'yify') {
+              success = true;
+              message = 'YIFY aktif! (Free, tanpa API key diperlukan)';
+            } else if (provider === 'subtitlecat') {
+              success = true;
+              message = 'SubtitleCat aktif! (Free, tanpa API key diperlukan)';
+            } else if (provider === 'ai_translate') {
+              const { baseUrl, model } = body;
+              if (!baseUrl || !apiKey) {
+                return new Response(JSON.stringify({ success: false, message: 'Base URL dan API Key diperlukan untuk AI Translate' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+              }
+              const testEp = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+              const r = await fetch(testEp, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${apiKey}`,
+                  'User-Agent': 'HIJISTREAM/1.0',
+                },
+                body: JSON.stringify({
+                  model: model || 'auto/writing',
+                  messages: [{ role: 'user', content: 'Say "OK"' }],
+                  max_tokens: 5,
+                }),
+              });
+              if (r.ok) {
+                success = true;
+                message = 'Koneksi AI Translate (LLM) berhasil!';
+              } else {
+                const errBody = await r.text().catch(() => '');
+                success = false;
+                message = `AI test gagal (${r.status}): ${errBody.slice(0, 100)}`;
+              }
             } else {
               message = 'Provider tidak dikenal';
             }

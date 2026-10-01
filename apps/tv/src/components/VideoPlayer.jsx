@@ -106,7 +106,7 @@ function buildEmbedUrlWithSub(base, lang, subUrl) {
   return `${base}?${params.join('&')}`;
 }
 
-export default function VideoPlayer({ id, type, title, season, episode, resumeAt, imdbId: imdbIdProp, tmdbId: tmdbIdProp }) {
+export default function VideoPlayer({ id, type, title, season, episode, resumeAt, imdbId: imdbIdProp, tmdbId: tmdbIdProp, poster }) {
   const webViewRef = useRef(null);
   const router = useRouter();
 
@@ -150,7 +150,7 @@ export default function VideoPlayer({ id, type, title, season, episode, resumeAt
 
         // Set initial embed URL (with ds_lang fallback) — langsung putar
         setEmbedUrl(buildEmbedUrl(base, lang));
-
+        api.recordPlay({ id: tmdbIdProp || id, type, title: title || `${type} #${id}`, poster_url: poster });
         // Fetch subtitles dari R2 (background — tidak block player)
         api.getSubtitles({
           type,

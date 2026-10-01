@@ -10,7 +10,7 @@ import { useLocalSearchParams } from 'expo-router';
 import VideoPlayer from '../components/VideoPlayer';
 
 export default function PlayerScreen() {
-  const { id, type, title, season, episode, resumeAt, imdbId, tmdbId } = useLocalSearchParams();
+  const { id, type, title, season, episode, resumeAt, imdbId, tmdbId, poster } = useLocalSearchParams();
 
   return (
     <View style={styles.container}>
@@ -23,6 +23,7 @@ export default function PlayerScreen() {
         resumeAt={resumeAt ? Number(resumeAt) : 0}
         imdbId={imdbId || undefined}
         tmdbId={tmdbId || undefined}
+        poster={poster || undefined}
       />
     </View>
   );

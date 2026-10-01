@@ -8,6 +8,7 @@ import Logo from './Logo';
 import SearchModal from './SearchModal';
 import { useTranslation } from '../i18n';
 import { SUPPORTED_LOCALES } from '../i18n/locales';
+import api from '../utils/api';
 
 function NavLink({ to, children }) {
   const { pathname } = useLocation();
@@ -36,6 +37,20 @@ export default function Layout() {
   const dropdownRef = useRef(null);
 
   useKeyboardShortcuts({ onSearchOpen: () => setSearchModalOpen(true) });
+  const location = useLocation();
+
+  useEffect(() => {
+    let visitorId = localStorage.getItem('hijistream_vid');
+    if (!visitorId) {
+      visitorId = `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem('hijistream_vid', visitorId);
+    }
+    api.recordVisit({
+      visitorId,
+      path: location.pathname,
+      deviceType: 'desktop',
+    });
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {

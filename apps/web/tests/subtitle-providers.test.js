@@ -101,11 +101,14 @@ describe('ProviderRegistry', () => {
     expect(providerRegistry.get('opensubtitles_com')).toBeDefined();
     expect(providerRegistry.get('subdl')).toBeDefined();
     expect(providerRegistry.get('podnapisi')).toBeDefined();
+    expect(providerRegistry.get('yify')).toBeDefined();
+    expect(providerRegistry.get('subtitlecat')).toBeDefined();
+    expect(providerRegistry.get('ai_translate')).toBeDefined();
   });
 
   it('returns all providers', () => {
     const all = providerRegistry.getAll();
-    expect(all.length).toBeGreaterThanOrEqual(3);
+    expect(all.length).toBeGreaterThanOrEqual(6);
   });
 });
 
@@ -213,5 +216,39 @@ describe('API subtitle methods', () => {
     };
     const results = await searchSubtitlesFromProviders(env, 'movie', 27205, {});
     expect(Array.isArray(results)).toBe(true);
+  });
+});
+
+describe('YifyProvider', () => {
+  it('has correct identity', () => {
+    const provider = providerRegistry.get('yify');
+    expect(provider.name).toBe('yify');
+    expect(provider.displayName).toBe('YIFY Subtitles');
+  });
+
+  it('rejects tv shows', async () => {
+    const provider = providerRegistry.get('yify');
+    const res = await provider.search({ type: 'tv', id: 1399, imdbId: 'tt0944947' }, ['en']);
+    expect(res).toEqual([]);
+  });
+
+  it('rejects missing imdbId', async () => {
+    const provider = providerRegistry.get('yify');
+    const res = await provider.search({ type: 'movie', id: 27205 }, ['en']);
+    expect(res).toEqual([]);
+  });
+});
+
+describe('SubtitleCatProvider', () => {
+  it('has correct identity', () => {
+    const provider = providerRegistry.get('subtitlecat');
+    expect(provider.name).toBe('subtitlecat');
+    expect(provider.displayName).toBe('SubtitleCat');
+  });
+
+  it('rejects empty title', async () => {
+    const provider = providerRegistry.get('subtitlecat');
+    const res = await provider.search({ type: 'movie', id: 27205, title: '' }, ['id']);
+    expect(res).toEqual([]);
   });
 });

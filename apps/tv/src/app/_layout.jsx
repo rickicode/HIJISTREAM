@@ -23,6 +23,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { LanguageProvider } from '@hijistream/shared/i18n';
+import { usePathname } from 'expo-router';
+import api from '@hijistream/shared/utils/api';
+import storage from '@hijistream/shared/utils/storage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +45,25 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  const pathname = usePathname();
+
+  // Visitor analytics: record a visit per route change, tagged as TV so the
+  // admin dashboard's device breakdown distinguishes kiosks from web.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let visitorId = await storage.getItem('hijistream_vid');
+      if (!visitorId) {
+        visitorId = `tv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        await storage.setItem('hijistream_vid', visitorId);
+      }
+      if (!cancelled) {
+        api.recordVisit({ visitorId, path: pathname, deviceType: 'tv' });
+      }
+    })().catch(() => {});
+    return () => { cancelled = true; };
+  }, [pathname]);
 
   if (!fontsLoaded && !fontError) {
     return null;

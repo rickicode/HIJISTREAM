@@ -10,6 +10,8 @@
  * Subtitles cached in R2 as WebVTT files.
  */
 
+import { translateSrtToIndonesian } from './ai-translate.js';
+
 // ─── Language maps ────────────────────────────────────────────────────────────
 
 // app locale → ISO 639-1 (OS.com / Subdl)
@@ -260,6 +262,15 @@ export async function resolveProviderCredentials(env) {
     },
     subdl: {
       apiKey: env.SUBDL_API_KEY || stored.subdl?.apiKey || '',
+    },
+    podnapisi: {},
+    yify: {},
+    subtitlecat: {},
+    ai_translate: {
+      baseUrl: env.AXONROUTER_BASE_URL || env.AI_TRANSLATE_BASE_URL || stored.ai_translate?.baseUrl || '',
+      apiKey: env.AXONROUTER_API_KEY || env.AI_TRANSLATE_API_KEY || stored.ai_translate?.apiKey || '',
+      model: env.AXONROUTER_MODEL || env.AI_TRANSLATE_MODEL || stored.ai_translate?.model || 'auto/writing',
+      enabled: env.AI_TRANSLATE_ENABLED !== 'false' && stored.ai_translate?.enabled !== false,
     },
   };
 }
@@ -517,11 +528,106 @@ async function fetchFromPodnapisi(tmdbId, type, lang, season, episode, imdbId) {
   } catch { return null; }
 }
 
+// ─── Provider: YIFY (Free, Movie only, by IMDB ID) ─────────────────────────
+const YIFY_BASE = 'https://yifysubtitles.ch';
+const YIFY_LANG_SLUGS = {
+  id: 'indonesian', en: 'english', es: 'spanish', pt: 'portuguese',
+  hi: 'hindi', ja: 'japanese', ko: 'korean', fr: 'french',
+  de: 'german', it: 'italian', ru: 'russian', ar: 'arabic',
+};
+
+async function fetchFromYify(tmdbId, type, lang, imdbId) {
+  if (type === 'tv' || !imdbId) return null;
+  const slug = YIFY_LANG_SLUGS[lang.toLowerCase()] || lang.toLowerCase();
+  const idStr = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+  try {
+    const res = await fetch(`${YIFY_BASE}/movie-imdb/${idStr}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const re = new RegExp(`href="(/subtitles/[^"]*?-${slug}-yify-\\d+)"`);
+    const match = html.match(re);
+    if (!match) return null;
+    const slugID = match[1].split('/').pop();
+    const dlRes = await fetch(`${YIFY_BASE}/subtitle/${slugID}.zip`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      },
+    });
+    if (!dlRes.ok) return null;
+    const blob = await dlRes.arrayBuffer();
+    const content = await extractSubtitleFromZip(blob);
+    return content ? { content, source: 'yify' } : null;
+  } catch { return null; }
+}
+
+// ─── Provider: SubtitleCat (Free, Movie & TV, direct .srt) ─────────────────
+const SUBTITLECAT_BASE = 'https://www.subtitlecat.com';
+
+async function fetchFromSubtitleCat(tmdbId, type, lang, season, episode, title) {
+  if (!title) return null;
+  const want = lang.toLowerCase() === 'in' ? 'id' : lang.toLowerCase();
+  try {
+    let query = title;
+    if (type === 'tv') {
+      const s = String(season || 1).padStart(2, '0');
+      const e = String(episode || 1).padStart(2, '0');
+      query = `${title} S${s}E${e}`;
+    }
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : null;
+    const searchRes = await fetch(`${SUBTITLECAT_BASE}/index.php?search=${encodeURIComponent(query)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+      },
+      signal: controller?.signal,
+    });
+    clearTimeout(timer);
+    if (!searchRes.ok) return null;
+    const html = await searchRes.text();
+    const detailMatches = Array.from(html.matchAll(/href="(subs\/\d+\/[^"]+\.html)"/g)).map(m => m[1]);
+    if (detailMatches.length === 0) return null;
+
+    const fileRe = new RegExp(`href="(/subs/\\d+/[^"]+-${want}\\.srt)"`, 'i');
+    for (const detailPath of detailMatches.slice(0, 5)) {
+      try {
+        const dRes = await fetch(`${SUBTITLECAT_BASE}/${detailPath}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+          },
+        });
+        if (!dRes.ok) continue;
+        const dHtml = await dRes.text();
+        const fMatch = dHtml.match(fileRe);
+        if (fMatch) {
+          const srtUrl = `${SUBTITLECAT_BASE}${fMatch[1]}`;
+          const srtRes = await fetch(srtUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            },
+          });
+          if (srtRes.ok) {
+            const srtText = await srtRes.text();
+            if (srtText && srtText.includes('-->')) {
+              return { content: srtText, source: 'subtitlecat' };
+            }
+          }
+        }
+      } catch { /* continue */ }
+    }
+    return null;
+  } catch { return null; }
+}
+
 /**
  * Extract first subtitle file from a ZIP archive.
  * Minimal ZIP parser — finds local file headers and extracts deflate-compressed entries.
  */
 async function extractSubtitleFromZip(buffer) {
+  const MAX_SIZE = 4 * 1024 * 1024;
   const bytes = new Uint8Array(buffer);
   const decoder = new TextDecoder('utf-8');
   let offset = 0;
@@ -531,14 +637,20 @@ async function extractSubtitleFromZip(buffer) {
     if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
       const compression = bytes[offset+8] | (bytes[offset+9] << 8);
       const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+      const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
       const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
       const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
       const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
       const dataStart = offset + 30 + fnLen + extraLen;
       const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
 
+      if (compressedSize > MAX_SIZE || uncompressedSize > MAX_SIZE) {
+        offset = dataStart + compressedSize;
+        continue;
+      }
+
       if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
-        let text;
+        let text = null;
         if (compression === 0) {
           text = decoder.decode(compressedData);
         } else if (compression === 8) {
@@ -550,19 +662,25 @@ async function extractSubtitleFromZip(buffer) {
             writer.close();
             const chunks = [];
             let done = false;
+            let totalLen = 0;
             while (!done) {
               const { value, done: d } = await reader.read();
-              if (value) chunks.push(value);
+              if (value) {
+                totalLen += value.length;
+                if (totalLen > MAX_SIZE) break;
+                chunks.push(value);
+              }
               done = d;
             }
-            const total = chunks.reduce((a, c) => a + c.length, 0);
-            const result = new Uint8Array(total);
-            let pos = 0;
-            for (const c of chunks) { result.set(c, pos); pos += c.length; }
-            text = decoder.decode(result);
+            if (totalLen <= MAX_SIZE) {
+              const result = new Uint8Array(totalLen);
+              let pos = 0;
+              for (const c of chunks) { result.set(c, pos); pos += c.length; }
+              text = decoder.decode(result);
+            }
           } catch { text = null; }
         }
-        if (text) return text;
+        if (text && text.includes('-->')) return text;
       }
       offset = dataStart + compressedSize;
     } else {
@@ -577,6 +695,7 @@ async function extractSubtitleFromZip(buffer) {
  * Returns array of { filename, content } for each .srt/.vtt/.ass/.ssa file found.
  */
 async function extractAllSubtitlesFromZip(buffer) {
+  const MAX_SIZE = 4 * 1024 * 1024;
   const bytes = new Uint8Array(buffer);
   const decoder = new TextDecoder('utf-8');
   let offset = 0;
@@ -586,14 +705,20 @@ async function extractAllSubtitlesFromZip(buffer) {
     if (bytes[offset] === 0x50 && bytes[offset+1] === 0x4b && bytes[offset+2] === 0x03 && bytes[offset+3] === 0x04) {
       const compression = bytes[offset+8] | (bytes[offset+9] << 8);
       const compressedSize = bytes[offset+18] | (bytes[offset+19] << 8) | (bytes[offset+20] << 16) | (bytes[offset+21] << 24);
+      const uncompressedSize = bytes[offset+22] | (bytes[offset+23] << 8) | (bytes[offset+24] << 16) | (bytes[offset+25] << 24);
       const fnLen = bytes[offset+26] | (bytes[offset+27] << 8);
       const extraLen = bytes[offset+28] | (bytes[offset+29] << 8);
       const filename = decoder.decode(bytes.slice(offset+30, offset+30+fnLen));
       const dataStart = offset + 30 + fnLen + extraLen;
       const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
 
+      if (compressedSize > MAX_SIZE || uncompressedSize > MAX_SIZE) {
+        offset = dataStart + compressedSize;
+        continue;
+      }
+
       if (/\.(srt|vtt|ass|ssa)$/i.test(filename)) {
-        let text;
+        let text = null;
         if (compression === 0) {
           text = decoder.decode(compressedData);
         } else if (compression === 8) {
@@ -605,19 +730,25 @@ async function extractAllSubtitlesFromZip(buffer) {
             writer.close();
             const chunks = [];
             let done = false;
+            let totalLen = 0;
             while (!done) {
               const { value, done: d } = await reader.read();
-              if (value) chunks.push(value);
+              if (value) {
+                totalLen += value.length;
+                if (totalLen > MAX_SIZE) break;
+                chunks.push(value);
+              }
               done = d;
             }
-            const total = chunks.reduce((a, c) => a + c.length, 0);
-            const result = new Uint8Array(total);
-            let pos = 0;
-            for (const c of chunks) { result.set(c, pos); pos += c.length; }
-            text = decoder.decode(result);
+            if (totalLen <= MAX_SIZE) {
+              const result = new Uint8Array(totalLen);
+              let pos = 0;
+              for (const c of chunks) { result.set(c, pos); pos += c.length; }
+              text = decoder.decode(result);
+            }
           } catch { text = null; }
         }
-        if (text) entries.push({ filename, content: text });
+        if (text && text.includes('-->')) entries.push({ filename, content: text });
       }
       offset = dataStart + compressedSize;
     } else {
@@ -1085,6 +1216,59 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
     } // end if (searchTitle)
   } catch { /* skip */ }
 
+  // 5. YIFY (Free, Movie only, by IMDB ID)
+  if (type === 'movie' && imdbId) {
+    try {
+      const yifySubs = await fetchFromYify(tmdbId, type, lang || 'en', imdbId);
+      if (yifySubs) {
+        results.push({
+          provider: 'yify',
+          lang: lang || 'en',
+          langName: LANG_NAMES[lang || 'en'] || (lang || 'en'),
+          title: `${options.title || tmdbId} (YIFY)`,
+          downloadCount: 0,
+          rating: 0,
+          format: 'srt',
+          size: 0,
+          fileId: imdbId,
+          fps: null,
+          hearingImpaired: false,
+        });
+      }
+    } catch { /* skip */ }
+  }
+
+  // 6. SubtitleCat (Free, Movie & TV)
+  try {
+    let catTitle = '';
+    const tmdbKey = env.TMDB_API_KEY;
+    if (tmdbKey) {
+      const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
+      const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
+      if (tRes.ok) {
+        const d = await tRes.json();
+        catTitle = d.title || d.name || '';
+      }
+    }
+    if (catTitle) {
+      const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
+      if (catSub) {
+        results.push({
+          provider: 'subtitlecat',
+          lang: lang || 'id',
+          langName: LANG_NAMES[lang || 'id'] || (lang || 'id'),
+          title: `${catTitle} (SubtitleCat)`,
+          downloadCount: 0,
+          rating: 0,
+          format: 'srt',
+          size: 0,
+          fileId: 'direct',
+          fps: null,
+          hearingImpaired: false,
+        });
+      }
+    }
+  } catch { /* skip */ }
   // Sort by download count descending
   results.sort((a, b) => b.downloadCount - a.downloadCount);
   return results;
@@ -1124,6 +1308,12 @@ export async function downloadSubtitleByProvider(env, provider, fileId, type, tm
         }
       }
     } catch (e) { console.error('[Subtitle] Subdl error:', e.message); }
+  } else if (provider === 'yify') {
+    const yifyRes = await fetchFromYify(tmdbId, type, lang, fileId || imdbId);
+    if (yifyRes) result = yifyRes;
+  } else if (provider === 'subtitlecat') {
+    const catRes = await fetchFromSubtitleCat(tmdbId, type, lang, season, episode, title);
+    if (catRes) result = catRes;
   }
 
   if (!result) return null;
@@ -1183,6 +1373,8 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
     { name: 'opensubtitles_org', fn: () => fetchFromOsOrg(creds.opensubtitles_org, tmdbId, type, lang, season, episode, imdbId) },
     { name: 'subdl', fn: () => fetchFromSubdl(creds.subdl, tmdbId, type, lang, season, episode) },
     { name: 'podnapisi', fn: () => fetchFromPodnapisi(tmdbId, type, lang, season, episode, imdbId) },
+    { name: 'yify', fn: () => fetchFromYify(tmdbId, type, lang, imdbId) },
+    { name: 'subtitlecat', fn: () => fetchFromSubtitleCat(tmdbId, type, lang, season, episode, options.title) },
   ];
 
   const providerResults = await Promise.allSettled(
@@ -1206,10 +1398,39 @@ export async function getOrFetchSubtitle(env, type, tmdbId, lang, options = {}) 
   let usedSource = null;
   if (successful.length > 0) {
     // Prefer OS.com > OS.org > Subdl
-    const sourcePriority = { opensubtitles_com: 1, opensubtitles_org: 2, subdl: 3 };
+    const sourcePriority = { opensubtitles_com: 1, opensubtitles_org: 2, subdl: 3, yify: 4, subtitlecat: 5, podnapisi: 6 };
     successful.sort((a, b) => (sourcePriority[a.source] || 9) - (sourcePriority[b.source] || 9));
     result = successful[0];
     usedSource = result.source;
+  }
+
+  // If no subtitle found for Indonesian ('id') and AI translation is configured, fallback to AI translate
+  if (!result && (lang === 'id' || lang === 'ind') && creds.ai_translate?.enabled && creds.ai_translate?.baseUrl && creds.ai_translate?.apiKey) {
+    try {
+      console.log(`[Subtitle] No ID subtitle found for ${type}/${tmdbId}. Attempting AI translation from EN...`);
+      // Fetch English subtitle first
+      const enSub = await getOrFetchSubtitle(env, type, tmdbId, 'en', { season, episode, imdbId, title, force: false });
+      if (enSub?.url) {
+        const enRes = await fetch(enSub.url);
+        if (enRes.ok) {
+          const enVtt = await enRes.text();
+          if (enVtt && enVtt.includes('-->')) {
+            const translatedVtt = await translateSrtToIndonesian(enVtt, creds.ai_translate);
+            if (translatedVtt && translatedVtt.includes('-->')) {
+              result = {
+                content: translatedVtt,
+                source: 'ai-translate:en',
+                alreadyVtt: true,
+                isAI: true,
+              };
+              usedSource = 'ai_translate';
+            }
+          }
+        }
+      }
+    } catch (aiErr) {
+      console.error('[Subtitle] AI translation fallback error:', aiErr.message);
+    }
   }
 
   if (!result) {
@@ -1348,6 +1569,27 @@ export async function getMonitoringData(env) {
     if (refreshActivity[date] !== undefined) refreshActivity[date]++;
   });
 
+  const metrics = await readMetrics(env);
+  const visitors = metrics.visitors || { total: 0, uniqueCount: 0, daily: {}, pages: {}, devices: {} };
+  const topPlayed = (metrics.plays || []).slice(0, 25);
+
+  const visitorActivity = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayData = visitors.daily?.[dateStr] || { visits: 0, uniques: 0 };
+    visitorActivity.push({
+      date: dateStr,
+      visits: dayData.visits || 0,
+      uniques: dayData.uniques || 0,
+    });
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayVisits = visitors.daily?.[todayStr]?.visits || 0;
+  const todayUniques = visitors.daily?.[todayStr]?.uniques || 0;
+
   return {
     summary: {
       totalSubtitles: subtitles.length,
@@ -1359,10 +1601,28 @@ export async function getMonitoringData(env) {
       totalSubdl: subtitles.filter(s => s.source === 'subdl').length,
       totalRefreshed: subtitles.filter(s => s.refreshedAt).length,
       totalErrors: errorLog.length,
+      totalVisits: visitors.total || 0,
+      totalUniqueVisitors: visitors.uniqueCount || 0,
+      todayVisits,
+      todayUniques,
+      totalPlays: (metrics.plays || []).reduce((acc, p) => acc + (p.count || 0), 0),
     },
     langStats: Object.values(langStats).sort((a, b) => b.total - a.total),
     refreshActivity: Object.entries(refreshActivity).map(([date, count]) => ({ date, count })),
     recentErrors: errorLog.slice(0, 30),
+    visitors: {
+      total: visitors.total || 0,
+      uniqueCount: visitors.uniqueCount || 0,
+      todayVisits,
+      todayUniques,
+      activity: visitorActivity,
+      pages: Object.entries(visitors.pages || {})
+        .map(([path, count]) => ({ path, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 15),
+      devices: visitors.devices || { desktop: 0, mobile: 0, tv: 0, other: 0 },
+    },
+    topPlayed,
   };
 }
 
@@ -1419,4 +1679,139 @@ export async function backfillTitles(env) {
 
   if (updated > 0) await writeMetadata(env, metadata);
   return { updated, skipped: subtitles.length - updated, errors };
+}
+// ─── Metrics Subsystem: Visitor Analytics & Top Played ──────────────────────
+
+export const METRICS_DATA_KEY = 'metrics/data.json';
+
+export async function readMetrics(env) {
+  try {
+    const raw = await r2GetObject(env, METRICS_DATA_KEY);
+    if (!raw) {
+      return {
+        visitors: { total: 0, uniqueCount: 0, uniqueIds: [], daily: {}, pages: {}, devices: { desktop: 0, mobile: 0, tv: 0, other: 0 } },
+        plays: [],
+        updatedAt: null,
+      };
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      visitors: parsed.visitors || { total: 0, uniqueCount: 0, uniqueIds: [], daily: {}, pages: {}, devices: { desktop: 0, mobile: 0, tv: 0, other: 0 } },
+      plays: parsed.plays || [],
+      updatedAt: parsed.updatedAt || null,
+    };
+  } catch {
+    return {
+      visitors: { total: 0, uniqueCount: 0, uniqueIds: [], daily: {}, pages: {}, devices: { desktop: 0, mobile: 0, tv: 0, other: 0 } },
+      plays: [],
+      updatedAt: null,
+    };
+  }
+}
+
+export async function writeMetrics(env, data) {
+  data.updatedAt = new Date().toISOString();
+  return r2PutObject(env, METRICS_DATA_KEY, JSON.stringify(data, null, 2), 'application/json; charset=utf-8');
+}
+
+export async function recordVisit(env, { visitorId, path, deviceType }) {
+  try {
+    const metrics = await readMetrics(env);
+    const today = new Date().toISOString().slice(0, 10);
+    const vis = metrics.visitors || { total: 0, uniqueCount: 0, uniqueIds: [], daily: {}, pages: {}, devices: {} };
+
+    vis.total = (vis.total || 0) + 1;
+    const vId = visitorId || `anon_${Math.random().toString(36).slice(2, 10)}`;
+    if (!Array.isArray(vis.uniqueIds)) vis.uniqueIds = [];
+    if (!vis.uniqueIds.includes(vId)) {
+      vis.uniqueIds.push(vId);
+      if (vis.uniqueIds.length > 5000) vis.uniqueIds.shift();
+    }
+    vis.uniqueCount = vis.uniqueIds.length;
+
+    if (!vis.daily) vis.daily = {};
+    if (!vis.daily[today]) vis.daily[today] = { visits: 0, uniques: 0, uniqueList: [] };
+    vis.daily[today].visits = (vis.daily[today].visits || 0) + 1;
+    if (!vis.daily[today].uniqueList) vis.daily[today].uniqueList = [];
+    if (!vis.daily[today].uniqueList.includes(vId)) {
+      vis.daily[today].uniqueList.push(vId);
+      vis.daily[today].uniques = vis.daily[today].uniqueList.length;
+      if (vis.daily[today].uniqueList.length > 1000) vis.daily[today].uniqueList.shift();
+    }
+
+    if (!vis.pages) vis.pages = {};
+    // Collapse dynamic segments (/movies/27205 -> /movies/:id) so the map is
+    // keyed by route shape, not by every title ever visited. Without this the
+    // report grows one entry per title and buries the actual top pages.
+    const cleanPath = (path ? path.split('?')[0] : '/')
+      .replace(/\/\d+(?=\/|$)/g, '/:id')
+      .replace(/\/[0-9a-f]{8,}(?=\/|$)/gi, '/:id');
+    vis.pages[cleanPath] = (vis.pages[cleanPath] || 0) + 1;
+    // Hard cap as a backstop: a client sending arbitrary paths must not be able
+    // to grow this object without bound.
+    const pageKeys = Object.keys(vis.pages);
+    if (pageKeys.length > 200) {
+      const trimmed = pageKeys
+        .sort((a, b) => (vis.pages[b] || 0) - (vis.pages[a] || 0))
+        .slice(0, 200);
+      vis.pages = Object.fromEntries(trimmed.map(k => [k, vis.pages[k]]));
+    }
+
+    if (!vis.devices) vis.devices = { desktop: 0, mobile: 0, tv: 0, other: 0 };
+    // Whitelist: an arbitrary deviceType from the client must not create keys.
+    const dev = ['desktop', 'mobile', 'tv', 'other'].includes(deviceType) ? deviceType : 'other';
+    vis.devices[dev] = (vis.devices[dev] || 0) + 1;
+    // uniqueCount must track the retained window, not a lifetime total that
+    // diverges from uniqueIds once the array starts shifting.
+    vis.uniqueCount = vis.uniqueIds.length;
+
+    metrics.visitors = vis;
+    await writeMetrics(env, metrics);
+    return { success: true };
+  } catch (err) {
+    console.error('[Metrics] recordVisit error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function recordPlay(env, { id, type, title, poster_url }) {
+  if (!id) return { success: false, error: 'Missing media id' };
+  try {
+    const metrics = await readMetrics(env);
+    if (!Array.isArray(metrics.plays)) metrics.plays = [];
+
+    const existingIdx = metrics.plays.findIndex(p => String(p.id) === String(id) && p.type === type);
+    const now = new Date().toISOString();
+
+    if (existingIdx >= 0) {
+      metrics.plays[existingIdx].count = (metrics.plays[existingIdx].count || 0) + 1;
+      metrics.plays[existingIdx].lastPlayed = now;
+      if (title) metrics.plays[existingIdx].title = title;
+      if (poster_url) metrics.plays[existingIdx].poster_url = poster_url;
+    } else {
+      metrics.plays.push({
+        id: String(id),
+        type: type || 'movie',
+        title: title || `ID #${id}`,
+        poster_url: poster_url || '',
+        count: 1,
+        lastPlayed: now,
+      });
+    }
+
+    metrics.plays.sort((a, b) => (b.count || 0) - (a.count || 0));
+    if (metrics.plays.length > 100) metrics.plays = metrics.plays.slice(0, 100);
+
+    await writeMetrics(env, metrics);
+    return { success: true, count: existingIdx >= 0 ? metrics.plays[existingIdx].count : 1 };
+  } catch (err) {
+    console.error('[Metrics] recordPlay error:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getTopPlayed(env, limit = 20) {
+  const metrics = await readMetrics(env);
+  const plays = metrics.plays || [];
+  return plays.slice(0, limit);
 }

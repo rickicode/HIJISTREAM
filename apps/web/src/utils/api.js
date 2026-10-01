@@ -405,15 +405,45 @@ const api = {
   /**
    * Check OpenSubtitles credentials by attempting login.
    */
-  checkProvider({ provider, apiKey, username, password }) {
+  checkProvider({ provider, apiKey, username, password, baseUrl, model }) {
     return fetch(`${BASE_URL}/admin/settings/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: this._getAdminAuth() },
-      body: JSON.stringify({ provider, apiKey, username, password }),
+      body: JSON.stringify({ provider, apiKey, username, password, baseUrl, model }),
     }).then((res) => {
       if (!res.ok) return res.json().then((d) => { throw new Error(d.error || 'Check failed'); });
       return res.json();
     });
+  },
+
+  /**
+   * Record pageview for visitor metrics.
+   */
+  recordVisit({ visitorId, path, deviceType } = {}) {
+    try {
+      return fetch(`${BASE_URL}/metrics/visit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitorId, path, deviceType }),
+      }).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
+  },
+
+  /**
+   * Record content playback for Top Played metric.
+   */
+  recordPlay({ id, type, title, poster_url } = {}) {
+    try {
+      return fetch(`${BASE_URL}/metrics/play`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, type, title, poster_url }),
+      }).catch(() => {});
+    } catch {
+      return Promise.resolve();
+    }
   },
 
   downloadAdminSubtitle({ type, tmdbId, lang, imdbId, title, season, episode }) {
