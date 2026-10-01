@@ -528,3 +528,38 @@ dengan `content-type: text/vtt`.
    sudah menjadi pengganti berbayarnya. Sisakan hanya bila tier berbayar `.com` dinaikkan
    kuotanya, atau hapus sebagai dead weight.
 3. **Jangan regresi ke `Bearer`-saja untuk TMDB**; satu helper `tmdbFetch` sudah menutup itu.
+
+### Sesi 2026-10-01 (keenam): provider mati dihapus (`1a8a4dd`)
+
+Keputusan operator: provider yang tidak dapat diperbaiki **dihapus**, bukan dibiarkan.
+
+Dihapus seluruhnya — bukan dinonaktifkan:
+
+| Yang dihapus | Cakupan |
+|---|---|
+| Klien XML-RPC OpenSubtitles.org | encoder `valueToXml`, parser tulis-tangan `makeXmlRpcParser`, `parseXmlRpcResponse`, `xmlRpcRequest`, `osOrgLogin`, `osOrgSearch`, `osOrgDownloadUrl`, `osOrgFetchFile`, `fetchFromOsOrg` |
+| Scraper YIFY | `fetchFromYify`, `YIFY_BASE`, `YIFY_LANG_SLUGS` |
+| Kelas provider | `YifyProvider` + registrasinya (registry 5 → 4) |
+| UI admin | entri `PROVIDER_INFO`/`PROVIDER_LABELS`/`PROVIDER_COLORS`, badge `SubtitleRow`, label `DownloadTab` |
+| Endpoint uji | cabang `opensubtitles_org` dan `yify` di `/admin/settings/check` (kedua handler) |
+| Tes | `tests/subtitle-osorg.test.js` dihapus; kasus YIFY dibuang dari `subtitle-providers.test.js`; sumber EN pada tes AI Translate dipindah dari OS.org ke Subdl (ZIP nyata) |
+| Dead weight ikutan | `gunzipSync` (kini tak terpakai), `decodeXmlEntities`, dan variabel `imdbId`/`year` yang menjadi yatim |
+
+Resolusi `imdb_id` **tetap dipertahankan**: OpenSubtitles.com memakai fallback pencarian
+`imdb_id` ketika lookup `tmdb_id` kosong, dan id itu disimpan di metadata subtitle — jadi
+panggilan TMDB masih berguna.
+
+Tersisa: `opensubtitles_com`, `subdl`, `subtitlecat`, `ai_translate`.
+
+**Verifikasi produksi pasca-deploy (`1a8a4dd`):**
+
+| Uji | Hasil |
+|---|---|
+| `type=movie&tmdb_id=27205&lang=id` | `total 26` — `opensubtitles_com ok(15)`, `subdl ok(10)`, `subtitlecat ok(1)`, **hanya 3 baris diagnostik** |
+| `type=tv&tmdb_id=1399&season=1&episode=1` | `total 21` — `ok(10)/ok(10)/ok(1)` |
+| Unduh SubtitleCat | `200`, VTT `text/vtt`, 138 872 byte, **1756 cue** |
+
+Total tidak berubah (26 → 26) karena kedua provider yang dihapus memang selalu menyumbang 0 —
+penghapusan menghilangkan dua permintaan keluar yang gagal di setiap pencarian, tanpa kehilangan
+satu hasil pun. Jejak yang tak lagi muncul di produksi: `opensubtitles_org: error — 403` dan
+`yify: error — situs menolak: HTTP 403`.
