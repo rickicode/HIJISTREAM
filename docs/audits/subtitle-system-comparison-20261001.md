@@ -463,3 +463,68 @@ Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `Deco
 - **Bukti vantage residensial:** YIFY `movie-imdb/tt1375666` → 200 / 980 KB / tautan
   `inception-2010-*-yify-*` cocok; SubtitleCat `?search=Inception` → 200 / 67 KB /
   `subs/1655/Inception.2010...html` cocok.
+
+### Sesi 2026-10-01 (kelima): kunci TMDB salah bentuk + konsolidasi resolusi
+
+**Temuan terpenting sesi ini:** `/api/movies/trending` bekerja di produksi sedangkan setiap
+lookup TMDB di jalur subtitle menjawab 401. Bedanya bukan kuncinya, melainkan **bentuk
+kredensial**: `TMDB_API_KEY` yang dipakai deployment adalah kunci v3, dan TMDB hanya menerima
+kunci v3 lewat parameter `api_key`. Keenam lookup jalur subtitle mengirimnya **hanya** sebagai
+`Authorization: Bearer`, jadi semuanya 401:
+
+| Lokasi | Dampak |
+|---|---|
+| `bulkDownloadSubtitles` (daftar musim TV) | `TMDB API error 401` → seluruh unduhan massal TV gagal |
+| Fallback judul SubtitleCat | `TMDB menolak lookup (HTTP 401)` |
+| Metadata jalur unduhan + resolusi imdb YIFY | `options.imdbId` kosong → YIFY `skipped` |
+| `backfillTitles` | setiap entri dihitung gagal |
+
+Perbaikan: satu helper `tmdbFetch(apiKey, path, params)` mengirim kunci **dua cara** (param
+`api_key` + header Bearer) sehingga kunci v3 maupun token v4 sama-sama sah; TMDB mengabaikan
+yang tidak berlaku. Keenam situs dialihkan ke helper itu, dan `backfillTitles` kini meminta
+`append_to_response=external_ids` (sebelumnya membaca `data.external_ids?.imdb_id` tanpa pernah
+memintanya — dead read yang sama dengan jalur unduhan).
+
+**Konsolidasi:** resolusi `title`/`imdb_id` yang tadinya saya taruh di kedua handler (yang
+seluruh isinya memang duplikat) dipindah ke `searchSubtitlesFromProviders`, tempat fallback
+judul SubtitleCat sudah hidup: satu panggilan TMDB mengisi mana pun yang belum dikirim klien.
+Empat blok lookup menjadi satu. Label sumber judul kini jujur (`klien` vs `TMDB`) — sebelumnya
+permintaan tanpa judul tetap tertulis `judul dari klien`. Alasan kegagalan dibawa ke baris
+provider yang membutuhkannya, jadi kunci tidak valid tetap terbaca
+`TMDB menolak lookup (HTTP 401)`, dan provider yang tidak pernah berjalan dilaporkan
+`skipped`, bukan `error`.
+
+#### YIFY: 403 dari egress Vercel (bukan bug kode)
+
+Diagnostik yang kini jujur menjawabnya dalam satu permintaan: `yify: error — situs menolak:
+HTTP 403`. `yifysubtitles.ch` dilindungi Cloudflare dan memblokir IP pusat data, persis pola
+OS.org. Dari IP residensial host itu sehat (`movie-imdb/tt1375666` → 200, 980 KB, 23 baris
+`indonesian-yify-*` cocok dengan regex kode). Perbaikan `imdb_id` **benar dan diperlukan** —
+`skipped` berubah menjadi `error` membuktikan `imdbId` kini terisi dan permintaan benar-benar
+dikirim — tetapi tidak bisa menembus blokir egress. SubtitleCat lolos (200 tanpa Cloudflare
+blok), Subdl lolos, OpenSubtitles.com lolos.
+
+#### Matriks akhir dari produksi (Vercel edge), Inception `tt1375666`, `lang=id`
+
+| Provider | Status | Penyebab |
+|---|---|---|
+| opensubtitles_com | `ok n=15` | REST API, kuota 20 tersisa |
+| subdl | `ok n=10` | REST API |
+| subtitlecat | `ok n=1` | langsung, judul dari TMDB |
+| yify | `error` | HTTP 403 dari egress (blokir Cloudflare) |
+| opensubtitles_org | `error` | HTTP 403 + API XML-RPC resmi dimatikan |
+| **total** | **26 hasil** | unduh terverifikasi: VTT `text/vtt`, 1756 cue |
+
+Rantai penuh dibuktikan di produksi: search → download (`/api/subtitles/download`) → ambil
+SubtitleCat → konversi VTT → simpan R2 → disajikan `https://subs.hijitoko.com/.../id.vtt`
+dengan `content-type: text/vtt`.
+
+#### Rekomendasi
+
+1. **YIFY + OS.org butuh jalur keluar non-pusat-data.** Keduanya diblokir Cloudflare karena IP
+   Vercel. Pilihan: proxy residensial untuk dua host itu, atau terima keduanya mati dari edge.
+   Kode tidak dapat menambalnya.
+2. **OS.org: pertimbangkan dihapus.** API-nya dimatikan resmi (29 Jan 2026); `opensubtitles_com`
+   sudah menjadi pengganti berbayarnya. Sisakan hanya bila tier berbayar `.com` dinaikkan
+   kuotanya, atau hapus sebagai dead weight.
+3. **Jangan regresi ke `Bearer`-saja untuk TMDB**; satu helper `tmdbFetch` sudah menutup itu.
