@@ -640,7 +640,7 @@ async function fetchFromSubtitleCat(tmdbId, type, lang, season, episode, title) 
  * Extract first subtitle file from a ZIP archive.
  * Minimal ZIP parser — finds local file headers and extracts deflate-compressed entries.
  */
-async function extractSubtitleFromZip(buffer) {
+export async function extractSubtitleFromZip(buffer) {
   const MAX_SIZE = 4 * 1024 * 1024;
   const bytes = new Uint8Array(buffer);
   const decoder = new TextDecoder('utf-8');

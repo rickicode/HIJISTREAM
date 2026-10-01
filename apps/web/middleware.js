@@ -1,4 +1,4 @@
-import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay } from './src/utils/subtitle.js';
+import { getOrFetchSubtitle, readMetadata, removeFromMetadata, deleteSubtitleFile, addToMetadata, handleUploadSubtitle, refreshSubtitle, refreshAllSubtitles, updateMetadataEntry, getMonitoringData, r2PutObject, getR2PublicUrl, signS3, readProviderSettings, writeProviderSettings, PROVIDERS_SETTINGS_KEY, searchSubtitlesFromProviders, downloadSubtitleByProvider, backfillTitles, bulkDownloadSubtitles, recordVisit, recordPlay, extractSubtitleFromZip } from './src/utils/subtitle.js';
 
 const TMDB_BASE = 'https://api.themoviedb.org';
 
@@ -491,6 +491,36 @@ export default async function middleware(request) {
       }
     }
     // Route: /subtitles/download — download a specific subtitle from provider
+    // TEMP DIAGNOSTIC (remove): fetch a remote file and run the zip extractor.
+    else if (pathname === '/debug/ziptest') {
+      const u = url.searchParams.get('u');
+      if (!u) return new Response(JSON.stringify({ error: 'u required' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      try {
+        const zr = await fetch(u, { headers: { 'User-Agent': 'HIJISTREAM/1.0' } });
+        const buf = await zr.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let off = 0, firstSig = null, comp = null, csize = null;
+        while (off < bytes.length - 4) {
+          if (bytes[off] === 0x50 && bytes[off+1] === 0x4b && bytes[off+2] === 0x03 && bytes[off+3] === 0x04) {
+            firstSig = 'ok';
+            comp = bytes[off+8] | (bytes[off+9] << 8);
+            csize = bytes[off+18] | (bytes[off+19] << 8) | (bytes[off+20] << 16) | (bytes[off+21] << 24);
+            break;
+          }
+          off++;
+        }
+        let dsOk = false;
+        try { dsOk = typeof DecompressionStream !== 'undefined' && !!new DecompressionStream('deflate-raw'); } catch (e) { dsOk = 'err:' + e.message; }
+        let extracted = null, exErr = null;
+        try { extracted = await extractSubtitleFromZip(buf); } catch (e) { exErr = e.message; }
+        return new Response(JSON.stringify({
+          zipStatus: zr.status, zipBytes: buf.byteLength, firstSig, comp, csize,
+          decompressionStream: dsOk, extractedLen: extracted ? extracted.length : null, exErr,
+        }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
     else if (pathname === '/subtitles/download' && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}));
