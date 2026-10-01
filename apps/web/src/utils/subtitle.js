@@ -67,6 +67,12 @@ function normalizeLang(raw) {
   if (LANG_MAP[s]) return s;
   // Provider language names
   if (LANG_NAME_TO_CODE[bare]) return LANG_NAME_TO_CODE[bare];
+  // Subdl's legacy archive tags some rows with two letters that are not ISO
+  // 639-1 (Chinese ships as CH, Turkish as TU, Albanian as AL), and those
+  // reached the picker as unmapped chips. Its own catalogue lists them under
+  // these languages.
+  const LEGACY_CODES = { ch: 'zh', tu: 'tr', al: 'sq' };
+  if (LEGACY_CODES[s]) return LEGACY_CODES[s];
   // ISO 639-2 match
   const by639_2 = Object.entries(LANG_MAP_3).find(([, v]) => v === s);
   if (by639_2) return by639_2[0];
