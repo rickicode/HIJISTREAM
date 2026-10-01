@@ -1143,9 +1143,13 @@ export async function searchSubtitlesFromProviders(env, type, tmdbId, options = 
       try {
         const ep = type === 'tv' ? `https://api.themoviedb.org/3/tv/${tmdbId}?language=en-US` : `https://api.themoviedb.org/3/movie/${tmdbId}?language=en-US`;
         const tRes = await fetch(ep, { headers: { Authorization: `Bearer ${tmdbKey}` } });
-        const catTitle = tRes.ok ? ((await tRes.json()).title || (await tRes.json()).name || '') : '';
+        // One read: res.json() consumes the body, a second call throws. The
+        // HTTP status is reported verbatim because an invalid/absent TMDB key
+        // (401) is the actual reason SubtitleCat contributes nothing in prod.
+        const meta = tRes.ok ? await tRes.json() : null;
+        const catTitle = meta?.title || meta?.name || '';
         if (!catTitle) {
-          record('subtitlecat', 'error', 0, 'judul TMDB tidak ditemukan');
+          record('subtitlecat', 'error', 0, tRes.ok ? 'TMDB tidak mengembalikan judul' : `TMDB menolak lookup (HTTP ${tRes.status})`);
         } else {
           const catSub = await fetchFromSubtitleCat(tmdbId, type, lang || 'id', season, episode, catTitle);
           if (catSub) {

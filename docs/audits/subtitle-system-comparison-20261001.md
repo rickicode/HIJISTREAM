@@ -225,7 +225,7 @@ kegagalan per-provider (`[Subtitle] <provider> search:`) seperti jalur unduhan s
 | Pantau kuota OS.com | **Sebagian** — `osComLogin` sudah membaca `user.allowed_downloads`, angka kuota muncul di diagnostics search (`kuota unduhan tersisa N`), dan penolakan unduhan (406/429) dicatat ke error log admin (`type: 'quota'`). Rotasi akun / `apiKey` berbayar tetap **belum**. |
 | Skor berbobot ala hijitv | **Selesai** — `searchSubtitlesFromProviders` kini mengurutkan lewat `rankSubtitles`/`computeScore` (title + year + language match + provider pilihan + downloadCount), menggantikan sort downloadCount mentah. `title`/`year` dikirim detail page → `api.searchSubtitles` → handler (`middleware.js` + `functions/api/[[path]].js`). |
 | Preferensi sumber per judul | **Selesai** — `preferredProviderFor` membaca `subtitles/metadata.json` (sumber terakhir untuk judul+musim+episode+bahasa yang sama) dan memberi boost `preferred_source` (+25). Setara `active_*.txt` hijitv; tidak ada state klien. |
-| Provider yang selalu 0 hasil (§3.2) | **Selesai** — tiap provider menyatakan dirinya di `diagnostics` (`ok`/`empty`/`skipped`/`error` + pesan), di-log saat search, dikirim di response API, dan dirender di modal sebagai strip "Provider bermasalah". OS.org kini ketahuan `empty`/`XML-RPC mengembalikan 0 baris`, YIFY `skipped (butuh imdb_id)`, SubtitleCat `skipped (TMDB_API_KEY belum diisi)` — bukan lagi diam. |
+| Provider yang selalu 0 hasil (§3.2) | **Selesai** — tiap provider menyatakan dirinya di `diagnostics` (`ok`/`empty`/`skipped`/`error` + pesan), di-log saat search, dikirim di response API, dan dirender di modal sebagai strip "Provider bermasalah". Bukti live: OS.org `error — login XML-RPC gagal (status bukan 200)`, YIFY `skipped (butuh imdb_id)`, SubtitleCat `error` dengan penyebab sebenarnya (bukan lagi diam). |
 
 
 ---
@@ -257,9 +257,8 @@ Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `Deco
 
 ### Sesi 2026-10-01 (kedua): diagnostics, skor berbobot, kuota
 
-- Test: **100/100 lulus** di 9 berkas. Bertambah 1 tes modal (strip "Provider
-  bermasalah" muncul untuk `error`, tidak untuk `skipped: belum dikonfigurasi`)
-  dan tes `searchSubtitlesFromProviders` kini memverifikasi bentuk `diagnostics`.
+- Test: **102/102 lulus** di 9 berkas (tes modal strip "Provider bermasalah" +
+  2 tes regresi SubtitleCat, lihat di bawah).
 - Build: `vite build` sukses (`SubtitleSearchModal-DiOpe2jt.js`, 15.38 kB).
 - Lint: **72 masalah (66 error, 6 warning)** — identik dengan baseline `HEAD`
   (`git stash` + `npx eslint .` menghasilkan angka yang sama). **0 temuan baru.**
@@ -278,16 +277,36 @@ Test regresi baru (`tests/subtitle-zip.test.js`) mensimulasikan host tanpa `Deco
     `{type:'quota', provider, lang, message}`.
   - Row API bersih: `score`/`matches` tidak bocor ke `results`.
 - Yang **belum**: provider yang selalu 0 hasil belum *diperbaiki*, hanya kini
-  terlihat. OS.org masih bergantung pada `DOMParser` (`xmlRpcRequest` fallback
-  hanya mengenali `<member><name>token`/`status`, bukan struktur `SearchSubtitles`),
-  jadi bila runtime tidak punya `DOMParser`, `osOrgSearch` selalu mengembalikan
-  `[]` — kini tercatat sebagai `empty`/`XML-RPC mengembalikan 0 baris` di
-  diagnostics, bukan tebakan. Pelacakan berikutnya harus memverifikasi apakah
-  Edge runtime menyediakan `DOMParser`; kalau tidak, parser XML perlu ditulis
-  manual. YIFY/SubtitleCat juga belum dipanggil dalam kondisi normal di produksi
-  (YIFY butuh `imdb_id`, SubtitleCat butuh `TMDB_API_KEY`), dan keduanya sekarang
-  menyebut alasannya.
+  terlihat. Di produksi OS.org berhenti di tahap login — diagnostics live
+  menunjukkan `error — login XML-RPC gagal (status bukan 200)`, jadi penyebabnya
+  ada di `LogIn` XML-RPC (atau parse pada runtime), bukan di `SearchSubtitles`
+  seperti dugaan awal. Pelacakan berikutnya: tangkap bodi/status sebenarnya dari
+  `xmlRpcRequest` untuk membedakan HTTP non-200 vs parse token gagal. YIFY
+  (`butuh imdb_id`) dan SubtitleCat kini menyebut alasannya; SubtitleCat butuh
+  `TMDB_API_KEY` yang valid (lihat temuan bug di bawah).
 - Catatan ruang lingkup: singgahan `?lang=` di modal membuat chip bahasa dan
   status provider tetap terlihat sinkron; tetapi bila `lang` diberikan, provider
   yang mendukungnya akan mengembalikan hasil terfilter — diagnostik `empty`
   harus dibaca bersama filter itu.
+
+#### Verifikasi live pasca-deploy (commit `8b59e8e`)
+
+- `/api/subtitles/search?type=movie&tmdb_id=27205&lang=id&title=Inception&year=2010`
+  kini mengembalikan key `diagnostics`; `total` 25 hasil, urutan ber-`id` di depan
+  tanpa `score`/`matches` bocor.
+- Diagnostics live: `opensubtitles_com ok n=15 — kuota unduhan tersisa 20`,
+  `subdl ok n=10`, `opensubtitles_org error — login XML-RPC gagal (status bukan 200)`,
+  `yify skipped — butuh imdb_id`.
+- **Bug ditemukan & diperbaiki sesi ini**: blok SubtitleCat membaca `res.json()`
+  dua kali (`.title || .name`), padahal body Response hanya bisa dibaca sekali.
+  Untuk payload TV (hanya `name`) baca kedua melempar `body already read` →
+  SubtitleCat selalu `error` untuk TV. Diperbaiki jadi satu baca + pesan yang
+  membawa HTTP status sebenarnya (`TMDB menolak lookup (HTTP 401)` bila kunci
+  TMDB tidak valid — kondisi yang diamati di produksi lokal, key `.env.local`
+  berbentuk placeholder).
+- Regresi dikunci 2 tes baru di `tests/subtitle-providers.test.js`: status TMDB
+  401 di-report apa adanya, dan payload TV `name`-saja menyelesaikan lookup tanpa
+  baca ganda. Keduanya **gagal di kode lama** (modul `subtitle.js` distash →
+  2 gagal) dan lulus setelah perbaikan.
+- Setelah perbaikan: **102/102 test lulus**, `vite build` sukses, eslint **71
+  masalah** (baseline 72, tidak ada temuan baru), `tsc` 42 = baseline.

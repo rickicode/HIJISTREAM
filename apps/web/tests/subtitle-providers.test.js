@@ -183,34 +183,105 @@ describe('Provider Throttling', () => {
 
 // ─── API Methods ──────────────────────────────────────────────────────────────
 
+// Env with R2 configured but no provider credentials — no live network calls
+// may escape these tests, so callers stub fetch themselves.
+const EMPTY_ENV = {
+  R2_ACCOUNT_ID: 'test',
+  R2_ACCESS_KEY_ID: 'test',
+  R2_SECRET_ACCESS_KEY: 'test',
+  R2_BUCKET_NAME: 'test',
+  R2_PUBLIC_URL: 'https://test.com',
+};
+
 describe('API subtitle methods', () => {
   it('searchSubtitlesFromProviders returns results plus per-provider diagnostics', async () => {
-    // Mock env with no credentials
-    const env = {
-      R2_ACCOUNT_ID: 'test',
-      R2_ACCESS_KEY_ID: 'test',
-      R2_SECRET_ACCESS_KEY: 'test',
-      R2_BUCKET_NAME: 'test',
-      R2_PUBLIC_URL: 'https://test.com',
-      TMDB_API_KEY: 'test',
-    };
-    const { results, diagnostics } = await searchSubtitlesFromProviders(env, 'movie', 27205, {});
-    expect(Array.isArray(results)).toBe(true);
-    expect(results).toEqual([]);
-    // Every provider must account for itself: with no credentials configured
-    // each one reports `skipped`, never a silent absence from the list.
-    expect(diagnostics.length).toBeGreaterThan(0);
-    for (const row of diagnostics) {
-      expect(row).toHaveProperty('provider');
-      expect(['ok', 'empty', 'skipped', 'error']).toContain(row.status);
-      expect(typeof row.count).toBe('number');
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}), text: async () => '' })));
+    try {
+      const { results, diagnostics } = await searchSubtitlesFromProviders(
+        { ...EMPTY_ENV, TMDB_API_KEY: 'test' }, 'movie', 27205, {},
+      );
+      expect(Array.isArray(results)).toBe(true);
+      expect(results).toEqual([]);
+      // Every provider must account for itself: with no credentials configured
+      // each one reports `skipped`, never a silent absence from the list.
+      expect(diagnostics.length).toBeGreaterThan(0);
+      for (const row of diagnostics) {
+        expect(row).toHaveProperty('provider');
+        expect(['ok', 'empty', 'skipped', 'error']).toContain(row.status);
+        expect(typeof row.count).toBe('number');
+      }
+      expect(diagnostics.find(d => d.provider === 'opensubtitles_com')?.status).toBe('skipped');
+      expect(diagnostics.find(d => d.provider === 'subdl')?.status).toBe('skipped');
+      // YIFY is movie-capable but has no imdb_id here — it must say so rather
+      // than vanish.
+      expect(diagnostics.find(d => d.provider === 'yify')?.status).toBe('skipped');
+      expect(diagnostics.find(d => d.provider === 'yify')?.message).toBe('butuh imdb_id');
+    } finally {
+      vi.unstubAllGlobals();
     }
-    expect(diagnostics.find(d => d.provider === 'opensubtitles_com')?.status).toBe('skipped');
-    expect(diagnostics.find(d => d.provider === 'subdl')?.status).toBe('skipped');
-    // YIFY is movie-capable but has no imdb_id here — it must say so rather
-    // than vanish.
-    expect(diagnostics.find(d => d.provider === 'yify')?.status).toBe('skipped');
-    expect(diagnostics.find(d => d.provider === 'yify')?.message).toBe('butuh imdb_id');
+  });
+
+
+  it('reports the TMDB HTTP status when SubtitleCat cannot resolve a title', async () => {
+    const fetchMock = vi.fn(async (url) => {
+      const u = String(url);
+      if (u.includes('api.themoviedb.org')) {
+        // Body is single-use, like a real Response: reading it twice throws.
+        let read = false;
+        return {
+          ok: false, status: 401,
+          json: async () => { if (read) throw new Error('body already read'); read = true; return { status_code: 7 }; },
+        };
+      }
+      return { ok: false, json: async () => ({}), text: async () => '' };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const { diagnostics } = await searchSubtitlesFromProviders(
+        { ...EMPTY_ENV, TMDB_API_KEY: 'invalid' }, 'movie', 27205, {},
+      );
+      const cat = diagnostics.find(d => d.provider === 'subtitlecat');
+      expect(cat.status).toBe('error');
+      expect(cat.message).toBe('TMDB menolak lookup (HTTP 401)');
+      // One lookup call — a double res.json() would have consumed the body.
+      expect(fetchMock.mock.calls.filter(([u]) => String(u).includes('api.themoviedb.org'))).toHaveLength(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('reads the TMDB body once for TV (name-only payloads) and continues', async () => {
+    const fetchMock = vi.fn(async (url) => {
+      const u = String(url);
+      if (u.includes('api.themoviedb.org')) {
+        // TV detail carries `name`, never `title`. With a single-use body,
+        // evaluating `(await json()).title || (await json()).name` reads twice.
+        let read = false;
+        return {
+          ok: true, status: 200,
+          json: async () => { if (read) throw new Error('body already read'); read = true; return { name: 'Breaking Bad' }; },
+        };
+      }
+      // SubtitleCat's own search page answers nothing → `empty`, not `error`.
+      return { ok: false, json: async () => ({}), text: async () => '' };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const { diagnostics } = await searchSubtitlesFromProviders(
+        { ...EMPTY_ENV, TMDB_API_KEY: 'valid' }, 'tv', 1396, { season: 1, episode: 1 },
+      );
+      const cat = diagnostics.find(d => d.provider === 'subtitlecat');
+      // A second json() read throws "body already read", which the old code
+      // reported as `error` — the reason TV SubtitleCat looked broken.
+      expect(cat.status).toBe('empty');
+      expect(cat.message).toBeNull();
+      // The resolved title reached the SubtitleCat search (query built from it).
+      const catSearches = fetchMock.mock.calls.filter(([u]) => String(u).includes('subtitlecat.com'));
+      expect(catSearches.length).toBeGreaterThan(0);
+      expect(decodeURIComponent(String(catSearches[0][0]))).toContain('Breaking Bad');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
